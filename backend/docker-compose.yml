@@ -45,5 +45,44 @@ services:
       timeout: 3s
       retries: 10
 
+  # --- Browser voice (Phase 2): `docker compose --profile voice up` ------------------------
+  # LiveKit runs in dev mode (well-known dev keys "devkey"/"secret", local use only) and
+  # advertises 127.0.0.1 for media, which the browser on this machine reaches through the
+  # published ports.
+  livekit:
+    profiles: [voice]
+    image: livekit/livekit-server:latest
+    command: ["--dev", "--bind", "0.0.0.0", "--node-ip", "127.0.0.1"]
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:7881:7881"
+      - "127.0.0.1:7882:7882/udp"
+
+  # Shares LiveKit's network namespace so that "127.0.0.1" means the same thing to the worker
+  # as to the media server. Vendor keys live only here, never in the API container.
+  voice-worker:
+    profiles: [voice]
+    build: ../voice-worker
+    network_mode: "service:livekit"
+    environment:
+      AUREVIA_BACKEND_URL: http://api:8000
+      LIVEKIT_URL: ws://127.0.0.1:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: secret
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      CARTESIA_API_KEY: ${CARTESIA_API_KEY:-}
+    depends_on:
+      - livekit
+      - api
+
+  # The browser test page, at http://localhost:3000 (or VOICE_TEST_PORT)
+  voice-test:
+    profiles: [voice]
+    image: nginx:alpine
+    volumes:
+      - ../web/voice-test:/usr/share/nginx/html:ro
+    ports:
+      - "127.0.0.1:${VOICE_TEST_PORT:-3000}:80"
+
 volumes:
   pgdata:

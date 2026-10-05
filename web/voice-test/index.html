@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aurevia voice test</title>
+  <style>
+    :root { --bg: #f7f7f5; --card: #fff; --ink: #1d1d1b; --muted: #6b6b66; --line: #e2e1dc;
+            --accent: #2457c5; --agent: #eef2fb; --you: #f1f1ee; --bad: #b42318; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #151514; --card: #1e1e1c; --ink: #ececea; --muted: #a3a29c; --line: #34332f;
+              --accent: #7aa2f7; --agent: #1e2840; --you: #2a2a27; --bad: #f97066; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink);
+           font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    p.lead { color: var(--muted); margin: 0 0 20px; }
+    section { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+              padding: 16px; margin-bottom: 16px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
+    input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+            background: var(--bg); color: var(--ink); font: inherit; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
+             background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+    button.secondary { background: transparent; color: var(--accent); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    #status { font-size: 13px; color: var(--muted); }
+    #status.error { color: var(--bad); }
+    #transcript { display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+    .msg { padding: 8px 12px; border-radius: 10px; max-width: 85%; }
+    .msg.agent { background: var(--agent); align-self: flex-start; }
+    .msg.you { background: var(--you); align-self: flex-end; }
+    .msg small { display: block; color: var(--muted); font-size: 12px; }
+    pre { white-space: pre-wrap; font-size: 13px; margin: 0; color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Aurevia voice test</h1>
+  <p class="lead">Talk to your tenant's AI sales agent in the browser. For local development only.</p>
+
+  <section id="auth">
+    <label for="api">API URL</label>
+    <input id="api" value="http://localhost:8000">
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username">
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <label for="tenant">Company name (only for a new account)</label>
+    <input id="tenant" placeholder="Acme Brokers">
+    <div class="row">
+      <button id="login">Sign in</button>
+      <button id="signup" class="secondary">Create account</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="row" style="margin-top:0">
+      <button id="start" disabled>Start call</button>
+      <button id="end" class="secondary" disabled>End call</button>
+    </div>
+    <p id="status">Sign in to start.</p>
+    <div id="transcript" aria-live="polite"></div>
+  </section>
+
+  <section>
+    <label>Last call</label>
+    <pre id="summary">No call yet.</pre>
+  </section>
+</main>
+
+<script type="module">
+  import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-client@2/+esm";
+
+  const $ = (id) => document.getElementById(id);
+  let accessToken = null;   // kept in memory only
+  let room = null;
+  let callId = null;
+
+  const setStatus = (text, isError = false) => {
+    $("status").textContent = text;
+    $("status").className = isError ? "error" : "";
+  };
+
+  async function api(path, options = {}) {
+    const headers = { "Content-Type": "application/json" };
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    const response = await fetch($("api").value.replace(/\/$/, "") + path, { ...options, headers });
+    const body = response.status === 204 ? null : await response.json();
+    if (!response.ok) throw new Error(body?.error?.message ?? `HTTP ${response.status}`);
+    return body;
+  }
+
+  async function authenticate(kind) {
+    try {
+      const payload = { email: $("email").value, password: $("password").value };
+      if (kind === "signup") payload.tenant_name = $("tenant").value || "My company";
+      const tokens = await api(`/api/v1/auth/${kind}`, { method: "POST", body: JSON.stringify(payload) });
+      accessToken = tokens.access_token;
+      const me = await api("/api/v1/auth/me");
+      setStatus(`Signed in as ${me.email} (${me.tenant.name}).`);
+      $("start").disabled = false;
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  function addLine(who, text) {
+    const div = document.createElement("div");
+    div.className = `msg ${who}`;
+    const label = document.createElement("small");
+    label.textContent = who === "agent" ? "Agent" : "You";
+    div.append(label, document.createTextNode(text));
+    $("transcript").append(div);
+  }
+
+  async function startCall() {
+    $("start").disabled = true;
+    $("transcript").replaceChildren();
+    try {
+      setStatus("Setting up the call…");
+      const session = await api("/api/v1/voice/sessions", { method: "POST" });
+      callId = session.call_id;
+      room = new Room({ adaptiveStream: true, dynacast: true });
+
+      room.on(RoomEvent.TrackSubscribed, (track) => {
+        if (track.kind === Track.Kind.Audio) document.body.append(track.attach());
+      });
+      room.on(RoomEvent.Disconnected, () => endCall(false));
+      room.registerTextStreamHandler("lk.transcription", async (reader, participant) => {
+        const text = (await reader.readAll()).trim();
+        if (text) addLine(participant.identity === room.localParticipant.identity ? "you" : "agent", text);
+      });
+
+      await room.connect(session.livekit_url, session.token);
+      await room.localParticipant.setMicrophoneEnabled(true);
+      setStatus("Connected. The agent will greet you; speak naturally, and interrupt whenever you like.");
+      $("end").disabled = false;
+    } catch (error) {
+      setStatus(error.message, true);
+      $("start").disabled = false;
+    }
+  }
+
+  async function endCall(disconnect = true) {
+    $("end").disabled = true;
+    if (room && disconnect) await room.disconnect();
+    room = null;
+    document.querySelectorAll("audio").forEach((el) => el.remove());
+    $("start").disabled = !accessToken;
+    if (!callId) return;
+    setStatus("Call ended.");
+    // Give the worker a moment to report usage and close the call.
+    setTimeout(async () => {
+      try {
+        const call = await api(`/api/v1/voice/calls/${callId}`);
+        $("summary").textContent = JSON.stringify(call, null, 2);
+      } catch (error) {
+        $("summary").textContent = error.message;
+      }
+    }, 2500);
+  }
+
+  $("login").onclick = () => authenticate("login");
+  $("signup").onclick = () => authenticate("signup");
+  $("start").onclick = startCall;
+  $("end").onclick = () => endCall(true);
+</script>
+</body>
+</html>

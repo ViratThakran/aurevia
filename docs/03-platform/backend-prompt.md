@@ -19,4 +19,4 @@ Docker. pgvector and Redis are added when a phase needs them.
 - Do not build frontend code in backend tasks.
 
 ## Current milestone
-Phase 1 — Foundation is implemented (see `backend/README.md`). Next is Phase 2 — Browser Voice.
+Phase 1 — Foundation is complete. Phase 2 — Browser Voice is in progress (see `backend/README.md` and `voice-worker/README.md`).

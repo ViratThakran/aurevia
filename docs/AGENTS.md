@@ -25,6 +25,12 @@ Source of truth: `00-foundation/master-brief.md`, including its approved amendme
 - Never claim a failed tool action succeeded.
 
 ## Current milestone
-Phase 1 — Foundation: PostgreSQL + Alembic, tenants/users/memberships, thin RBAC
-(owner/admin/member), authentication with refresh-token rotation, row-level security, provider
-interfaces with fakes, CI. Next: Phase 2 — browser voice prototype (no telephony).
+Phase 2 — Browser voice: LiveKit voice worker (Deepgram STT, Cartesia TTS), backend Model
+Gateway (Claude), server-built prompt with honesty rules, opening sales states, calls and
+usage events, browser test page. Phase 1 (foundation) is complete. Gate for Phase 2: a full
+spoken conversation works end to end in the browser.
+
+## Voice architecture (approved 2026-10-05)
+Speech vendor plugins (STT/TTS) live only in `voice-worker/`, which is the voice layer's
+provider boundary. The LLM, prompt, sales rules, transcripts and usage stay in the backend
+behind the Model Gateway; the worker never calls a model directly.

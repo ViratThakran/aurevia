@@ -16,7 +16,7 @@ from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, UniqueCons
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from aurevia.db.base import Base, Timestamps, UUIDPrimaryKey
+from aurevia.db.base import Base, Timestamps, UUIDPrimaryKey, one_of
 
 
 class Role(StrEnum):
@@ -40,14 +40,9 @@ class MembershipStatus(StrEnum):
     REMOVED = "removed"
 
 
-def _in(column: str, enum: type[StrEnum]) -> str:
-    values = ", ".join(f"'{member.value}'" for member in enum)
-    return f"{column} IN ({values})"
-
-
 class Tenant(UUIDPrimaryKey, Timestamps, Base):
     __tablename__ = "tenants"
-    __table_args__ = (CheckConstraint(_in("status", TenantStatus), name="status"),)
+    __table_args__ = (CheckConstraint(one_of("status", TenantStatus), name="status"),)
 
     name: Mapped[str] = mapped_column(String(200))
     slug: Mapped[str] = mapped_column(String(80), unique=True)
@@ -56,7 +51,7 @@ class Tenant(UUIDPrimaryKey, Timestamps, Base):
 
 class User(UUIDPrimaryKey, Timestamps, Base):
     __tablename__ = "users"
-    __table_args__ = (CheckConstraint(_in("status", UserStatus), name="status"),)
+    __table_args__ = (CheckConstraint(one_of("status", UserStatus), name="status"),)
 
     # Stored lower-cased; uniqueness is therefore case-insensitive.
     email: Mapped[str] = mapped_column(String(320), unique=True)
@@ -70,8 +65,8 @@ class Membership(UUIDPrimaryKey, Timestamps, Base):
     __tablename__ = "memberships"
     __table_args__ = (
         UniqueConstraint("tenant_id", "user_id"),
-        CheckConstraint(_in("role", Role), name="role"),
-        CheckConstraint(_in("status", MembershipStatus), name="status"),
+        CheckConstraint(one_of("role", Role), name="role"),
+        CheckConstraint(one_of("status", MembershipStatus), name="status"),
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(

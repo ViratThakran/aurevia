@@ -44,6 +44,9 @@ class FakeModelProvider:
 
     async def stream(self, request: ModelRequest) -> AsyncIterator[ModelStreamEvent]:
         response = self._next(request)
+        yield ModelStreamEvent(
+            usage=ModelUsage(input_tokens=response.usage.input_tokens, output_tokens=0)
+        )
         for word in response.text.split(" "):
             yield ModelStreamEvent(delta=word + " ")
         yield ModelStreamEvent(final=response)
@@ -99,3 +102,17 @@ class FakeTelephonyProvider:
 
     async def hang_up(self, provider_call_id: str) -> None:
         self.hung_up.append(provider_call_id)
+
+
+@dataclass
+class FakeVoiceTransport:
+    """Records rooms and dispatches; tokens are readable strings, not JWTs."""
+
+    public_url: str = "ws://voice.test"
+    rooms: list[tuple[str, str, str]] = field(default_factory=list)
+
+    def participant_token(self, *, room: str, identity: str, name: str, ttl_seconds: int) -> str:
+        return f"fake-token:{room}:{identity}"
+
+    async def open_room_with_agent(self, *, room: str, agent_name: str, metadata: str) -> None:
+        self.rooms.append((room, agent_name, metadata))
