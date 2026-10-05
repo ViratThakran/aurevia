@@ -1,0 +1,49 @@
+# Local development stack. Credentials come from `.env` (see `.env.example`);
+# compose refuses to start if they are missing — there are no defaults.
+#
+# Two database roles, as in production:
+#   POSTGRES_USER  owns the schema; used only to run migrations.
+#   aurevia_app    what the API connects as; subject to row-level security.
+services:
+  api:
+    build: .
+    env_file: .env
+    environment:
+      AUREVIA_DATABASE_URL: postgresql+asyncpg://aurevia_app:${AUREVIA_APP_DB_PASSWORD:?set AUREVIA_APP_DB_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
+      AUREVIA_MIGRATION_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head &&
+        exec uvicorn aurevia.main:create_app --factory
+        --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src
+    volumes:
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      AUREVIA_APP_DB_PASSWORD: ${AUREVIA_APP_DB_PASSWORD:?set AUREVIA_APP_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
