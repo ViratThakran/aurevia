@@ -73,6 +73,28 @@ production refuse to start otherwise. Rows of another tenant are reported as `40
 | GET | `/api/v1/auth/me` | signed in |
 | GET | `/api/v1/tenant`, `/api/v1/tenant/members` | signed in |
 | PATCH, DELETE | `/api/v1/tenant/members/{membership_id}` | owner or admin; only owners touch owners; the last owner stays |
+| GET, PUT | `/api/v1/agents/default` | signed in; PUT owner or admin. Bounded, validated fields only |
+| POST | `/api/v1/voice/sessions` | signed in: creates a call + LiveKit room, dispatches the voice agent |
+| GET | `/api/v1/voice/calls/{call_id}` | signed in: status, sales state, usage totals |
+
+Worker-only endpoints live under `/internal/v1/calls/{call_id}/` (`start`, `turns`, `usage`,
+`end`). They accept only the per-call token the backend hands the worker through the LiveKit
+dispatch; a user token, or a token for another call, is rejected.
+
+## Browser voice (Phase 2)
+
+- **Model Gateway** (`gateway/`): one provider (Claude, `AUREVIA_LLM_MODEL`, default
+  `claude-opus-5-5` at effort `low`), first-token and total deadlines, and a usage record for
+  every reply: requested vs. served model, tokens, time to first token, interrupted or not.
+- **Fallback is explicit**: `AUREVIA_LLM_FALLBACK_POLICY=server_default` (the default) lets
+  the API re-run a declined request on Anthropic's recommended fallback model; the model that
+  actually answered is stored on the usage event. `none` turns it off.
+- **Prompt** (`conversation/prompt.py`): built only from the tenant's validated agent settings
+  and the server-owned sales state; honesty rules (never claims to be human, says it is an AI
+  when asked, no invented facts, never claims an action it cannot take) are fixed text.
+- **Sales state** (`sales/state.py`): an allow-listed state machine. Phase 2 moves
+  new → opening → discovery; later transitions arrive with the Phase 5 tools.
+- Without `AUREVIA_ANTHROPIC_API_KEY` or the LiveKit settings, the voice endpoints return 503.
 
 ## Conventions
 

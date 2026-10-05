@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from enum import StrEnum
 
 from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -35,3 +36,9 @@ class Timestamps:
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+def one_of(column: str, enum: type[StrEnum]) -> str:
+    """SQL for a CHECK constraint limiting ``column`` to the values of ``enum``."""
+    values = ", ".join(f"'{member.value}'" for member in enum)
+    return f"{column} IN ({values})"

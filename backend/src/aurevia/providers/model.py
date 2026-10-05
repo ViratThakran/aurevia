@@ -23,7 +23,6 @@ class ModelRequest:
     system: str
     messages: tuple[ModelMessage, ...]
     max_tokens: int
-    temperature: float = 0.7
     timeout_seconds: float = 30.0
     # Correlation ids (tenant_id, call_id, request_id, prompt_version); never content.
     metadata: Mapping[str, str] = field(default_factory=dict)
@@ -46,9 +45,11 @@ class ModelResponse:
 
 @dataclass(frozen=True)
 class ModelStreamEvent:
-    """A text delta, or (exactly once, last) the final response with usage."""
+    """One of: a text delta; a usage update (usage known so far, e.g. input tokens as soon
+    as the request is accepted); or, exactly once and last, the final response."""
 
     delta: str = ""
+    usage: ModelUsage | None = None
     final: ModelResponse | None = None
 
 
