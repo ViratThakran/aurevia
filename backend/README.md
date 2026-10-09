@@ -83,18 +83,33 @@ dispatch; a user token, or a token for another call, is rejected.
 
 ## Browser voice (Phase 2)
 
-- **Model Gateway** (`gateway/`): one provider (Claude, `AUREVIA_LLM_MODEL`, default
-  `claude-opus-5-5` at effort `low`), first-token and total deadlines, and a usage record for
-  every reply: requested vs. served model, tokens, time to first token, interrupted or not.
-- **Fallback is explicit**: `AUREVIA_LLM_FALLBACK_POLICY=server_default` (the default) lets
-  the API re-run a declined request on Anthropic's recommended fallback model; the model that
-  actually answered is stored on the usage event. `none` turns it off.
+- **Model Gateway** (`gateway/`): one interface for every model provider, with first-token and
+  total deadlines and a usage record for every reply (requested vs. served model, tokens, time
+  to first token, interrupted or not).
+- **Provider selection is configuration only**: `AUREVIA_AI_PROVIDER=gemini` (current
+  development default, `AUREVIA_GEMINI_API_KEY`) or `anthropic` (`AUREVIA_ANTHROPIC_API_KEY`).
+  Only the selected provider's key is needed. `providers/registry.py` is the only code that
+  knows which adapters exist; conversation and sales code never change.
+- **Models**: `AUREVIA_LLM_MODEL` overrides the provider default (`gemini-3.5-flash`,
+  `claude-opus-5-5`). Pinned names only, never "latest" aliases. Effort `low` maps to Gemini's
+  `MINIMAL` thinking on Flash models. `AUREVIA_LLM_FALLBACK_MODELS` lists backup models tried
+  when one fails before its first word; a circuit breaker skips a failing model for 60 s.
+- **Errors are normalized**: every adapter raises `ModelProviderError` with one of
+  `auth_failed`, `rate_limited`, `invalid_request`, `unavailable`, `timeout`; vendor error text
+  (which can echo request details) is never kept.
+- **Fallback is explicit**: `AUREVIA_LLM_FALLBACK_POLICY=server_default` (Anthropic only; the
+  default there) re-runs a declined request on Anthropic's recommended fallback model, and the
+  model that answered is stored on the usage event. Gemini has no server fallback, so asking for
+  one with Gemini is a configuration error, not a silent no-op.
+- **Secrets**: keys are `SecretStr` settings, never returned by any endpoint (tested), and
+  every configured secret is redacted from log lines and tracebacks.
 - **Prompt** (`conversation/prompt.py`): built only from the tenant's validated agent settings
   and the server-owned sales state; honesty rules (never claims to be human, says it is an AI
   when asked, no invented facts, never claims an action it cannot take) are fixed text.
 - **Sales state** (`sales/state.py`): an allow-listed state machine. Phase 2 moves
   new → opening → discovery; later transitions arrive with the Phase 5 tools.
-- Without `AUREVIA_ANTHROPIC_API_KEY` or the LiveKit settings, the voice endpoints return 503.
+- Without the selected provider's key or the LiveKit settings, the voice endpoints return 503
+  (a startup warning names the missing variable, never a value).
 
 ## Conventions
 

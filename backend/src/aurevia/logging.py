@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
+from collections.abc import Iterable
 from contextvars import ContextVar
 from datetime import UTC, datetime
 
@@ -48,8 +49,56 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, default=str)
 
 
-def configure_logging(level: str = "INFO", *, json_output: bool = True) -> None:
-    """Idempotently configure the root logger."""
+class TextFormatter(logging.Formatter):
+    """Human-readable local logs that still show the structured fields (path, status...)."""
+
+    def __init__(self) -> None:
+        super().__init__("%(asctime)s %(levelname)-8s %(name)s %(message)s")
+
+    def format(self, record: logging.LogRecord) -> str:
+        line = super().format(record)
+        fields = getattr(record, "fields", None)
+        context = {"tenant_id": tenant_id_var.get(), "request_id": request_id_var.get()}
+        extras = {**{k: v for k, v in context.items() if v}, **(fields or {})}
+        if not extras:
+            return line
+        head, newline, rest = line.partition("\n")  # keep tracebacks below the fields
+        rendered = " ".join(f"{key}={value}" for key, value in extras.items())
+        return f"{head} {rendered}{newline}{rest}"
+
+
+REDACTED = "[REDACTED]"
+# Shorter values are not treated as secrets: replacing them would mangle ordinary text.
+_MIN_SECRET_LENGTH = 8
+
+
+class RedactingFormatter(logging.Formatter):
+    """Wraps a formatter and removes known secret values from every formatted line,
+    exception tracebacks included. A safety net: code must still never log secrets."""
+
+    def __init__(self, inner: logging.Formatter, secrets: Iterable[str]) -> None:
+        super().__init__()
+        self._inner = inner
+        # Longest first, so a secret containing another is removed whole.
+        self._secrets = sorted(
+            {s for s in secrets if len(s) >= _MIN_SECRET_LENGTH}, key=len, reverse=True
+        )
+
+    def format(self, record: logging.LogRecord) -> str:
+        return redact(self._inner.format(record), self._secrets)
+
+
+def redact(text: str, secrets: Iterable[str]) -> str:
+    for secret in secrets:
+        if len(secret) >= _MIN_SECRET_LENGTH:
+            text = text.replace(secret, REDACTED)
+    return text
+
+
+def configure_logging(
+    level: str = "INFO", *, json_output: bool = True, redact_values: Iterable[str] = ()
+) -> None:
+    """Idempotently configure the root logger. ``redact_values`` are scrubbed from output."""
     root = logging.getLogger()
     for handler in list(root.handlers):
         if getattr(handler, _HANDLER_MARKER, False):
@@ -57,11 +106,8 @@ def configure_logging(level: str = "INFO", *, json_output: bool = True) -> None:
 
     handler = logging.StreamHandler(sys.stdout)
     setattr(handler, _HANDLER_MARKER, True)
-    handler.setFormatter(
-        JsonFormatter()
-        if json_output
-        else logging.Formatter("%(asctime)s %(levelname)-8s %(name)s %(message)s")
-    )
+    inner = JsonFormatter() if json_output else TextFormatter()
+    handler.setFormatter(RedactingFormatter(inner, redact_values))
     root.addHandler(handler)
     root.setLevel(level)
 

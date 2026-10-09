@@ -49,6 +49,7 @@ def test_production_refuses_a_role_that_bypasses_rls(db: PgEnv) -> None:
         environment="production",
         database_url=superuser_url,
         jwt_secret=TEST_JWT_SECRET,
+        gemini_api_key="gemini-test-key-0000000000",
     )
     with pytest.raises(UnsafeDatabaseRoleError), TestClient(create_app(settings)):
         pass

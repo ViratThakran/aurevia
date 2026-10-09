@@ -1,5 +1,5 @@
 """AI Model Gateway."""
 
-from aurevia.gateway.gateway import GatewayError, GenerationRecord, ModelGateway
+from aurevia.gateway.gateway import CircuitBreaker, GatewayError, GenerationRecord, ModelGateway
 
-__all__ = ["GatewayError", "GenerationRecord", "ModelGateway"]
+__all__ = ["CircuitBreaker", "GatewayError", "GenerationRecord", "ModelGateway"]

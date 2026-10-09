@@ -33,7 +33,10 @@ _SERVER_URL = os.environ.get("AUREVIA_TEST_DATABASE_URL")
 _REQUIRED = os.environ.get("AUREVIA_REQUIRE_DB_TESTS") == "1"
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
-TABLES = "tenants, users, memberships, refresh_tokens, audit_events, agents, calls, usage_events"
+TABLES = (
+    "tenants, users, memberships, refresh_tokens, audit_events, agents, calls, usage_events,"
+    " turn_metrics"
+)
 
 
 @dataclass(frozen=True)

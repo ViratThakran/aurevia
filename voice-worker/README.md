@@ -26,10 +26,18 @@ browser speaker ◀──WebRTC── LiveKit ◀── worker: Cartesia TTS ◀
 4. On hang-up the worker reports speech-to-text seconds and text-to-speech characters and
    ends the call (`failed` if setup broke).
 
+## Speech providers
+
+`speech_providers.py` is the only module that imports speech-vendor plugins; the runtime uses
+LiveKit's `stt.STT` / `tts.TTS` interfaces. Select vendors with `AUREVIA_STT_PROVIDER`
+(`deepgram`) and `AUREVIA_TTS_PROVIDER` (`cartesia`). Keys (`DEEPGRAM_API_KEY`,
+`CARTESIA_API_KEY`) exist only in this container, never in the API; the worker has no model key.
+Log records are scrubbed of key values as they are created (`redaction.py`).
+
 ## Run
 
-With Docker (from `backend/`): set `AUREVIA_ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY` and
-`CARTESIA_API_KEY` in `backend/.env`, then
+With Docker (from `backend/`): set the model key (`AUREVIA_GEMINI_API_KEY` with
+`AUREVIA_AI_PROVIDER=gemini`), `DEEPGRAM_API_KEY` and `CARTESIA_API_KEY` in `backend/.env`, then
 
 ```bash
 docker compose --profile voice up --build

@@ -16,6 +16,7 @@ from aurevia.config import Settings
 from aurevia.db.base import Base
 from aurevia.identity import models as _identity_models  # noqa: F401 - registers tables
 from aurevia.usage import models as _usage_models  # noqa: F401
+from aurevia.voice import metrics as _voice_metrics  # noqa: F401
 from aurevia.voice import models as _voice_models  # noqa: F401
 
 config = context.config

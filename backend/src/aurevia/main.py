@@ -22,7 +22,11 @@ from aurevia.errors import register_exception_handlers
 from aurevia.gateway import ModelGateway
 from aurevia.logging import configure_logging
 from aurevia.middleware import RequestContextMiddleware
-from aurevia.providers.anthropic_model import AnthropicModelProvider
+from aurevia.providers.registry import (
+    ClosableModelProvider,
+    build_model_provider,
+    missing_key_variable,
+)
 from aurevia.providers.voice_transport import LiveKitTransport
 
 API_V1_PREFIX = "/api/v1"
@@ -64,7 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
-        provider: AnthropicModelProvider | None = app.state.model_provider
+        provider: ClosableModelProvider | None = app.state.model_provider
         if provider is not None:
             await provider.aclose()
         if database is not None:
@@ -72,20 +76,39 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("Aurevia stopped")
 
 
-def _build_model_gateway(settings: Settings) -> tuple[AnthropicModelProvider, ModelGateway] | None:
-    if settings.anthropic_api_key is None:
+def _build_model_gateway(
+    settings: Settings,
+) -> tuple[ClosableModelProvider, ModelGateway] | None:
+    provider = build_model_provider(settings)
+    if provider is None:
+        logger.warning(
+            "AI model not configured: model endpoints will return 503",
+            extra={
+                "fields": {
+                    "ai_provider": settings.ai_provider,
+                    "missing": missing_key_variable(settings),
+                }
+            },
+        )
         return None
-    provider = AnthropicModelProvider(
-        api_key=settings.anthropic_api_key.get_secret_value(),
-        effort=settings.llm_effort,
-        server_fallback=settings.llm_fallback_policy == "server_default",
-    )
     gateway = ModelGateway(
         provider,
-        model=settings.llm_model,
+        model=settings.resolved_llm_model,
         max_tokens=settings.llm_max_tokens,
         first_token_timeout_seconds=settings.llm_first_token_timeout_seconds,
         total_timeout_seconds=settings.llm_total_timeout_seconds,
+        fallback_models=settings.llm_fallback_models,
+    )
+    logger.info(
+        "AI model configured",
+        extra={
+            "fields": {
+                "ai_provider": settings.ai_provider,
+                "model": settings.resolved_llm_model,
+                "fallback_policy": settings.resolved_fallback_policy,
+                "fallback_models": ",".join(settings.llm_fallback_models) or "none",
+            }
+        },
     )
     return provider, gateway
 
@@ -105,7 +128,11 @@ def _build_voice_transport(settings: Settings) -> LiveKitTransport | None:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
-    configure_logging(settings.log_level, json_output=settings.log_json)
+    configure_logging(
+        settings.log_level,
+        json_output=settings.log_json,
+        redact_values=settings.secret_values(),
+    )
 
     app = FastAPI(
         title="Aurevia API",

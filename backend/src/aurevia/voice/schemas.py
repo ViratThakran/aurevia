@@ -58,6 +58,22 @@ class CallUsage(BaseModel):
     tts_characters: int
 
 
+class LatencyResponse(BaseModel):
+    """Prospect stops speaking -> agent's first audio, against the Phase 3 targets."""
+
+    agent_turns: int
+    measured_turns: int
+    interrupted_turns: int
+    e2e_p50_ms: int | None
+    e2e_p95_ms: int | None
+    llm_ttft_p50_ms: int | None
+    tts_ttfb_p50_ms: int | None
+    end_of_turn_delay_p50_ms: int | None
+    target_p50_ms: int
+    target_p95_ms: int
+    meets_target: bool | None
+
+
 class CallResponse(BaseModel):
     id: uuid.UUID
     channel: str
@@ -68,6 +84,7 @@ class CallResponse(BaseModel):
     ended_at: datetime | None
     end_reason: str | None
     usage: CallUsage
+    latency: LatencyResponse
 
 
 # --- Worker call API ---------------------------------------------------------------------
@@ -101,3 +118,21 @@ class CallEndRequest(_Body):
     reason: str = Field(min_length=1, max_length=100, pattern=r"^[a-z0-9_]+$")
     # True when the call ended because something broke (worker or vendor failure).
     failed: bool = False
+
+
+_MS = Field(default=None, ge=0, le=600_000)
+
+
+class TurnMetricIn(_Body):
+    seq: int = Field(ge=0, le=100_000)
+    role: Literal["prospect", "agent"]
+    interrupted: bool = False
+    transcription_delay_ms: int | None = _MS
+    end_of_turn_delay_ms: int | None = _MS
+    e2e_latency_ms: int | None = _MS
+    llm_ttft_ms: int | None = _MS
+    tts_ttfb_ms: int | None = _MS
+
+
+class TurnMetricsReport(_Body):
+    turns: list[TurnMetricIn] = Field(min_length=1, max_length=1000)

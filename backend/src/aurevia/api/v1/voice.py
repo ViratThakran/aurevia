@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Query, Request, status
 from sqlalchemy import case, func, select
 
 from aurevia.errors import ServiceUnavailableError
@@ -13,11 +14,13 @@ from aurevia.identity.dependencies import AdminDep, PrincipalDep, SessionDep, Se
 from aurevia.providers.voice_transport import VoiceTransport
 from aurevia.usage.models import UsageEvent, UsageKind
 from aurevia.voice.call_auth import create_call_token
+from aurevia.voice.metrics import LatencySummary, summarize
 from aurevia.voice.schemas import (
     AgentResponse,
     AgentUpdate,
     CallResponse,
     CallUsage,
+    LatencyResponse,
     VoiceSessionResponse,
 )
 from aurevia.voice.service import AgentService, AgentSettings, CallService
@@ -33,6 +36,22 @@ def _transport(request: Request) -> VoiceTransport:
     if transport is None:
         raise ServiceUnavailableError("Voice is not configured")
     return transport
+
+
+def _latency(summary: LatencySummary) -> LatencyResponse:
+    return LatencyResponse(
+        agent_turns=summary.agent_turns,
+        measured_turns=summary.measured_turns,
+        interrupted_turns=summary.interrupted_turns,
+        e2e_p50_ms=summary.e2e_p50_ms,
+        e2e_p95_ms=summary.e2e_p95_ms,
+        llm_ttft_p50_ms=summary.llm_ttft_p50_ms,
+        tts_ttfb_p50_ms=summary.tts_ttfb_p50_ms,
+        end_of_turn_delay_p50_ms=summary.end_of_turn_delay_p50_ms,
+        target_p50_ms=summary.target_p50_ms,
+        target_p95_ms=summary.target_p95_ms,
+        meets_target=summary.meets_target,
+    )
 
 
 def _agent_response(agent: object) -> AgentResponse:
@@ -124,6 +143,7 @@ async def get_call(
             ).where(UsageEvent.tenant_id == principal.tenant_id, UsageEvent.call_id == call.id)
         )
     ).one()
+    latency = await summarize(session, tenant_id=principal.tenant_id, call_id=call.id)
     return CallResponse(
         id=call.id,
         channel=call.channel,
@@ -141,4 +161,15 @@ async def get_call(
             stt_seconds=float(row[4]),
             tts_characters=int(row[5]),
         ),
+        latency=_latency(latency),
     )
+
+
+@router.get("/voice/latency", summary="Turn latency across the tenant's recent calls")
+async def get_latency(
+    principal: PrincipalDep,
+    session: SessionDep,
+    days: int = Query(default=7, ge=1, le=90),
+) -> LatencyResponse:
+    since = datetime.now(UTC) - timedelta(days=days)
+    return _latency(await summarize(session, tenant_id=principal.tenant_id, since=since))

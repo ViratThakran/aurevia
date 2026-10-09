@@ -7,9 +7,9 @@ builds the prompt, applies the sales rules, calls the Model Gateway and records 
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import httpx
 
@@ -112,6 +112,15 @@ class BackendClient:
             },
         )
         _raise_for(response)
+
+    async def report_turn_metrics(self, turns: Sequence[Mapping[str, Any]]) -> None:
+        for start in range(0, len(turns), 1000):  # the backend accepts up to 1000 per request
+            response = await self._http.post(
+                f"{self._call_path}/turn-metrics",
+                headers=self._headers,
+                json={"turns": list(turns[start : start + 1000])},
+            )
+            _raise_for(response)
 
     async def end(self, reason: str, *, failed: bool = False) -> None:
         response = await self._http.post(
