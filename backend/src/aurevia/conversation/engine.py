@@ -1,19 +1,23 @@
-"""One conversational turn: validated history in, streamed reply out."""
+"""One conversational turn: validated history in, streamed reply out, tools in between."""
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Sequence
-from dataclasses import dataclass
+from collections.abc import AsyncIterator, Callable, Sequence
+from dataclasses import dataclass, field
 from typing import Literal
 
-from aurevia.conversation.prompt import AgentProfile, RememberedFact, build_system_prompt
+from aurevia.conversation.prompt import AgentProfile, PromptContext, build_system_prompt
 from aurevia.gateway import GenerationRecord, ModelGateway
-from aurevia.providers.model import ModelMessage
+from aurevia.providers.model import ModelMessage, ToolResult, ToolSpec
 from aurevia.sales.state import SalesState
+from aurevia.tools.framework import ToolExecutor
 
 # The model API requires a conversation to open with the user. Voice calls open with the
 # agent's greeting, so a neutral marker stands in for the moment the call connected.
 CALL_CONNECTED = "(The call has connected.)"
+# Model -> tools -> model rounds per turn. The last round offers no tools, so the turn
+# always ends with words for the prospect.
+MAX_TOOL_ROUNDS = 3
 
 
 @dataclass(frozen=True)
@@ -40,21 +44,62 @@ def to_model_messages(history: Sequence[Utterance]) -> tuple[ModelMessage, ...]:
     return tuple(messages)
 
 
+@dataclass(frozen=True)
+class TurnEvent:
+    delta: str = ""
+    tool_results: tuple[ToolResult, ...] = ()
+
+
+@dataclass
+class TurnRecords:
+    """One GenerationRecord per model round, for usage accounting."""
+
+    records: list[GenerationRecord] = field(default_factory=list)
+
+
 class ConversationEngine:
     def __init__(self, gateway: ModelGateway) -> None:
         self._gateway = gateway
 
-    def stream_reply(
+    async def stream_reply(
         self,
         *,
         agent: AgentProfile,
         state: SalesState,
-        history: Sequence[Utterance],
-        record: GenerationRecord,
-        memories: Sequence[RememberedFact] = (),
-    ) -> AsyncIterator[str]:
-        return self._gateway.stream_text(
-            system=build_system_prompt(agent, state, memories),
-            messages=to_model_messages(history),
-            record=record,
-        )
+        messages: tuple[ModelMessage, ...],
+        new_record: Callable[[], GenerationRecord],
+        records: TurnRecords,
+        context: PromptContext | None = None,
+        tools: tuple[ToolSpec, ...] = (),
+        executor: ToolExecutor | None = None,
+    ) -> AsyncIterator[TurnEvent]:
+        """``messages`` come from :func:`to_model_messages` (validated before streaming)."""
+        system = build_system_prompt(agent, state, context, tools_enabled=bool(tools))
+        for round_number in range(MAX_TOOL_ROUNDS + 1):
+            offer = tools if (executor is not None and round_number < MAX_TOOL_ROUNDS) else ()
+            record = new_record()
+            records.records.append(record)
+            final = None
+            async for event in self._gateway.stream(
+                system=system, messages=messages, record=record, tools=offer
+            ):
+                if event.delta:
+                    yield TurnEvent(delta=event.delta)
+                if event.final is not None:
+                    final = event.final
+            if final is None or not final.tool_calls or executor is None:
+                return
+            results = tuple([await executor.execute(call) for call in final.tool_calls])
+            yield TurnEvent(tool_results=results)
+            if final.text.strip() and not executor.needs_follow_up(results):
+                return  # already spoke; the calls only recorded things and all succeeded
+            messages = (
+                *messages,
+                ModelMessage(
+                    role="assistant",
+                    content=final.text,
+                    tool_calls=final.tool_calls,
+                    provider_state=final.provider_state,
+                ),
+                ModelMessage(role="user", tool_results=results),
+            )

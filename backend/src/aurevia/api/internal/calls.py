@@ -12,6 +12,7 @@ import json
 import logging
 import uuid
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 from fastapi.responses import StreamingResponse
@@ -20,22 +21,28 @@ from sqlalchemy.exc import IntegrityError
 from aurevia.conversation.engine import (
     ConversationEngine,
     InvalidHistoryError,
+    TurnRecords,
     Utterance,
+    to_model_messages,
 )
-from aurevia.conversation.prompt import RememberedFact
-from aurevia.db.session import Database
+from aurevia.conversation.prompt import PromptContext, RememberedFact
+from aurevia.db.session import Database, set_tenant_context
 from aurevia.errors import AureviaError, ConflictError, ServiceUnavailableError
 from aurevia.gateway import GatewayError, ModelGateway
 from aurevia.identity.dependencies import SessionDep, SettingsDep
 from aurevia.memory.jobs import safe_remember_call
-from aurevia.memory.models import Speaker
+from aurevia.memory.models import Lead, Speaker
 from aurevia.memory.schemas import TranscriptIn
 from aurevia.memory.service import Line, MemoryService, TranscriptService
+from aurevia.sales.scheduling import hours_for, spoken
 from aurevia.sales.state import SalesState, after_prospect_turn
+from aurevia.tools.framework import ToolContext, ToolExecutor
+from aurevia.tools.sales_tools import default_registry
 from aurevia.usage.models import UsageEvent
 from aurevia.usage.recorder import record_llm_usage
 from aurevia.voice.call_auth import CallPrincipalDep
 from aurevia.voice.metrics import TurnMetric
+from aurevia.voice.models import Call
 from aurevia.voice.schemas import (
     CallEndRequest,
     CallStartResponse,
@@ -81,35 +88,78 @@ async def take_turn(
     calls = CallService(session, principal.tenant_id)
     call, agent = await calls.get_with_agent(call_id, for_update=True)
     require_in_progress(call)
-    history = [Utterance(role=u.role, text=u.text) for u in body.history]
+    try:
+        messages = to_model_messages([Utterance(role=u.role, text=u.text) for u in body.history])
+    except InvalidHistoryError as exc:
+        raise AureviaError(str(exc), status_code=422, code="invalid_history") from exc
+
+    lead = await session.get(Lead, call.lead_id) if call.lead_id else None
     memories: list[RememberedFact] = []
-    if call.lead_id is not None:
+    if lead is not None:
         memories = [
             RememberedFact(kind=m.kind, fact=m.fact)
             for m in await MemoryService(session, principal.tenant_id).for_prompt(
-                call.lead_id,
+                lead.id,
                 min_confidence=settings.memory_min_confidence,
                 limit=settings.memory_max_facts_in_prompt,
             )
         ]
-    engine = ConversationEngine(gateway)
-    record = gateway.new_record({"call_id": str(call_id), "tenant_id": str(principal.tenant_id)})
+    hours = await hours_for(session, principal.tenant_id)
+    now = datetime.now(UTC)
+    context = PromptContext(
+        memories=memories,
+        prospect_name=lead.name if lead else None,
+        prospect_company=lead.company if lead else None,
+        now_spoken=f"{spoken(now, hours)} ({hours.timezone})",
+    )
     state = after_prospect_turn(SalesState(call.sales_state))
-    try:
-        replies = engine.stream_reply(
-            agent=profile_of(agent), state=state, history=history, record=record, memories=memories
-        )
-    except InvalidHistoryError as exc:
-        raise AureviaError(str(exc), status_code=422, code="invalid_history") from exc
     call.sales_state = state
     call.turn_count += 1
+    profile = profile_of(agent)
     await session.commit()
 
+    registry = default_registry()
+    records = TurnRecords()
+    metadata = {"call_id": str(call_id), "tenant_id": str(principal.tenant_id)}
+
     async def stream() -> AsyncIterator[bytes]:
+        final_state = state.value
         try:
-            async for delta in replies:
-                yield _line({"type": "delta", "text": delta})
-            yield _line({"type": "done", "sales_state": state.value})
+            # Tools write through their own session, scoped to this tenant and committed per
+            # tool together with its audit row.
+            async with database.sessionmaker() as tool_session:
+                await set_tenant_context(tool_session, principal.tenant_id)
+                tool_call = await tool_session.get(Call, call_id)
+                tool_lead = await tool_session.get(Lead, lead.id) if lead else None
+                assert tool_call is not None  # noqa: S101 - loaded above in the same tenant
+                executor = ToolExecutor(
+                    registry,
+                    ToolContext(
+                        session=tool_session,
+                        tenant_id=principal.tenant_id,
+                        call=tool_call,
+                        lead=tool_lead,
+                        now=now,
+                    ),
+                )
+                async for event in ConversationEngine(gateway).stream_reply(
+                    agent=profile,
+                    state=state,
+                    messages=messages,
+                    new_record=lambda: gateway.new_record(metadata),
+                    records=records,
+                    context=context,
+                    tools=registry.specs(),
+                    executor=executor,
+                ):
+                    if event.delta:
+                        yield _line({"type": "delta", "text": event.delta})
+                    for result in event.tool_results:
+                        yield _line(
+                            {"type": "tool", "name": result.name, "ok": not result.is_error}
+                        )
+                final_state = tool_call.sales_state
+            yield _line({"type": "done", "sales_state": final_state})
         except GatewayError as exc:
             logger.warning(
                 "Model request failed",
@@ -117,9 +167,10 @@ async def take_turn(
             )
             yield _line({"type": "error", "code": exc.code})
         finally:
-            await record_llm_usage(
-                database, tenant_id=principal.tenant_id, call_id=call_id, record=record
-            )
+            for record in records.records:
+                await record_llm_usage(
+                    database, tenant_id=principal.tenant_id, call_id=call_id, record=record
+                )
 
     return StreamingResponse(stream(), media_type="application/x-ndjson")
 

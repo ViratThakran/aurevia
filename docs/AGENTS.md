@@ -25,8 +25,13 @@ Source of truth: `00-foundation/master-brief.md`, including its approved amendme
 - Never claim a failed tool action succeeded.
 
 ## Current milestone
-Phase 4 (memory) built on top of Phase 3; Phase 3 latency gate deferred until a faster model
-or key (Anthropic planned). Next: Phase 5 (sales tools).
+Phase 5 (sales tools) built on top of Phase 4; Phase 3 latency gate still deferred until a
+faster model or key (Anthropic planned). Next: Phase 6 (telephony + compliance gate).
+
+Tool rules: the model only requests actions; `tools/framework.py` (`ToolExecutor`) validates,
+authorizes, executes, audits and reports every one. New tools subclass `Tool`, declare a
+pydantic argument model, return `ToolOutcome.ok/rejected`, and never let a failure read as
+success.
 
 Previous milestone notes:
 Phase 2 — Browser voice: LiveKit voice worker (Deepgram STT, Cartesia TTS), backend Model

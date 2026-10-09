@@ -17,6 +17,7 @@ dependencies = [
     "anthropic>=1.0",
     "livekit-api>=1.0",
     "google-genai>=1.0",
+    "tzdata>=2026.5",
 ]
 
 [dependency-groups]

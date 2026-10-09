@@ -40,6 +40,20 @@ Gate met in integration tests and verified live with Gemini.
 Tool framework, qualification, lead updates, objections, follow-ups, calendar slots and
 booking, human handoff.
 Gate: no failed tool is ever reported as success in simulations.
+Status (2026-10-09): built. Native function calling through the Model Gateway (Gemini and
+Anthropic adapters; provider-neutral `ToolSpec` / `ToolCall` / `ToolResult`). The backend runs
+the tool loop (at most 3 tool rounds per turn; the last round offers no tools). Every call goes
+through `ToolExecutor`: schema validation, lead requirement, business rules, a savepoint, an
+audit row in `tool_executions`, and idempotency (the same request in a call is reported, never
+repeated). Tools: set_stage, qualify_lead, mark_interested, mark_not_interested, log_objection,
+add_note, schedule_followup, get_available_slots, book_meeting, cancel_meeting,
+flag_for_handoff. Built-in calendar (per-tenant hours, default Mon-Fri 10:00-18:00
+Asia/Kolkata, 30-minute slots, 2 h notice, 14-day horizon); a unique index makes double booking
+impossible. Record-only tools that succeed alongside a spoken reply end the turn without an
+extra model round. Live transfer (`transfer_to_human`) moves to Phase 6 with telephony; Phase 5
+flags handoffs. Gate met in integration tests (a rejected booking reaches the model as
+`ok: false`, and the prompt forbids claiming success without it) and verified live with
+Gemini: slots looked up, the prospect's choice booked, confirmed only after `ok: true`.
 
 ## Phase 6 — Telephony + Compliance Gate
 Telephony abstraction and one adapter, SIP into the voice worker, inbound/outbound lifecycle,

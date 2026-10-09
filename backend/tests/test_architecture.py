@@ -47,11 +47,37 @@ def test_vendor_sdks_are_imported_only_by_providers() -> None:
     assert offenders == {}
 
 
+def _imports_raw_sql(path: Path) -> bool:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module == "sqlalchemy"
+            and any(alias.name == "text" for alias in node.names)
+        ):
+            return True
+        if (
+            isinstance(node, ast.Attribute)
+            and node.attr == "text"
+            and isinstance(node.value, ast.Name)
+            and node.value.id in {"sqlalchemy", "sa"}
+        ):
+            return True
+    return False
+
+
 def test_api_layer_does_not_issue_raw_sql() -> None:
-    """Routers delegate to services; SQL text belongs in db/ and migrations."""
+    """Routers delegate to services; raw SQL (``sqlalchemy.text``) belongs in db/ and
+    migrations."""
     offenders = [
-        str(path.relative_to(SRC))
-        for path in (SRC / "api").rglob("*.py")
-        if "text(" in path.read_text(encoding="utf-8")
+        str(path.relative_to(SRC)) for path in (SRC / "api").rglob("*.py") if _imports_raw_sql(path)
     ]
     assert offenders == []
+
+
+def test_raw_sql_detector_catches_text_imports(tmp_path: Path) -> None:
+    sample = tmp_path / "sample.py"
+    sample.write_text("from sqlalchemy import select, text\n", encoding="utf-8")
+    assert _imports_raw_sql(sample)
+    sample.write_text("ctx = PromptContext(set_tenant_context(x))\n", encoding="utf-8")
+    assert not _imports_raw_sql(sample)

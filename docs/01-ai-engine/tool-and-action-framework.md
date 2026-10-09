@@ -37,3 +37,9 @@ LLM -> Tool Request -> Schema Validation -> Authorization
 Every tool defines input/output schemas, authorization, tenant scope, idempotency, validation, audit requirements and failure behavior.
 
 Critical actions require server-side validation. A tool failure must never be represented to the caller as success.
+
+## Implementation (Phase 5)
+Built: set_stage, qualify_lead, mark_interested, mark_not_interested, log_objection, add_note,
+schedule_followup, get_available_slots, book_meeting, cancel_meeting, flag_for_handoff
+(`backend/src/aurevia/tools/`). Lead reads come from the call context rather than a get_lead
+tool. `transfer_to_human` arrives with telephony in Phase 6; until then handoffs are flagged.

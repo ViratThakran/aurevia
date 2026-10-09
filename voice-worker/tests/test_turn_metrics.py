@@ -4,6 +4,7 @@ import asyncio
 import json
 
 import httpx
+import pytest
 from livekit.agents import llm
 
 from aurevia_voice.backend_client import BackendClient
@@ -80,7 +81,9 @@ def test_turn_metrics_upload_in_batches() -> None:
     assert sizes == [1000, 1000, 500]
 
 
-def test_turn_handling_defaults_and_overrides() -> None:
+# aurevia_voice.main reads its settings at import time.
+def test_turn_handling_defaults_and_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AUREVIA_BACKEND_URL", "http://backend.invalid")
     from aurevia_voice.main import turn_handling
 
     defaults = turn_handling(WorkerSettings(backend_url="http://x"))

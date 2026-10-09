@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator
 from typing import Literal
 
 import anthropic
 from anthropic import AsyncAnthropic, DefaultAsyncHttpxClient, omit
-from anthropic.types.beta import BetaMessageParam
+from anthropic.types.beta import BetaMessageParam, BetaToolParam
 
 from aurevia.providers.model import (
+    ModelMessage,
     ModelProviderError,
     ModelRequest,
     ModelResponse,
     ModelStreamEvent,
     ModelUsage,
+    ToolCall,
 )
 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
@@ -56,8 +59,16 @@ class AnthropicModelProvider:
             raise _normalize(exc) from None  # vendor text is dropped: it may echo the request
 
     async def _stream(self, request: ModelRequest) -> AsyncIterator[ModelStreamEvent]:
-        messages: list[BetaMessageParam] = [
-            {"role": m.role, "content": m.content} for m in request.messages
+        messages = to_messages(request.messages)
+        tools: list[BetaToolParam] = [
+            {
+                "name": tool.name,
+                "description": tool.description,
+                "input_schema": dict(tool.parameters),
+                # Stream tool inputs as generated; they are validated server-side anyway.
+                "eager_input_streaming": True,
+            }
+            for tool in request.tools
         ]
         async with self._client.beta.messages.stream(
             model=request.model,
@@ -68,6 +79,7 @@ class AnthropicModelProvider:
             output_config={"effort": self._effort},
             betas=[FALLBACK_BETA] if self._server_fallback else omit,
             fallbacks="default" if self._server_fallback else omit,
+            tools=tools or omit,
             timeout=request.timeout_seconds,
         ) as stream:
             async for event in stream:
@@ -79,10 +91,21 @@ class AnthropicModelProvider:
                     )
                 elif event.type == "content_block_delta" and event.delta.type == "text_delta":
                     yield ModelStreamEvent(delta=event.delta.text)
+                elif event.type == "content_block_start" and event.content_block.type == "tool_use":
+                    yield ModelStreamEvent(started=True)
             message = await stream.get_final_message()
             request_id = stream.request_id
 
         text = "".join(block.text for block in message.content if block.type == "text")
+        calls = tuple(
+            ToolCall(
+                id=block.id,
+                name=block.name,
+                arguments=block.input if isinstance(block.input, dict) else {},
+            )
+            for block in message.content
+            if block.type == "tool_use"
+        )
         yield ModelStreamEvent(
             final=ModelResponse(
                 text=text,
@@ -93,6 +116,9 @@ class AnthropicModelProvider:
                 ),
                 stop_reason=message.stop_reason,
                 provider_request_id=request_id,
+                tool_calls=calls,
+                # The whole assistant turn (thinking blocks included) is sent back unchanged.
+                provider_state=([block.to_dict() for block in message.content] if calls else None),
             )
         )
 
@@ -101,6 +127,31 @@ class AnthropicModelProvider:
 
     async def aclose(self) -> None:
         await self._client.close()
+
+
+def to_messages(messages: tuple[ModelMessage, ...]) -> list[BetaMessageParam]:
+    out: list[BetaMessageParam] = []
+    for message in messages:
+        if message.role == "assistant" and isinstance(message.provider_state, list):
+            out.append({"role": "assistant", "content": message.provider_state})
+        elif message.tool_results:
+            out.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": result.call_id,
+                            "content": json.dumps(dict(result.content)),
+                            "is_error": result.is_error,
+                        }
+                        for result in message.tool_results
+                    ],
+                }
+            )
+        else:
+            out.append({"role": message.role, "content": message.content})
+    return out
 
 
 def _normalize(exc: anthropic.APIError) -> ModelProviderError:

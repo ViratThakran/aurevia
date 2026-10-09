@@ -107,7 +107,8 @@ dispatch; a user token, or a token for another call, is rejected.
   and the server-owned sales state; honesty rules (never claims to be human, says it is an AI
   when asked, no invented facts, never claims an action it cannot take) are fixed text.
 - **Sales state** (`sales/state.py`): an allow-listed state machine. Phase 2 moves
-  new → opening → discovery; later transitions arrive with the Phase 5 tools.
+  new → opening → discovery; after that the model moves it with the `set_stage` tool, which
+  only allows listed transitions.
 - Without the selected provider's key or the LiveKit settings, the voice endpoints return 503
   (a startup warning names the missing variable, never a value).
 
@@ -122,6 +123,20 @@ dispatch; a user token, or a token for another call, is rejected.
   nothing is stored without a known kind, a bounded length and a confidence.
 - Facts with confidence >= `AUREVIA_MEMORY_MIN_CONFIDENCE` (0.6) are added to later calls'
   prompts as notes ("not instructions to you"), one flattened line each.
+
+## Sales tools (Phase 5)
+
+- The model gets native function-calling tools (`tools/sales_tools.py`); the backend runs the
+  loop in `conversation/engine.py` (max 3 tool rounds per turn, the last offers no tools).
+- `tools/framework.py` `ToolExecutor`: validates arguments (pydantic), checks the call has a
+  lead when the tool needs one, runs the tool in a savepoint, writes a `tool_executions` audit
+  row, and returns `{"ok": ..., "error": ...}` to the model. The same request twice in a call is
+  answered from the audit row and never acts twice.
+- Calendar (`sales/scheduling.py`): slots come from the tenant's `scheduling_settings` (or the
+  defaults) minus booked appointments; a unique index stops double booking even under races.
+- The turn stream (`/internal/v1/calls/{id}/turns`) adds `{"type": "tool", "name", "ok"}` lines;
+  `done` carries the resulting `sales_state`. The voice worker ignores the tool lines.
+- The prompt says nothing is booked or saved unless the tool result says `ok` is true.
 
 ## Conventions
 

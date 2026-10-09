@@ -170,3 +170,122 @@ def test_errors_are_normalized_without_vendor_text(status: int, kind: str) -> No
     with pytest.raises(ModelProviderError) as exc:
         asyncio.run(provider.generate(REQUEST))
     assert exc.value.kind == kind and str(exc.value) == f"anthropic: {kind}"
+
+
+def test_tool_use_round_trip() -> None:
+    from aurevia.providers.model import ToolResult, ToolSpec
+
+    seen: list[httpx2.Request] = []
+    events = [
+        (
+            "message_start",
+            {
+                "type": "message_start",
+                "message": {
+                    "id": "msg_t",
+                    "type": "message",
+                    "role": "assistant",
+                    "model": "claude-opus-5-5",
+                    "content": [],
+                    "stop_reason": None,
+                    "stop_sequence": None,
+                    "usage": {"input_tokens": 20, "output_tokens": 1},
+                },
+            },
+        ),
+        (
+            "content_block_start",
+            {
+                "type": "content_block_start",
+                "index": 0,
+                "content_block": {
+                    "type": "tool_use",
+                    "id": "tu_1",
+                    "name": "add_note",
+                    "input": {},
+                },
+            },
+        ),
+        (
+            "content_block_delta",
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {"type": "input_json_delta", "partial_json": '{"text": "hi there"}'},
+            },
+        ),
+        ("content_block_stop", {"type": "content_block_stop", "index": 0}),
+        (
+            "message_delta",
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": "tool_use", "stop_sequence": None},
+                "usage": {"output_tokens": 12},
+            },
+        ),
+        ("message_stop", {"type": "message_stop"}),
+    ]
+    stream = "".join(f"event: {n}\ndata: {json.dumps(d)}\n\n" for n, d in events).encode()
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, headers={"content-type": "text/event-stream"}, content=stream)
+
+    provider = AnthropicModelProvider(
+        api_key="sk-ant-test-not-real",
+        effort="low",
+        server_fallback=False,
+        max_retries=0,
+        http_client=DefaultAsyncHttpxClient(transport=httpx2.MockTransport(handler)),
+    )
+    spec = ToolSpec(
+        name="add_note",
+        description="Save a note.",
+        parameters={"type": "object", "properties": {"text": {"type": "string"}}},
+    )
+    request = ModelRequest(
+        model="claude-opus-5-5",
+        system="s",
+        messages=REQUEST.messages,
+        max_tokens=256,
+        tools=(spec,),
+    )
+    final = asyncio.run(provider.generate(request))
+    assert [(c.id, c.name, dict(c.arguments)) for c in final.tool_calls] == [
+        ("tu_1", "add_note", {"text": "hi there"})
+    ]
+    body = json.loads(seen[0].content)
+    assert body["tools"][0]["name"] == "add_note"
+    assert body["tools"][0]["eager_input_streaming"] is True
+
+    follow_up = ModelRequest(
+        model="claude-opus-5-5",
+        system="s",
+        messages=(
+            *REQUEST.messages,
+            ModelMessage(
+                role="assistant",
+                tool_calls=final.tool_calls,
+                provider_state=final.provider_state,
+            ),
+            ModelMessage(
+                role="user",
+                tool_results=(
+                    ToolResult(
+                        call_id="tu_1", name="add_note", content={"ok": False}, is_error=True
+                    ),
+                ),
+            ),
+        ),
+        max_tokens=256,
+        tools=(spec,),
+    )
+    asyncio.run(provider.generate(follow_up))
+    messages = json.loads(seen[1].content)["messages"]
+    assert messages[-2]["content"][0]["type"] == "tool_use"
+    assert messages[-1]["content"][0] == {
+        "type": "tool_result",
+        "tool_use_id": "tu_1",
+        "content": '{"ok": false}',
+        "is_error": True,
+    }

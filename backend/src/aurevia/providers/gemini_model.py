@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import AsyncIterator
 from typing import Literal
 
@@ -10,11 +11,13 @@ from google import genai
 from google.genai import errors, types
 
 from aurevia.providers.model import (
+    ModelMessage,
     ModelProviderError,
     ModelRequest,
     ModelResponse,
     ModelStreamEvent,
     ModelUsage,
+    ToolCall,
 )
 
 Effort = Literal["low", "medium", "high"]
@@ -84,17 +87,28 @@ class GeminiModelProvider:
             thinking_config=thinking_config(request.model, self._effort),
             http_options=types.HttpOptions(timeout=round(request.timeout_seconds * 1000)),
         )
-        contents = [
-            types.Content(
-                role="user" if m.role == "user" else "model", parts=[types.Part(text=m.content)]
-            )
-            for m in request.messages
-        ]
+        if request.tools:
+            config.tools = [
+                types.Tool(
+                    function_declarations=[
+                        types.FunctionDeclaration(
+                            name=tool.name,
+                            description=tool.description,
+                            parameters_json_schema=dict(tool.parameters),
+                        )
+                        for tool in request.tools
+                    ]
+                )
+            ]
+            # We execute tools ourselves, after validation: never let the SDK call anything.
+            config.automatic_function_calling = types.AutomaticFunctionCallingConfig(disable=True)
         stream = await self._client.aio.models.generate_content_stream(
-            model=request.model, contents=contents, config=config
+            model=request.model, contents=to_contents(request.messages), config=config
         )
 
         text: list[str] = []
+        parts: list[types.Part] = []  # every part, replayed verbatim if tools were called
+        calls: list[ToolCall] = []
         last: types.GenerateContentResponse | None = None
         usage_reported = False
         async for chunk in stream:
@@ -106,7 +120,18 @@ class GeminiModelProvider:
                     usage=ModelUsage(input_tokens=usage.prompt_token_count, output_tokens=0)
                 )
             for part in _parts(chunk):
-                if part.text and not part.thought:  # thought summaries are never spoken
+                parts.append(part)
+                if part.function_call is not None and part.function_call.name:
+                    call = part.function_call
+                    calls.append(
+                        ToolCall(
+                            id=call.id or f"call_{uuid.uuid4().hex[:12]}",
+                            name=call.name or "",
+                            arguments=dict(call.args or {}),
+                        )
+                    )
+                    yield ModelStreamEvent(started=True)
+                elif part.text and not part.thought:  # thought summaries are never spoken
                     text.append(part.text)
                     yield ModelStreamEvent(delta=part.text)
 
@@ -133,6 +158,10 @@ class GeminiModelProvider:
                     else None
                 ),
                 provider_request_id=last.response_id,
+                tool_calls=tuple(calls),
+                # Gemini 3 requires function-call parts (with their thought signatures) to be
+                # sent back exactly as received.
+                provider_state=types.Content(role="model", parts=parts) if calls else None,
             )
         )
 
@@ -141,6 +170,31 @@ class GeminiModelProvider:
 
     async def aclose(self) -> None:
         await self._client.aio.aclose()
+
+
+def to_contents(messages: tuple[ModelMessage, ...]) -> list[types.Content]:
+    contents: list[types.Content] = []
+    for message in messages:
+        if message.role == "assistant" and isinstance(message.provider_state, types.Content):
+            contents.append(message.provider_state)  # replay unchanged
+        elif message.tool_results:
+            contents.append(
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part(
+                            function_response=types.FunctionResponse(
+                                id=result.call_id, name=result.name, response=dict(result.content)
+                            )
+                        )
+                        for result in message.tool_results
+                    ],
+                )
+            )
+        else:
+            role = "user" if message.role == "user" else "model"
+            contents.append(types.Content(role=role, parts=[types.Part(text=message.content)]))
+    return contents
 
 
 def _parts(chunk: types.GenerateContentResponse) -> list[types.Part]:

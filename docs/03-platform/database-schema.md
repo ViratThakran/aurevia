@@ -35,3 +35,19 @@ with `tenant_id`, a forced RLS policy, and grants to the application role in its
 
 Expired transcript lines are removed only by `purge_expired_transcripts()` (SECURITY DEFINER,
 run hourly by the API), through a policy limited to the schema owner and to expired rows.
+
+## Added in Phase 5 (migration `0005`)
+
+| Table | Notes |
+| --- | --- |
+| `leads` (columns) | `interest` (unknown / interested / not_interested), `interest_reason`, `qualification` JSONB |
+| `lead_notes` | Notes the agent recorded during a call; insert-only |
+| `objections` | Category (allow-listed) and detail per call; insert-only |
+| `followups` | Due time, channel, note, status |
+| `scheduling_settings` | One row per tenant: time zone, work days, hours, slot length, notice, horizon (defaults apply without a row) |
+| `appointments` | Booked meetings; unique partial index `uq_appointments_booked_slot` on (`tenant_id`, `starts_at`) where `status = 'booked'` prevents double booking |
+| `handoffs` | Requests for a human: reason, urgency, status |
+| `tool_executions` | Audit of every tool call: tool, arguments, result, status (ok / rejected / failed), error code, duration; `idempotency_key` unique |
+
+All are tenant-scoped with forced RLS. The app role cannot delete from any of them; audit,
+note and objection rows cannot be updated either.
