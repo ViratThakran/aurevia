@@ -10,7 +10,13 @@ from fastapi import APIRouter, Query, Request, status
 from sqlalchemy import case, func, select
 
 from aurevia.errors import ServiceUnavailableError
-from aurevia.identity.dependencies import AdminDep, PrincipalDep, SessionDep, SettingsDep
+from aurevia.identity.dependencies import (
+    AgentsDep,
+    CallsDep,
+    PrincipalDep,
+    SessionDep,
+    SettingsDep,
+)
 from aurevia.memory.schemas import TranscriptLine, TranscriptResponse
 from aurevia.memory.service import LeadService, TranscriptService
 from aurevia.providers.voice_transport import VoiceTransport
@@ -70,7 +76,7 @@ async def get_default_agent(principal: PrincipalDep, session: SessionDep) -> Age
 
 @router.put("/agents/default", summary="Configure the default AI agent (owner/admin)")
 async def update_default_agent(
-    body: AgentUpdate, principal: AdminDep, session: SessionDep
+    body: AgentUpdate, principal: AgentsDep, session: SessionDep
 ) -> AgentResponse:
     agent = await AgentService(session, principal.tenant_id).update_default_agent(
         AgentSettings(**body.model_dump()), actor=principal.user_id
@@ -85,7 +91,7 @@ async def update_default_agent(
 )
 async def create_voice_session(
     request: Request,
-    principal: PrincipalDep,
+    principal: CallsDep,
     session: SessionDep,
     settings: SettingsDep,
     body: VoiceSessionRequest | None = None,

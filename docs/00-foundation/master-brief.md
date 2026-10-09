@@ -21,6 +21,15 @@ These replace the original text where they conflict:
 4. **Documentation.** This brief lives in `docs/`; `AGENTS.md`, the implementation plan and the
    outline docs are kept consistent with it.
 
+## Amendment approved on 2026-10-10
+
+5. **Campaign dialing, Phase 8.** Campaigns get both an assisted queue ("call next") and an
+   opt-in automatic dialer, ahead of §27's "no large-scale campaigns now". The guard rails:
+   - The dialer is off unless enabled on the server **and** on the campaign.
+   - At most 5 concurrent calls per campaign.
+   - Every call goes through plan limits and the compliance gate.
+   - Until counsel review and hosting exist, only a tenant's own test numbers can be reached.
+
 Open question: whether insurance brokers remain the first market or Aurevia launches
 horizontally. It affects the Phase 9 pilot list and the priority of the India policy pack.
 

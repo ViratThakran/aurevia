@@ -27,7 +27,14 @@ from aurevia.compliance.schemas import (
 from aurevia.compliance.service import ConsentService, DecisionService, DoNotCallService
 from aurevia.db.session import set_tenant_context
 from aurevia.identity.audit import record_audit_event
-from aurevia.identity.dependencies import AdminDep, PrincipalDep, SessionDep, SettingsDep
+from aurevia.identity.dependencies import (
+    ComplianceDep,
+    LeadsManageDep,
+    PrincipalDep,
+    PrivacyDep,
+    SessionDep,
+    SettingsDep,
+)
 from aurevia.memory.service import LeadService
 
 router = APIRouter(tags=["compliance"])
@@ -51,7 +58,7 @@ def _decision(decision: ComplianceDecision) -> DecisionResponse:
     summary="Record the lead's consent to be called",
 )
 async def record_consent(
-    lead_id: uuid.UUID, body: ConsentIn, principal: PrincipalDep, session: SessionDep
+    lead_id: uuid.UUID, body: ConsentIn, principal: LeadsManageDep, session: SessionDep
 ) -> ConsentResponse:
     lead = await LeadService(session, principal.tenant_id).get(lead_id)
     consent = await ConsentService(session, principal.tenant_id).record(
@@ -71,7 +78,7 @@ async def list_consents(
 
 @router.post("/leads/{lead_id}/consents/{consent_id}/revoke", summary="Revoke a consent")
 async def revoke_consent(
-    lead_id: uuid.UUID, consent_id: uuid.UUID, principal: PrincipalDep, session: SessionDep
+    lead_id: uuid.UUID, consent_id: uuid.UUID, principal: LeadsManageDep, session: SessionDep
 ) -> ConsentResponse:
     consent = await ConsentService(session, principal.tenant_id).revoke(
         lead_id, consent_id, principal.user_id
@@ -155,7 +162,7 @@ async def get_compliance_settings(
     summary="Pin a policy version and tighten its rules (owner/admin; stricter only)",
 )
 async def update_compliance_settings(
-    body: ComplianceSettingsIn, principal: AdminDep, session: SessionDep, settings: SettingsDep
+    body: ComplianceSettingsIn, principal: ComplianceDep, session: SessionDep, settings: SettingsDep
 ) -> ComplianceSettingsResponse:
     service = PolicyService(session, principal.tenant_id)
     await service.update_settings(
@@ -177,7 +184,7 @@ async def update_compliance_settings(
     summary="Erase a person's data on their request (owner/admin)",
 )
 async def erase_lead(
-    lead_id: uuid.UUID, body: ErasureIn, principal: AdminDep, session: SessionDep
+    lead_id: uuid.UUID, body: ErasureIn, principal: PrivacyDep, session: SessionDep
 ) -> ErasureResponse:
     request = await PrivacyService(session, principal.tenant_id).erase_lead(
         lead_id, received_via=body.received_via, actor=principal.user_id
@@ -187,7 +194,7 @@ async def erase_lead(
 
 @router.get("/leads/{lead_id}/export", summary="Everything held about a person (owner/admin)")
 async def export_lead(
-    lead_id: uuid.UUID, principal: AdminDep, session: SessionDep
+    lead_id: uuid.UUID, principal: PrivacyDep, session: SessionDep
 ) -> dict[str, Any]:
     data = await PrivacyService(session, principal.tenant_id).export_lead(
         lead_id, actor=principal.user_id

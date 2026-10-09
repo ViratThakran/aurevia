@@ -119,6 +119,15 @@ class Settings(BaseSettings):
     ring_timeout_seconds: int = Field(default=40, ge=10, le=120)
     max_test_numbers: int = Field(default=5, ge=1, le=20)
 
+    # --- Plans and campaigns (Phase 8) ---
+    # The default plan for tenants without one (None = unlimited). No payments are taken.
+    plan_default_monthly_calls: int | None = Field(default=200, ge=1)
+    plan_default_monthly_minutes: int | None = Field(default=500, ge=1)
+    plan_default_max_concurrent_calls: int = Field(default=2, ge=1, le=100)
+    # The automatic campaign dialer runs only when switched on here AND per campaign.
+    campaign_scheduler_enabled: bool = False
+    campaign_scheduler_interval_seconds: float = Field(default=30.0, ge=5.0, le=3600.0)
+
     @field_validator("log_level", mode="before")
     @classmethod
     def _normalize_log_level(cls, value: Any) -> Any:

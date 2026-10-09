@@ -53,3 +53,14 @@ class TranscriptIn(_Body):
 class TranscriptResponse(BaseModel):
     call_id: uuid.UUID
     lines: list[TranscriptLine]
+
+
+class LeadImportIn(_Body):
+    csv: str = Field(min_length=1, max_length=2_000_000)  # header row + up to 5000 rows
+    campaign_id: uuid.UUID | None = None  # also queue the new leads in this campaign
+
+
+class LeadImportResult(BaseModel):
+    created: int
+    added_to_campaign: int
+    errors: list[dict[str, object]]

@@ -20,6 +20,7 @@ from aurevia.config import Settings
 from aurevia.db.session import get_session, set_tenant_context
 from aurevia.errors import AuthenticationError, PermissionDeniedError
 from aurevia.identity.models import (
+    CustomRole,
     Membership,
     MembershipStatus,
     Role,
@@ -28,6 +29,7 @@ from aurevia.identity.models import (
     User,
     UserStatus,
 )
+from aurevia.identity.permissions import Permission, parse_permissions, permissions_for
 from aurevia.identity.security import decode_access_token
 from aurevia.logging import tenant_id_var, user_id_var
 
@@ -42,6 +44,11 @@ class Principal:
     tenant_id: uuid.UUID
     membership_id: uuid.UUID
     role: Role
+    permissions: frozenset[Permission] = frozenset()
+    is_platform_admin: bool = False
+
+    def can(self, permission: Permission) -> bool:
+        return permission in self.permissions
 
 
 def get_settings_from_app(request: Request) -> Settings:
@@ -66,21 +73,26 @@ async def get_principal(
     # The token is server-signed, but the membership is still verified against the database
     # inside the tenant's row-level-security scope before anything is trusted.
     await set_tenant_context(session, claims.tenant_id)
-    role = await session.scalar(
-        select(Membership.role)
-        .join(User, User.id == Membership.user_id)
-        .join(Tenant, Tenant.id == Membership.tenant_id)
-        .where(
-            Membership.id == claims.membership_id,
-            Membership.tenant_id == claims.tenant_id,
-            Membership.user_id == claims.user_id,
-            Membership.status == MembershipStatus.ACTIVE,
-            User.status == UserStatus.ACTIVE,
-            Tenant.status == TenantStatus.ACTIVE,
+    row = (
+        await session.execute(
+            select(Membership.role, CustomRole.permissions, User.is_platform_admin)
+            .join(User, User.id == Membership.user_id)
+            .join(Tenant, Tenant.id == Membership.tenant_id)
+            .outerjoin(CustomRole, CustomRole.id == Membership.custom_role_id)
+            .where(
+                Membership.id == claims.membership_id,
+                Membership.tenant_id == claims.tenant_id,
+                Membership.user_id == claims.user_id,
+                Membership.status == MembershipStatus.ACTIVE,
+                User.status == UserStatus.ACTIVE,
+                Tenant.status == TenantStatus.ACTIVE,
+            )
         )
-    )
-    if role is None:
+    ).first()
+    if row is None:
         raise AuthenticationError("Invalid or expired token")
+    role = Role(row[0])
+    custom = parse_permissions(row[1]) if row[1] is not None else None
 
     tenant_id_var.set(str(claims.tenant_id))
     user_id_var.set(str(claims.user_id))
@@ -88,7 +100,9 @@ async def get_principal(
         user_id=claims.user_id,
         tenant_id=claims.tenant_id,
         membership_id=claims.membership_id,
-        role=Role(role),
+        role=role,
+        permissions=permissions_for(role, custom),
+        is_platform_admin=bool(row[2]),
     )
 
 
@@ -105,3 +119,34 @@ def require_role(*allowed: Role) -> Callable[[Principal], Awaitable[Principal]]:
 
 
 AdminDep = Annotated[Principal, Depends(require_role(Role.OWNER, Role.ADMIN))]
+
+
+def require_permission(permission: Permission) -> Callable[[Principal], Awaitable[Principal]]:
+    async def dependency(principal: PrincipalDep) -> Principal:
+        if not principal.can(permission):
+            raise PermissionDeniedError(
+                "You do not have permission for this action",
+                details={"permission": permission.value},
+            )
+        return principal
+
+    return dependency
+
+
+async def _platform_admin(principal: PrincipalDep) -> Principal:
+    if not principal.is_platform_admin:
+        raise PermissionDeniedError("Aurevia platform administrators only")
+    return principal
+
+
+CallsDep = Annotated[Principal, Depends(require_permission(Permission.CALLS_PLACE))]
+LeadsManageDep = Annotated[Principal, Depends(require_permission(Permission.LEADS_MANAGE))]
+PrivacyDep = Annotated[Principal, Depends(require_permission(Permission.LEADS_PRIVACY))]
+CampaignsDep = Annotated[Principal, Depends(require_permission(Permission.CAMPAIGNS_MANAGE))]
+AgentsDep = Annotated[Principal, Depends(require_permission(Permission.AGENTS_MANAGE))]
+NumbersDep = Annotated[Principal, Depends(require_permission(Permission.NUMBERS_MANAGE))]
+ComplianceDep = Annotated[Principal, Depends(require_permission(Permission.COMPLIANCE_MANAGE))]
+TeamDep = Annotated[Principal, Depends(require_permission(Permission.TEAM_MANAGE))]
+AuditDep = Annotated[Principal, Depends(require_permission(Permission.AUDIT_READ))]
+AnalyticsDep = Annotated[Principal, Depends(require_permission(Permission.ANALYTICS_READ))]
+PlatformAdminDep = Annotated[Principal, Depends(_platform_admin)]

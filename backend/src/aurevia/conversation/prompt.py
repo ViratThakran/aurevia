@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from aurevia.sales.state import STATE_GOALS, SalesState
 
-PROMPT_VERSION = "voice-2026-10-09.3"
+PROMPT_VERSION = "voice-2026-10-10.1"
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,10 @@ class AgentProfile:
     company_description: str
     objective: str
     language: str
+    personality: str = ""
+    qualification_questions: tuple[str, ...] = ()
+    objection_guidance: str = ""
+    escalation_guidance: str = ""
 
 
 @dataclass(frozen=True)
@@ -73,6 +77,25 @@ def _actions(company: str, tools_enabled: bool) -> str:
     )
 
 
+def _setup(agent: AgentProfile) -> str:
+    """The tenant's validated agent setup; sections that were not configured are left out."""
+    parts = []
+    if agent.personality.strip():
+        parts.append(f"# Personality\n{_flat(agent.personality, 300)}")
+    questions = [q for q in agent.qualification_questions if q.strip()]
+    if questions:
+        listed = "\n".join(f"- {_flat(q, 200)}" for q in questions[:10])
+        parts.append(
+            "# What to find out\nLearn these naturally over the conversation, one at a time, "
+            f"never as a questionnaire:\n{listed}"
+        )
+    if agent.objection_guidance.strip():
+        parts.append(f"# Handling objections\n{agent.objection_guidance.strip()[:2000]}")
+    if agent.escalation_guidance.strip():
+        parts.append(f"# When to bring in a colleague\n{agent.escalation_guidance.strip()[:1000]}")
+    return "".join(f"\n\n{part}" for part in parts)
+
+
 def build_system_prompt(
     agent: AgentProfile,
     state: SalesState,
@@ -112,7 +135,7 @@ they sound busy, annoyed or uninterested, acknowledge it and offer to end the ca
 {agent.company_description}
 
 # Goal of this call
-{agent.objective}{prospect}{now}
+{agent.objective}{_setup(agent)}{prospect}{now}
 
 # Right now
 {STATE_GOALS[state]}{_notes(ctx.memories)}"""

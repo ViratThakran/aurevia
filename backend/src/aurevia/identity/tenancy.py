@@ -19,6 +19,7 @@ from aurevia.errors import ConflictError, NotFoundError, PermissionDeniedError
 from aurevia.identity.audit import record_audit_event
 from aurevia.identity.dependencies import Principal
 from aurevia.identity.models import (
+    CustomRole,
     Membership,
     MembershipStatus,
     RefreshToken,
@@ -26,6 +27,7 @@ from aurevia.identity.models import (
     Tenant,
     User,
 )
+from aurevia.identity.permissions import Permission, parse_permissions, permissions_for
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,7 @@ class MemberView:
     full_name: str | None
     role: Role
     joined_at: datetime
+    custom_role_id: uuid.UUID | None = None
 
 
 class TenancyService:
@@ -69,20 +72,34 @@ class TenancyService:
                 full_name=u.full_name,
                 role=Role(m.role),
                 joined_at=m.created_at,
+                custom_role_id=m.custom_role_id,
             )
             for m, u in rows.tuples()
         ]
 
-    async def change_role(self, membership_id: uuid.UUID, new_role: Role) -> None:
+    async def change_role(
+        self,
+        membership_id: uuid.UUID,
+        new_role: Role,
+        custom_role_id: uuid.UUID | None = None,
+    ) -> None:
         target = await self._load_target(membership_id)
         old_role = Role(target.role)
-        if old_role == new_role:
+        if custom_role_id is not None and new_role != Role.MEMBER:
+            raise ConflictError(
+                "Custom roles are given to members only", code="custom_role_needs_member"
+            )
+        if old_role == new_role and target.custom_role_id == custom_role_id:
             return
         self._check_may_manage(target_role=old_role, new_role=new_role)
+        await self._check_within_own_permissions(target)
+        new_permissions = permissions_for(new_role, await self._custom_permissions(custom_role_id))
+        self._check_may_grant(new_permissions)
         if old_role == Role.OWNER:
             await self._ensure_another_owner(target.id)
 
         target.role = new_role
+        target.custom_role_id = custom_role_id
         record_audit_event(
             self._session,
             tenant_id=self._principal.tenant_id,
@@ -90,7 +107,11 @@ class TenancyService:
             action="membership.role_changed",
             target_type="membership",
             target_id=target.id,
-            details={"from": old_role.value, "to": new_role.value},
+            details={
+                "from": old_role.value,
+                "to": new_role.value,
+                "custom_role_id": str(custom_role_id) if custom_role_id else None,
+            },
         )
         await self._session.commit()
 
@@ -98,6 +119,7 @@ class TenancyService:
         target = await self._load_target(membership_id)
         role = Role(target.role)
         self._check_may_manage(target_role=role, new_role=None)
+        await self._check_within_own_permissions(target)
         if role == Role.OWNER:
             await self._ensure_another_owner(target.id)
 
@@ -142,6 +164,34 @@ class TenancyService:
         touches_owner = Role.OWNER in (target_role, new_role)
         if touches_owner and self._principal.role != Role.OWNER:
             raise PermissionDeniedError("Only an owner can change owners")
+
+    async def _custom_permissions(
+        self, custom_role_id: uuid.UUID | None
+    ) -> frozenset[Permission] | None:
+        if custom_role_id is None:
+            return None
+        custom = await self._session.scalar(
+            select(CustomRole).where(
+                CustomRole.id == custom_role_id,
+                CustomRole.tenant_id == self._principal.tenant_id,
+            )
+        )
+        if custom is None:
+            raise NotFoundError("Role not found")
+        return parse_permissions(custom.permissions)
+
+    def _check_may_grant(self, permissions: frozenset[Permission]) -> None:
+        # Nobody hands out rights they do not hold themselves.
+        if not permissions <= self._principal.permissions:
+            raise PermissionDeniedError("You cannot grant permissions you do not have")
+
+    async def _check_within_own_permissions(self, target: Membership) -> None:
+        # Nor manage someone who can do more than they can.
+        current = permissions_for(
+            Role(target.role), await self._custom_permissions(target.custom_role_id)
+        )
+        if not current <= self._principal.permissions:
+            raise PermissionDeniedError("You cannot manage a member with more permissions")
 
     async def _ensure_another_owner(self, excluding: uuid.UUID) -> None:
         owner_ids = await self._session.scalars(

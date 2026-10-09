@@ -140,6 +140,27 @@ dispatch; a user token, or a token for another call, is rejected.
 - Off until `AUREVIA_TELEPHONY_PROVIDER=livekit_sip` and the trunk id are set. See
   docs/02-voice/telephony.md.
 
+## SaaS platform (Phase 8a)
+
+- **Permissions:** `calls.place`, `leads.manage`, `leads.privacy`, `campaigns.manage`,
+  `agents.manage`, `numbers.manage`, `compliance.manage`, `team.manage`, `audit.read`,
+  `analytics.read`. Owners and admins hold all of them; members hold
+  calls / leads / analytics, or exactly their custom role's set. `/auth/me` lists them.
+- **Team:**
+  - `/api/v1/team/roles` (custom roles) and `/api/v1/team/invitations` (the token is shown
+    once).
+  - `POST /api/v1/auth/invitations/accept` creates the account or verifies an existing one.
+  - Nobody can grant or manage beyond their own permissions.
+- **Plans:** the default comes from `AUREVIA_PLAN_DEFAULT_*`, and a per-tenant plan is set by
+  a platform admin. Calls beyond the plan get 429 `plan_limit_reached`. `GET /api/v1/usage`
+  shows usage and cost against the plan.
+- **Platform admin:** `/api/v1/platform/...` covers tenants, suspend / resume, plans and
+  prices. Grant the flag with `python -m aurevia.platform.operator grant-admin EMAIL`.
+- **Campaign queue:** `/api/v1/campaigns/{id}/leads` and `.../call-next`. The automatic dialer
+  needs `AUREVIA_CAMPAIGN_SCHEDULER_ENABLED=true` and the campaign's `auto_dial`.
+- **Import and analytics:** `POST /api/v1/leads/import` (CSV) and
+  `GET /api/v1/analytics/summary`.
+
 ## Compliance hardening (Phase 7)
 
 - Policy versions: `GET /api/v1/compliance/policy-versions`. The tenant's choice and stricter

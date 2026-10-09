@@ -38,7 +38,8 @@ TABLES = (
     " turn_metrics, leads, conversation_messages, lead_memories, lead_notes, objections,"
     " followups, scheduling_settings, appointments, handoffs, tool_executions, phone_numbers,"
     " test_numbers, consents, do_not_call, compliance_decisions, campaigns,"
-    " tenant_compliance_settings, erasure_requests"
+    " tenant_compliance_settings, erasure_requests, custom_roles, invitations, tenant_plans,"
+    " prices, campaign_leads"
 )
 
 

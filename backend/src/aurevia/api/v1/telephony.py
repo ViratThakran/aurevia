@@ -7,18 +7,17 @@ import uuid
 from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 
 from aurevia.campaigns.service import CampaignService
-from aurevia.compliance.gate import ComplianceGate
-from aurevia.compliance.policy import TelephonyMode
-from aurevia.compliance.policy_service import PolicyService
-from aurevia.db.session import set_tenant_context
-from aurevia.errors import ServiceUnavailableError
-from aurevia.identity.dependencies import AdminDep, PrincipalDep, SessionDep, SettingsDep
+from aurevia.identity.dependencies import (
+    CallsDep,
+    NumbersDep,
+    PrincipalDep,
+    SessionDep,
+    SettingsDep,
+)
 from aurevia.memory.service import LeadService
-from aurevia.providers.dnd import DndRegistry
-from aurevia.providers.telephony import TelephonyProvider
-from aurevia.providers.voice_transport import VoiceTransport
 from aurevia.telephony.models import PhoneNumber, TestNumber
 from aurevia.telephony.numbers import NumberService
+from aurevia.telephony.outbound import outbound_deps, place_outbound
 from aurevia.telephony.schemas import (
     OutboundCallIn,
     OutboundCallResponse,
@@ -28,8 +27,6 @@ from aurevia.telephony.schemas import (
     TestNumberIn,
     TestNumberResponse,
 )
-from aurevia.telephony.service import AgentDispatch, create_outbound_call, dial
-from aurevia.voice.service import AgentService, CallService
 
 router = APIRouter(tags=["telephony"])
 
@@ -50,78 +47,28 @@ def _test_number(number: TestNumber) -> TestNumberResponse:
 async def place_outbound_call(
     body: OutboundCallIn,
     request: Request,
-    principal: PrincipalDep,
+    principal: CallsDep,
     session: SessionDep,
     settings: SettingsDep,
     background: BackgroundTasks,
 ) -> OutboundCallResponse:
-    telephony: TelephonyProvider | None = request.app.state.telephony
-    transport: VoiceTransport | None = request.app.state.voice_transport
-    if telephony is None or transport is None:
-        raise ServiceUnavailableError("Phone calls are not configured")
-    assert settings.jwt_secret is not None  # noqa: S101 - authenticated requests imply it
-    dnd: DndRegistry = request.app.state.dnd_registry
-
+    deps = outbound_deps(request.app.state)
     lead = await LeadService(session, principal.tenant_id).get(body.lead_id)
     campaign = None
     if body.campaign_id is not None:
         campaign = await CampaignService(session, principal.tenant_id).get(body.campaign_id)
-    agent = await AgentService(session, principal.tenant_id).default_agent()
-    pack = await PolicyService(session, principal.tenant_id).effective_pack(
-        settings.compliance_policy_pack
-    )
-    gate = ComplianceGate(
+    placed = await place_outbound(
         session,
-        principal.tenant_id,
-        pack=pack,
-        mode=TelephonyMode(settings.telephony_mode),
-        dnd=dnd,
-    )
-    # Raises CallBlockedError (403) after recording the blocked decision.
-    approval = await gate.check_outbound(
+        deps,
+        tenant_id=principal.tenant_id,
         lead=lead,
         purpose=body.purpose,
-        requested_by=principal.user_id,
-        agent=agent,
         campaign=campaign,
-        now=request.app.state.clock(),
-    )
-    call = await create_outbound_call(
-        session,
-        approval=approval,
-        agent=agent,
-        user_id=principal.user_id,
-        now=request.app.state.clock(),
-    )
-    await session.commit()  # the allow decision and its call, together
-
-    dispatch = AgentDispatch(
-        agent_name=settings.livekit_agent_name,
-        jwt_secret=settings.jwt_secret.get_secret_value(),
-        call_token_ttl_seconds=settings.call_token_ttl_seconds,
-    )
-    try:
-        await transport.open_room_with_agent(
-            room=call.room, agent_name=dispatch.agent_name, metadata=dispatch.metadata(call)
-        )
-    except Exception as exc:
-        await set_tenant_context(session, principal.tenant_id)  # lost at the commit above
-        await CallService(session, principal.tenant_id).end(
-            call.id, "room_setup_failed", failed=True
-        )
-        raise ServiceUnavailableError("The voice service is unavailable") from exc
-    background.add_task(
-        dial,
-        request.app.state.database,
-        telephony,
-        transport,
-        approval=approval,
-        call_id=call.id,
-        room=call.room,
-        ring_timeout_seconds=settings.ring_timeout_seconds,
+        requested_by=principal.user_id,
+        schedule=lambda job: background.add_task(job),
     )
     return OutboundCallResponse(
-        call_id=call.id, decision_id=approval.decision_id, dial_status="queued"
+        call_id=placed.call_id, decision_id=placed.decision_id, dial_status="queued"
     )
 
 
@@ -131,7 +78,7 @@ async def place_outbound_call(
     summary="Register a carrier number (owner/admin)",
 )
 async def add_phone_number(
-    body: PhoneNumberIn, principal: AdminDep, session: SessionDep
+    body: PhoneNumberIn, principal: NumbersDep, session: SessionDep
 ) -> PhoneNumberResponse:
     number = await NumberService(session, principal.tenant_id).add_phone_number(
         body, principal.user_id
@@ -150,7 +97,7 @@ async def list_phone_numbers(
 
 @router.patch("/telephony/numbers/{number_id}", summary="Change a carrier number (owner/admin)")
 async def update_phone_number(
-    number_id: uuid.UUID, body: PhoneNumberUpdate, principal: AdminDep, session: SessionDep
+    number_id: uuid.UUID, body: PhoneNumberUpdate, principal: NumbersDep, session: SessionDep
 ) -> PhoneNumberResponse:
     number = await NumberService(session, principal.tenant_id).update_phone_number(
         number_id, body, principal.user_id
@@ -164,7 +111,7 @@ async def update_phone_number(
     summary="Register one of your own phones for test calls (owner/admin)",
 )
 async def add_test_number(
-    body: TestNumberIn, principal: AdminDep, session: SessionDep, settings: SettingsDep
+    body: TestNumberIn, principal: NumbersDep, session: SessionDep, settings: SettingsDep
 ) -> TestNumberResponse:
     number = await NumberService(session, principal.tenant_id).add_test_number(
         body, principal.user_id, limit=settings.max_test_numbers
@@ -186,7 +133,7 @@ async def list_test_numbers(
     summary="Remove a test number (owner/admin)",
 )
 async def remove_test_number(
-    number_id: uuid.UUID, principal: AdminDep, session: SessionDep
+    number_id: uuid.UUID, principal: NumbersDep, session: SessionDep
 ) -> Response:
     await NumberService(session, principal.tenant_id).remove_test_number(
         number_id, principal.user_id

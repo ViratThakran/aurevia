@@ -19,6 +19,7 @@ from aurevia.api.health import router as liveness_router
 from aurevia.api.internal import internal_router
 from aurevia.api.v1.router import api_v1_router
 from aurevia.api.webhooks import router as webhooks_router
+from aurevia.campaigns.scheduler import scheduler_loop
 from aurevia.config import DEPLOYED_ENVIRONMENTS, Settings, get_settings
 from aurevia.db.session import Database
 from aurevia.errors import register_exception_handlers
@@ -34,6 +35,7 @@ from aurevia.providers.registry import (
     missing_key_variable,
 )
 from aurevia.providers.voice_transport import LiveKitTransport
+from aurevia.telephony.outbound import outbound_deps
 
 API_V1_PREFIX = "/api/v1"
 INTERNAL_PREFIX = "/internal/v1"
@@ -75,11 +77,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await _check_database_role(database, settings)
         if settings.environment != "test":
             retention = asyncio.create_task(retention_loop(database, RETENTION_INTERVAL_SECONDS))
+    dialer: asyncio.Task[None] | None = None
+    if settings.campaign_scheduler_enabled and settings.environment != "test":
+        if app.state.telephony is None:
+            logger.warning("Campaign auto-dialer enabled but phone calls are not configured")
+        else:
+            logger.warning("Campaign auto-dialer is running (gate and plan limits apply)")
+            dialer = asyncio.create_task(
+                scheduler_loop(
+                    outbound_deps(app.state), settings.campaign_scheduler_interval_seconds
+                )
+            )
     try:
         yield
     finally:
         if retention is not None:
             retention.cancel()
+        if dialer is not None:
+            dialer.cancel()
         provider: ClosableModelProvider | None = app.state.model_provider
         if provider is not None:
             await provider.aclose()

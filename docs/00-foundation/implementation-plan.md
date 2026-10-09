@@ -108,6 +108,25 @@ Built:
 Dashboard, agent setup, campaigns, analytics, usage/cost, billing boundaries, custom roles and
 team management, multi-tenant administration.
 Gate: a tenant goes from signup to first call without help.
+Plan (2026-10-10): two parts. 8a is the backend platform; 8b is the Next.js dashboard.
+Decisions:
+- Assisted queue **and** opt-in auto-dialer (amendment 5).
+- Permission-based custom roles.
+- Operator pages in the dashboard, behind a platform-admin flag set only by the server
+  command.
+- Plan limits without payments.
+Status 8a (2026-10-10): built.
+- Permissions and custom roles, with no privilege escalation.
+- Invitations (token links; no email provider yet).
+- Plan limits (monthly calls / minutes / cost, concurrency) checked before every call.
+- Platform admin: tenant list, suspend / resume (audited in the tenant's own log), plans,
+  versioned insert-only prices.
+- Usage cost from those prices; unpriced usage is shown as unpriced, never guessed. Phone
+  minutes are recorded as telephony usage.
+- Campaign lead lists, queue and "call next" with retries and outcomes; the automatic dialer.
+- CSV lead import; analytics summary; richer agent setup (personality, qualification
+  questions, objection and escalation guidance).
+Status 8b: next.
 
 ## Phase 9 — Pilot
 Acceptance tests, controlled pilots with 2–3 friendly customers, voice-quality and

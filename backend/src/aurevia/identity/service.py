@@ -12,15 +12,21 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aurevia.config import Settings
 from aurevia.db.session import set_tenant_context, set_user_context
-from aurevia.errors import AuthenticationError, ConflictError, PermissionDeniedError
+from aurevia.errors import (
+    AureviaError,
+    AuthenticationError,
+    ConflictError,
+    PermissionDeniedError,
+)
 from aurevia.identity.audit import record_audit_event
 from aurevia.identity.models import (
+    Invitation,
     Membership,
     MembershipStatus,
     RefreshToken,
@@ -41,6 +47,8 @@ from aurevia.identity.security import (
 )
 
 INVALID_CREDENTIALS = "Invalid email or password"
+INVALID_INVITATION = "This invitation is invalid, expired or already used"
+MIN_NEW_PASSWORD_LENGTH = 12
 
 
 @dataclass(frozen=True)
@@ -152,6 +160,78 @@ class IdentityService:
             target_id=user.id,
         )
         tokens = await self._issue(user.id, membership.tenant_id, membership.id, family_id=None)
+        await self._session.commit()
+        return tokens
+
+    async def accept_invitation(
+        self, *, token: str, password: str, full_name: str | None
+    ) -> TokenPair:
+        """Join a tenant with an invitation. A new account is created for a new email; an
+        existing account must prove itself with its password."""
+        row = (
+            await self._session.execute(
+                text("SELECT invitation_id, tenant_id FROM resolve_invitation(:hash)"),
+                {"hash": hash_refresh_token(token)},
+            )
+        ).first()
+        await self._session.commit()  # ends the lookup transaction
+        if row is None:
+            raise AuthenticationError(INVALID_INVITATION)
+        invitation_id, tenant_id = row[0], row[1]
+        await set_tenant_context(self._session, tenant_id)
+        invitation = await self._session.scalar(
+            select(Invitation).where(Invitation.id == invitation_id).with_for_update()
+        )
+        now = _now()
+        if (
+            invitation is None
+            or invitation.accepted_at is not None
+            or invitation.revoked_at is not None
+            or invitation.expires_at <= now
+        ):
+            raise AuthenticationError(INVALID_INVITATION)
+
+        user = await self._find_user(invitation.email)
+        if user is None:
+            if len(password) < MIN_NEW_PASSWORD_LENGTH:
+                raise AureviaError(
+                    f"Choose a password of at least {MIN_NEW_PASSWORD_LENGTH} characters",
+                    status_code=422,
+                    code="weak_password",
+                )
+            user = User(
+                email=invitation.email, password_hash=hash_password(password), full_name=full_name
+            )
+            self._session.add(user)
+            await self._session.flush()
+        elif user.status != UserStatus.ACTIVE or not verify_password(user.password_hash, password):
+            raise AuthenticationError(INVALID_CREDENTIALS)
+
+        membership = await self._session.scalar(
+            select(Membership).where(
+                Membership.tenant_id == tenant_id, Membership.user_id == user.id
+            )
+        )
+        if membership is not None and membership.status == MembershipStatus.ACTIVE:
+            raise ConflictError("You are already a member of this tenant", code="already_member")
+        if membership is None:
+            membership = Membership(tenant_id=tenant_id, user_id=user.id, role=invitation.role)
+            self._session.add(membership)
+        membership.role = invitation.role
+        membership.custom_role_id = invitation.custom_role_id
+        membership.status = MembershipStatus.ACTIVE
+        invitation.accepted_at = now
+        await self._session.flush()
+        record_audit_event(
+            self._session,
+            tenant_id=tenant_id,
+            actor_user_id=user.id,
+            action="invitation.accepted",
+            target_type="membership",
+            target_id=membership.id,
+            details={"invitation_id": str(invitation.id), "role": invitation.role},
+        )
+        tokens = await self._issue(user.id, tenant_id, membership.id, family_id=None)
         await self._session.commit()
         return tokens
 

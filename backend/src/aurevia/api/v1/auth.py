@@ -8,6 +8,7 @@ from sqlalchemy import select
 from aurevia.identity.dependencies import PrincipalDep, SessionDep, SettingsDep
 from aurevia.identity.models import User
 from aurevia.identity.schemas import (
+    AcceptInvitationRequest,
     LoginRequest,
     MeResponse,
     RefreshRequest,
@@ -48,6 +49,16 @@ async def login(body: LoginRequest, session: SessionDep, settings: SettingsDep) 
     return _tokens(pair)
 
 
+@router.post("/invitations/accept", summary="Join a tenant with an invitation token")
+async def accept_invitation(
+    body: AcceptInvitationRequest, session: SessionDep, settings: SettingsDep
+) -> TokenResponse:
+    pair = await IdentityService(session, settings).accept_invitation(
+        token=body.token, password=body.password, full_name=body.full_name
+    )
+    return _tokens(pair)
+
+
 @router.post("/refresh", summary="Rotate a refresh token")
 async def refresh(
     body: RefreshRequest, session: SessionDep, settings: SettingsDep
@@ -72,4 +83,6 @@ async def me(principal: PrincipalDep, session: SessionDep) -> MeResponse:
         full_name=user.full_name,
         role=principal.role,
         tenant=TenantResponse(id=tenant.id, name=tenant.name, slug=tenant.slug),
+        permissions=sorted(p.value for p in principal.permissions),
+        is_platform_admin=principal.is_platform_admin,
     )
