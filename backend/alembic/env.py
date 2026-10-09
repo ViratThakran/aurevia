@@ -12,7 +12,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from aurevia.compliance import models as _compliance_models  # noqa: F401 - registers tables
+from aurevia.campaigns import models as _campaign_models  # noqa: F401 - registers tables
+from aurevia.compliance import models as _compliance_models  # noqa: F401
 from aurevia.config import Settings
 from aurevia.db.base import Base
 from aurevia.identity import models as _identity_models  # noqa: F401

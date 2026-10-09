@@ -74,6 +74,8 @@ class Lead(UUIDPrimaryKey, Timestamps, Base):
     interest: Mapped[str] = mapped_column(String(20), default=LeadInterest.UNKNOWN)
     interest_reason: Mapped[str | None] = mapped_column(String(500))
     qualification: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    # Set when the person's data was erased on request (DPDP); the row stays as a stub.
+    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ConversationMessage(UUIDPrimaryKey, Base):

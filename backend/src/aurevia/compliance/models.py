@@ -23,7 +23,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from aurevia.compliance.policy import CallPurpose, ConsentKind, TelephonyMode
+from aurevia.compliance.policy import CallPurpose, ConsentKind, PolicyStatus, TelephonyMode
 from aurevia.db.base import Base, UUIDPrimaryKey, one_of
 
 
@@ -31,6 +31,7 @@ class DoNotCallReason(StrEnum):
     PROSPECT_REQUEST = "prospect_request"  # the prospect asked not to be called again
     MANUAL = "manual"  # added by a team member
     COMPLAINT = "complaint"
+    ERASURE_REQUEST = "erasure_request"  # the person asked to be forgotten (DPDP)
 
 
 class GateDecision(StrEnum):
@@ -105,6 +106,13 @@ class ComplianceDecision(UUIDPrimaryKey, Base):
     lead_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("leads.id", ondelete="SET NULL"), index=True
     )
+    # The exact policy version applied (Phase 7) and the campaign the call belonged to.
+    policy_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("policy_versions.id", ondelete="RESTRICT")
+    )
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("campaigns.id", ondelete="SET NULL")
+    )
     requested_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL")
     )
@@ -119,4 +127,72 @@ class ComplianceDecision(UUIDPrimaryKey, Base):
     facts: Mapped[dict[str, Any]] = mapped_column(JSONB)  # what the checks saw
     decision: Mapped[str] = mapped_column(String(10))
     reason_code: Mapped[str] = mapped_column(String(50))
+    created_at: Mapped[datetime] = _created()
+
+
+class PolicyVersion(UUIDPrimaryKey, Base):
+    """One immutable version of a policy pack. Platform-wide reference data, not tenant-owned.
+
+    The application can only read it. Rules never change after insert (a database trigger
+    enforces that). Review and retirement are recorded by the platform operator.
+    """
+
+    __tablename__ = "policy_versions"
+    __table_args__ = (
+        CheckConstraint(one_of("status", PolicyStatus), name="status"),
+        CheckConstraint(
+            "status <> 'reviewed' OR (reviewed_at IS NOT NULL AND reviewed_by IS NOT NULL "
+            "AND review_reference IS NOT NULL)",
+            name="review_recorded",
+        ),
+        UniqueConstraint("version"),
+    )
+
+    pack: Mapped[str] = mapped_column(String(50), index=True)
+    version: Mapped[str] = mapped_column(String(50))
+    rules: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    source_sha256: Mapped[str] = mapped_column(String(64))  # hash of the published file
+    notes: Mapped[str | None] = mapped_column(String(1000))
+    status: Mapped[str] = mapped_column(String(10), default=PolicyStatus.DRAFT)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_by: Mapped[str | None] = mapped_column(String(200))
+    review_reference: Mapped[str | None] = mapped_column(String(200))
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created()
+
+
+class TenantComplianceSettings(Base):
+    """A tenant's policy choice: an optional pinned version and stricter-only overrides."""
+
+    __tablename__ = "tenant_compliance_settings"
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    policy_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("policy_versions.id", ondelete="RESTRICT")
+    )
+    overrides: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class ErasureRequest(UUIDPrimaryKey, Base):
+    """A person's request to be forgotten (DPDP), and what was erased. Insert-only."""
+
+    __tablename__ = "erasure_requests"
+
+    tenant_id: Mapped[uuid.UUID] = _tenant()
+    lead_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("leads.id", ondelete="CASCADE"), index=True
+    )
+    requested_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    received_via: Mapped[str] = mapped_column(String(200))  # e.g. "email to support"
+    summary: Mapped[dict[str, Any]] = mapped_column(JSONB)  # counts of what was removed
     created_at: Mapped[datetime] = _created()

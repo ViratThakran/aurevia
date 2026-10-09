@@ -83,6 +83,8 @@ class LeadService:
 
     async def update(self, lead_id: uuid.UUID, fields: LeadFields, actor: uuid.UUID) -> Lead:
         lead = await self.get(lead_id)
+        if lead.erased_at is not None:
+            raise ConflictError("This lead's data was erased on request", code="lead_erased")
         lead.name, lead.phone, lead.email, lead.company = (
             fields.name,
             fields.phone,
@@ -175,6 +177,11 @@ class MemoryService:
         facts: Sequence[ExtractedFact],
         extractor: str,
     ) -> int:
+        erased = await self._session.scalar(
+            select(Lead.erased_at).where(Lead.id == lead_id, Lead.tenant_id == self._tenant_id)
+        )
+        if erased is not None:
+            return 0  # the person asked to be forgotten while the call was running
         self._session.add_all(
             LeadMemory(
                 tenant_id=self._tenant_id,

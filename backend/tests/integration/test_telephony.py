@@ -226,8 +226,11 @@ def test_live_mode_is_blocked_until_counsel_reviews_the_policy(
         assert _post(env, f"/leads/{lead_id}/consents", consent).status_code == 201
         response = _call_out(env, lead_id)
         assert response.status_code == 403
-        # Everything else about this call is compliant; only the unreviewed pack stops it.
-        assert response.json()["error"]["details"]["reasons"] == ["policy_not_reviewed"]
+        # Only the unreviewed policy, and (since Phase 7) the missing campaign, stop it.
+        assert response.json()["error"]["details"]["reasons"] == [
+            "policy_not_reviewed",
+            "campaign_required",
+        ]
         assert env.dnd.lookups == [OWN_PHONE] and env.telephony.placed == []
 
 

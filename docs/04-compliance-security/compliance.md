@@ -19,7 +19,13 @@ gate passes its test suite. Phase 7 hardens it (versioned policies, campaign rul
 
 Phase 6 status: the gate and the India **draft** pack (`india-2026-10-draft-1`,
 `counsel_reviewed=False`) are built; rules and values are in docs/02-voice/telephony.md. Live
-calling is impossible until the pack is reviewed. Not yet built: a real-time DND registry
+calling is impossible until the pack is reviewed.
+
+Phase 7 status:
+- Policies are immutable database versions, and reviews are recorded by the platform operator.
+- Campaign restrictions, mandatory disclosures, the hash-chained audit log, and DPDP export and
+  erasure are built.
+- The questions for counsel are in counsel-review-pack.md. Not yet built: a real-time DND registry
 integration (unknown status blocks), campaign rules, per-tenant policy selection, and audio
 recording with consent notices.
 

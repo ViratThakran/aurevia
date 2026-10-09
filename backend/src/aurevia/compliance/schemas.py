@@ -9,7 +9,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from aurevia.compliance.phone import normalize_e164
-from aurevia.compliance.policy import CallPurpose, ConsentKind
+from aurevia.compliance.policy import CallPurpose, ConsentKind, PolicyOverrides
 
 
 def e164_or_error(value: str) -> str:
@@ -73,3 +73,62 @@ class DecisionResponse(BaseModel):
     decision: str
     reason_code: str
     created_at: datetime
+
+
+# --- Phase 7 -------------------------------------------------------------------------------
+
+
+class PolicyVersionResponse(BaseModel):
+    id: uuid.UUID
+    pack: str
+    version: str
+    status: str
+    rules: dict[str, Any]
+    notes: str | None
+    reviewed_at: datetime | None
+    reviewed_by: str | None
+    review_reference: str | None
+    retired_at: datetime | None
+    created_at: datetime
+
+
+class ComplianceSettingsIn(BaseModel):
+    policy_version_id: uuid.UUID | None = None  # None: the newest reviewed (else draft) version
+    overrides: PolicyOverrides = Field(default_factory=PolicyOverrides)
+
+
+class ComplianceSettingsResponse(BaseModel):
+    policy_version_id: uuid.UUID | None
+    overrides: dict[str, Any]
+    effective_policy: dict[str, Any]  # what the gate applies now
+
+
+class ErasureIn(BaseModel):
+    received_via: str = Field(min_length=1, max_length=200)  # how the person asked
+
+
+class ErasureResponse(BaseModel):
+    id: uuid.UUID
+    lead_id: uuid.UUID
+    summary: dict[str, Any]
+    created_at: datetime
+
+
+class AuditEventResponse(BaseModel):
+    seq: int
+    id: uuid.UUID
+    actor_user_id: uuid.UUID | None
+    action: str
+    target_type: str | None
+    target_id: uuid.UUID | None
+    details: dict[str, Any]
+    created_at: datetime
+    prev_hash: str
+    hash: str
+
+
+class AuditVerifyResponse(BaseModel):
+    events: int
+    ok: bool
+    first_broken_seq: int | None
+    head_hash: str | None

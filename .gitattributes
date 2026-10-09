@@ -1,3 +1,5 @@
 * text=auto
 # Shell scripts run inside Linux containers: always LF.
 *.sh text eol=lf
+# Published policy versions are hashed: keep their bytes identical on every OS.
+backend/src/aurevia/compliance/packs/*.json text eol=lf

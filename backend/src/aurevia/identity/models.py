@@ -12,7 +12,16 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    FetchedValue,
+    ForeignKey,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -103,6 +112,7 @@ class RefreshToken(UUIDPrimaryKey, Base):
 
 class AuditEvent(UUIDPrimaryKey, Base):
     __tablename__ = "audit_events"
+    __table_args__ = (UniqueConstraint("tenant_id", "seq"),)
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("tenants.id", ondelete="CASCADE"), index=True
@@ -118,3 +128,8 @@ class AuditEvent(UUIDPrimaryKey, Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # Tamper evidence (Phase 7): a per-tenant hash chain computed by a database trigger on
+    # insert. Each event's hash covers its content and the previous event's hash.
+    seq: Mapped[int] = mapped_column(BigInteger, server_default=FetchedValue())
+    prev_hash: Mapped[str] = mapped_column(String(64), server_default=FetchedValue())
+    hash: Mapped[str] = mapped_column(String(64), server_default=FetchedValue())
