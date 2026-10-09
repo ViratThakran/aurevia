@@ -25,6 +25,10 @@ Source of truth: `00-foundation/master-brief.md`, including its approved amendme
 - Never claim a failed tool action succeeded.
 
 ## Current milestone
+Phase 4 (memory) built on top of Phase 3; Phase 3 latency gate deferred until a faster model
+or key (Anthropic planned). Next: Phase 5 (sales tools).
+
+Previous milestone notes:
 Phase 2 — Browser voice: LiveKit voice worker (Deepgram STT, Cartesia TTS), backend Model
 Gateway (Gemini in development, Anthropic selectable by configuration), server-built prompt with honesty rules, opening sales states, calls and
 usage events, browser test page. Phase 1 (foundation) is complete. Gate for Phase 2: a full

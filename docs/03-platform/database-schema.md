@@ -24,3 +24,14 @@ application role has no `DELETE` privilege in Phase 1; removal is a status chang
 
 Every later tenant-owned table follows the same pattern: `tenant_id NOT NULL`, an index starting
 with `tenant_id`, a forced RLS policy, and grants to the application role in its migration.
+
+## Added in Phase 4 (migration `0004`)
+
+| Table | Notes |
+| --- | --- |
+| `leads` | Name, phone, email, company, status. `calls.lead_id` links a call to its lead |
+| `conversation_messages` | Spoken lines per call; `expires_at` = written + 90 days; app role can insert, never edit or delete |
+| `lead_memories` | Extracted facts: kind, fact, confidence, `source_call_id` (provenance), extractor version; app role may delete (correction) |
+
+Expired transcript lines are removed only by `purge_expired_transcripts()` (SECURITY DEFINER,
+run hourly by the API), through a policy limited to the schema owner and to expired rows.

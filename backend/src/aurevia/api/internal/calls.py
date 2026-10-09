@@ -13,7 +13,7 @@ import logging
 import uuid
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 
@@ -22,10 +22,15 @@ from aurevia.conversation.engine import (
     InvalidHistoryError,
     Utterance,
 )
+from aurevia.conversation.prompt import RememberedFact
 from aurevia.db.session import Database
 from aurevia.errors import AureviaError, ConflictError, ServiceUnavailableError
 from aurevia.gateway import GatewayError, ModelGateway
-from aurevia.identity.dependencies import SessionDep
+from aurevia.identity.dependencies import SessionDep, SettingsDep
+from aurevia.memory.jobs import safe_remember_call
+from aurevia.memory.models import Speaker
+from aurevia.memory.schemas import TranscriptIn
+from aurevia.memory.service import Line, MemoryService, TranscriptService
 from aurevia.sales.state import SalesState, after_prospect_turn
 from aurevia.usage.models import UsageEvent
 from aurevia.usage.recorder import record_llm_usage
@@ -66,6 +71,7 @@ async def take_turn(
     request: Request,
     principal: CallPrincipalDep,
     session: SessionDep,
+    settings: SettingsDep,
 ) -> StreamingResponse:
     gateway: ModelGateway | None = request.app.state.model_gateway
     database: Database = request.app.state.database
@@ -76,12 +82,22 @@ async def take_turn(
     call, agent = await calls.get_with_agent(call_id, for_update=True)
     require_in_progress(call)
     history = [Utterance(role=u.role, text=u.text) for u in body.history]
+    memories: list[RememberedFact] = []
+    if call.lead_id is not None:
+        memories = [
+            RememberedFact(kind=m.kind, fact=m.fact)
+            for m in await MemoryService(session, principal.tenant_id).for_prompt(
+                call.lead_id,
+                min_confidence=settings.memory_min_confidence,
+                limit=settings.memory_max_facts_in_prompt,
+            )
+        ]
     engine = ConversationEngine(gateway)
     record = gateway.new_record({"call_id": str(call_id), "tenant_id": str(principal.tenant_id)})
     state = after_prospect_turn(SalesState(call.sales_state))
     try:
         replies = engine.stream_reply(
-            agent=profile_of(agent), state=state, history=history, record=record
+            agent=profile_of(agent), state=state, history=history, record=record, memories=memories
         )
     except InvalidHistoryError as exc:
         raise AureviaError(str(exc), status_code=422, code="invalid_history") from exc
@@ -152,9 +168,51 @@ async def report_turn_metrics(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post(
+    "/transcript",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Save what was said (kept until the retention period ends)",
+)
+async def save_transcript(
+    call_id: uuid.UUID,
+    body: TranscriptIn,
+    principal: CallPrincipalDep,
+    session: SessionDep,
+    settings: SettingsDep,
+) -> Response:
+    await CallService(session, principal.tenant_id).get(call_id)  # 404 if not this tenant's
+    seqs = [line.seq for line in body.lines]
+    if len(set(seqs)) != len(seqs):
+        raise AureviaError("Duplicate line seq", status_code=422, code="duplicate_seq")
+    await TranscriptService(session, principal.tenant_id).save(
+        call_id,
+        [Line(seq=ln.seq, speaker=Speaker(ln.speaker), text=ln.text) for ln in body.lines],
+        retention_days=settings.transcript_retention_days,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/end", status_code=status.HTTP_204_NO_CONTENT, summary="Worker left: end the call")
 async def end_call(
-    call_id: uuid.UUID, body: CallEndRequest, principal: CallPrincipalDep, session: SessionDep
+    call_id: uuid.UUID,
+    body: CallEndRequest,
+    request: Request,
+    background: BackgroundTasks,
+    principal: CallPrincipalDep,
+    session: SessionDep,
 ) -> Response:
-    await CallService(session, principal.tenant_id).end(call_id, body.reason, failed=body.failed)
+    call = await CallService(session, principal.tenant_id).end(
+        call_id, body.reason, failed=body.failed
+    )
+    gateway: ModelGateway | None = request.app.state.model_gateway
+    if call.lead_id is not None and gateway is not None:
+        # After the response: the caller has gone, and extraction never delays the worker.
+        background.add_task(
+            safe_remember_call,
+            request.app.state.database,
+            gateway,
+            tenant_id=principal.tenant_id,
+            call_id=call_id,
+            lead_id=call.lead_id,
+        )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -42,6 +42,11 @@ class AgentResponse(BaseModel):
 # --- Voice sessions and calls ------------------------------------------------------------
 
 
+class VoiceSessionRequest(_Body):
+    # The lead being called; optional for ad-hoc test calls (no memory is kept without one).
+    lead_id: uuid.UUID | None = None
+
+
 class VoiceSessionResponse(BaseModel):
     call_id: uuid.UUID
     room: str

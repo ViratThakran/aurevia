@@ -20,7 +20,7 @@
     section { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
               padding: 16px; margin-bottom: 16px; }
     label { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
-    input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
             background: var(--bg); color: var(--ink); font: inherit; }
     .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
     button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
@@ -58,6 +58,15 @@
   </section>
 
   <section>
+    <label for="lead">Lead to call (memory is kept per lead)</label>
+    <select id="lead" disabled><option value="">No lead (test call, nothing remembered)</option></select>
+    <div class="row">
+      <input id="newLead" placeholder="New lead name, e.g. Ravi Kumar" style="flex:1" disabled>
+      <button id="addLead" class="secondary" disabled>Add lead</button>
+    </div>
+  </section>
+
+  <section>
     <div class="row" style="margin-top:0">
       <button id="start" disabled>Start call</button>
       <button id="end" class="secondary" disabled>End call</button>
@@ -69,6 +78,8 @@
   <section>
     <label>Last call</label>
     <pre id="summary">No call yet.</pre>
+    <label>What Aurevia remembers about this lead</label>
+    <pre id="memories">Pick a lead to see its memory.</pre>
   </section>
 </main>
 
@@ -103,6 +114,8 @@
       const me = await api("/api/v1/auth/me");
       setStatus(`Signed in as ${me.email} (${me.tenant.name}).`);
       $("start").disabled = false;
+      for (const id of ["lead", "newLead", "addLead"]) $(id).disabled = false;
+      await loadLeads();
     } catch (error) {
       setStatus(error.message, true);
     }
@@ -117,12 +130,43 @@
     $("transcript").append(div);
   }
 
+  async function loadLeads(selectId = null) {
+    const leads = await api("/api/v1/leads");
+    const select = $("lead");
+    select.replaceChildren(new Option("No lead (test call, nothing remembered)", ""));
+    for (const lead of leads) select.append(new Option(lead.company ? `${lead.name} (${lead.company})` : lead.name, lead.id));
+    if (selectId) select.value = selectId;
+    await showMemories();
+  }
+
+  async function addLead() {
+    const name = $("newLead").value.trim();
+    if (!name) return setStatus("Type a lead name first.", true);
+    try {
+      const lead = await api("/api/v1/leads", { method: "POST", body: JSON.stringify({ name }) });
+      $("newLead").value = "";
+      await loadLeads(lead.id);
+    } catch (error) {
+      setStatus(error.message, true);
+    }
+  }
+
+  async function showMemories() {
+    const leadId = $("lead").value;
+    if (!leadId) { $("memories").textContent = "Pick a lead to see its memory."; return; }
+    const memories = await api(`/api/v1/leads/${leadId}/memories`);
+    $("memories").textContent = memories.length
+      ? memories.map((m) => `(${m.kind}, ${Math.round(m.confidence * 100)}%) ${m.fact}`).join("\n")
+      : "Nothing yet. Facts are extracted a few seconds after a call ends.";
+  }
+
   async function startCall() {
     $("start").disabled = true;
     $("transcript").replaceChildren();
     try {
       setStatus("Setting up the call…");
-      const session = await api("/api/v1/voice/sessions", { method: "POST" });
+      const leadId = $("lead").value || null;
+      const session = await api("/api/v1/voice/sessions", { method: "POST", body: JSON.stringify({ lead_id: leadId }) });
       callId = session.call_id;
       room = new Room({ adaptiveStream: true, dynacast: true });
 
@@ -158,6 +202,7 @@
       try {
         const call = await api(`/api/v1/voice/calls/${callId}`);
         $("summary").textContent = JSON.stringify(call, null, 2);
+        setTimeout(showMemories, 4000); // extraction runs in the background after the call
       } catch (error) {
         $("summary").textContent = error.message;
       }
@@ -167,6 +212,8 @@
   $("login").onclick = () => authenticate("login");
   $("signup").onclick = () => authenticate("signup");
   $("start").onclick = startCall;
+  $("addLead").onclick = addLead;
+  $("lead").onchange = showMemories;
   $("end").onclick = () => endCall(true);
 </script>
 </body>

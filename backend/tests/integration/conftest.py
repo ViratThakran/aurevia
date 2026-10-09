@@ -35,7 +35,7 @@ _REQUIRED = os.environ.get("AUREVIA_REQUIRE_DB_TESTS") == "1"
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 TABLES = (
     "tenants, users, memberships, refresh_tokens, audit_events, agents, calls, usage_events,"
-    " turn_metrics"
+    " turn_metrics, leads, conversation_messages, lead_memories"
 )
 
 
