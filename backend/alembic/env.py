@@ -12,11 +12,13 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from aurevia.compliance import models as _compliance_models  # noqa: F401 - registers tables
 from aurevia.config import Settings
 from aurevia.db.base import Base
-from aurevia.identity import models as _identity_models  # noqa: F401 - registers tables
+from aurevia.identity import models as _identity_models  # noqa: F401
 from aurevia.memory import models as _memory_models  # noqa: F401
 from aurevia.sales import models as _sales_models  # noqa: F401
+from aurevia.telephony import models as _telephony_models  # noqa: F401
 from aurevia.usage import models as _usage_models  # noqa: F401
 from aurevia.voice import metrics as _voice_metrics  # noqa: F401
 from aurevia.voice import models as _voice_models  # noqa: F401

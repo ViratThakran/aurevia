@@ -60,6 +60,26 @@ Telephony abstraction and one adapter, SIP into the voice worker, inbound/outbou
 webhooks, recordings/transcripts, reconnect/failure handling, and the pre-call compliance gate
 with decision records.
 Gate: zero gate bypasses; test calls to own numbers only.
+Status (2026-10-09): built and verified locally; the real phone call waits for hosting.
+Decisions (2026-10-09): build now and host later (a carrier cannot reach a laptop's SIP
+server); Exotel is the first carrier; no audio recording in Phase 6 (transcripts only).
+Built:
+- Telephony through LiveKit SIP (one adapter; the carrier is SIP-trunk configuration).
+- The pre-call gate (`compliance/`): pure rule engine plus the India draft pack. It covers
+  consent, the tenant do-not-call list, DND (adapter; no registry yet, so unknown means
+  blocked), the 09:00-21:00 window, attempt limits, lead status and a DLT 140/160 caller id.
+  Every request writes a decision record (checks, facts, policy version).
+- Test mode (default) dials only registered own numbers; live mode is blocked until counsel
+  reviews the pack.
+- Outbound lifecycle: queued, then answered / busy / no_answer / failed; failures end the call
+  and free the agent. Inbound routing by dialed number, with the caller matched to a lead.
+- Signed LiveKit webhooks (room ended: open calls are closed; phone line joined: inbound
+  call). The agent greets only after the phone is answered.
+- `request_do_not_call` tool; consent and do-not-call APIs.
+Gate met in tests: the architecture tests prove `place_call` is reachable only with a gate
+`Approval`, and 49 rule tests cover the compliance-test matrix. Also verified against the real
+LiveKit SIP service with an unroutable trunk. See docs/02-voice/telephony.md for the first real
+call.
 
 ## Phase 7 — Compliance Hardening
 Versioned policies, India policy pack (DLT, 140/160 series, calling window, DND scrubbing, DPDP,

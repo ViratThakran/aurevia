@@ -51,3 +51,18 @@ run hourly by the API), through a policy limited to the schema owner and to expi
 
 All are tenant-scoped with forced RLS. The app role cannot delete from any of them; audit,
 note and objection rows cannot be updated either.
+
+## Added in Phase 6 (migration `0006`)
+
+| Table | Notes |
+| --- | --- |
+| `phone_numbers` | The tenant's carrier numbers: E.164 (unique across tenants), carrier, purpose (promotional / service), DLT flag, inbound flag, agent |
+| `test_numbers` | The tenant's own phones; the only numbers test mode may dial |
+| `consents` | Consent per lead and number: kind (express / inquiry), purpose, source, evidence, obtained / expires / revoked; the app may update only `revoked_at` |
+| `do_not_call` | Numbers never to call (prospect request, manual, complaint); unique per tenant; insert-only |
+| `compliance_decisions` | Every gate decision: checks, facts, policy pack and version, mode, decision, reason code; insert-only |
+| `calls` (columns) | `direction`, `to_number`, `from_number`, `dial_status`, `provider_call_id`, `phone_number_id`, `compliance_decision_id` (unique; required for outbound calls by a check constraint) |
+
+Webhooks arrive without a tenant, so two SECURITY DEFINER functions resolve exactly one row:
+`resolve_call_room(room)` and `resolve_inbound_number(e164)`. They read through policies that
+apply only to the schema owner, and only while the function is running.

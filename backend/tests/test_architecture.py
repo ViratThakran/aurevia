@@ -81,3 +81,65 @@ def test_raw_sql_detector_catches_text_imports(tmp_path: Path) -> None:
     assert _imports_raw_sql(sample)
     sample.write_text("ctx = PromptContext(set_tenant_context(x))\n", encoding="utf-8")
     assert not _imports_raw_sql(sample)
+
+
+def _calls_and_names(path: Path) -> tuple[set[str], set[str]]:
+    """Attribute/function names called, and every bare name used, in one module."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    called: set[str] = set()
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Attribute):
+                called.add(func.attr)
+            elif isinstance(func, ast.Name):
+                called.add(func.id)
+        elif isinstance(node, ast.Name):
+            names.add(node.id)
+    return called, names
+
+
+def _modules_outside_providers() -> list[Path]:
+    return [p for p in SRC.rglob("*.py") if "providers" not in p.relative_to(SRC).parts]
+
+
+def test_only_the_gated_dialer_places_calls() -> None:
+    """Phase 6 gate: ``place_call`` is reached from exactly one function, which needs an
+    Approval."""
+    callers = sorted(
+        str(p.relative_to(SRC)).replace("\\", "/")
+        for p in _modules_outside_providers()
+        if "place_call" in _calls_and_names(p)[0]
+    )
+    assert callers == ["telephony/service.py"]
+
+
+def test_only_the_gate_issues_approvals() -> None:
+    issuers = sorted(
+        str(p.relative_to(SRC)).replace("\\", "/")
+        for p in SRC.rglob("*.py")
+        if "Approval" in _calls_and_names(p)[0] or "_GATE_KEY" in _calls_and_names(p)[1]
+    )
+    assert issuers == ["compliance/gate.py"]
+
+
+def test_an_approval_cannot_be_forged() -> None:
+    import uuid
+    from datetime import UTC, datetime
+
+    import pytest
+
+    from aurevia.compliance.gate import Approval
+    from aurevia.compliance.policy import CallPurpose
+
+    with pytest.raises(PermissionError):
+        Approval(
+            decision_id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            lead_id=uuid.uuid4(),
+            to_number="+919876543210",
+            from_number="+911401234567",
+            purpose=CallPurpose.PROMOTIONAL,
+            issued_at=datetime.now(UTC),
+        )

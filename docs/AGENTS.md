@@ -25,8 +25,14 @@ Source of truth: `00-foundation/master-brief.md`, including its approved amendme
 - Never claim a failed tool action succeeded.
 
 ## Current milestone
-Phase 5 (sales tools) built on top of Phase 4; Phase 3 latency gate still deferred until a
-faster model or key (Anthropic planned). Next: Phase 6 (telephony + compliance gate).
+Phase 6 (telephony + compliance gate) built on top of Phase 5; the first real phone call
+waits for hosting with a public IP (docs/02-voice/telephony.md). Phase 3 latency gate still
+deferred until a faster model or key (Anthropic planned). Next: Phase 7 (compliance
+hardening).
+
+Telephony rules: nothing dials except `telephony/service.py` `dial()`, and it needs an
+`Approval` that only `compliance/gate.py` can create (architecture tests). Telephony stays in
+test mode until counsel reviews the policy pack.
 
 Tool rules: the model only requests actions; `tools/framework.py` (`ToolExecutor`) validates,
 authorizes, executes, audits and reports every one. New tools subclass `Tool`, declare a

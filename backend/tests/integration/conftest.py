@@ -36,7 +36,8 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 TABLES = (
     "tenants, users, memberships, refresh_tokens, audit_events, agents, calls, usage_events,"
     " turn_metrics, leads, conversation_messages, lead_memories, lead_notes, objections,"
-    " followups, scheduling_settings, appointments, handoffs, tool_executions"
+    " followups, scheduling_settings, appointments, handoffs, tool_executions, phone_numbers,"
+    " test_numbers, consents, do_not_call, compliance_decisions"
 )
 
 

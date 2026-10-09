@@ -1,14 +1,33 @@
-"""Real-time voice transport (rooms, participant tokens, agent dispatch).
+"""Real-time voice transport (rooms, participant tokens, agent dispatch, webhooks).
 
-The only module that imports the LiveKit server SDK. Business code sees ``VoiceTransport``.
+The LiveKit server SDK is imported only here and in ``livekit_sip.py``. Business code sees
+``VoiceTransport`` and neutral ``TransportEvent`` values.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Protocol, runtime_checkable
 
 from livekit import api
+
+ROOM_FINISHED = "room_finished"
+PARTICIPANT_JOINED = "participant_joined"
+
+
+class InvalidWebhookError(Exception):
+    """The webhook was not signed by our media server, or its body was altered."""
+
+
+@dataclass(frozen=True)
+class TransportEvent:
+    kind: str
+    room: str
+    participant_identity: str = ""
+    is_phone: bool = False  # the participant is a phone line (SIP)
+    attributes: Mapping[str, str] = field(default_factory=dict)
 
 
 @runtime_checkable
@@ -27,6 +46,18 @@ class VoiceTransport(Protocol):
 
         ``metadata`` reaches only the agent worker; browsers never see it.
         """
+        ...
+
+    async def dispatch_agent(self, *, room: str, agent_name: str, metadata: str) -> None:
+        """Send the voice agent into an existing room (inbound phone calls)."""
+        ...
+
+    async def close_room(self, room: str) -> None:
+        """End the room for everyone in it, including a phone line."""
+        ...
+
+    def parse_webhook(self, body: str, authorization: str) -> TransportEvent:
+        """Verify a media-server webhook and return it; raise ``InvalidWebhookError``."""
         ...
 
 
@@ -71,3 +102,37 @@ class LiveKitTransport:
             )
         finally:
             await lk.aclose()
+
+    async def dispatch_agent(self, *, room: str, agent_name: str, metadata: str) -> None:
+        lk = api.LiveKitAPI(url=self._url, api_key=self._api_key, api_secret=self._api_secret)
+        try:
+            await lk.agent_dispatch.create_dispatch(
+                api.CreateAgentDispatchRequest(agent_name=agent_name, room=room, metadata=metadata)
+            )
+        finally:
+            await lk.aclose()
+
+    async def close_room(self, room: str) -> None:
+        lk = api.LiveKitAPI(url=self._url, api_key=self._api_key, api_secret=self._api_secret)
+        try:
+            await lk.room.delete_room(api.DeleteRoomRequest(room=room))
+        except api.ServerError as exc:
+            if exc.status != 404:  # already gone is fine
+                raise
+        finally:
+            await lk.aclose()
+
+    def parse_webhook(self, body: str, authorization: str) -> TransportEvent:
+        receiver = api.WebhookReceiver(api.TokenVerifier(self._api_key, self._api_secret))
+        try:
+            event = receiver.receive(body, authorization)
+        except Exception as exc:  # the SDK raises several types for a bad signature or body
+            raise InvalidWebhookError("invalid webhook") from exc
+        participant = event.participant if event.HasField("participant") else None
+        return TransportEvent(
+            kind=event.event,
+            room=event.room.name if event.HasField("room") else "",
+            participant_identity=participant.identity if participant else "",
+            is_phone=bool(participant and participant.kind == api.ParticipantInfo.Kind.SIP),
+            attributes=dict(participant.attributes) if participant else {},
+        )

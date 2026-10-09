@@ -4,8 +4,12 @@ import asyncio
 import uuid
 from collections.abc import AsyncIterator
 
+import pytest
+
 from aurevia.providers import (
     AudioChunk,
+    DialError,
+    DialFailure,
     ModelMessage,
     ModelProvider,
     ModelRequest,
@@ -22,6 +26,7 @@ from aurevia.providers.fakes import (
     FakeTelephonyProvider,
     FakeTTSProvider,
 )
+from aurevia.providers.telephony import failure_for_sip_status
 
 REQUEST = ModelRequest(
     model="test-model",
@@ -82,15 +87,26 @@ def test_fake_tts_streams_one_chunk_per_fragment() -> None:
 
 
 def test_fake_telephony_records_calls() -> None:
-    provider = FakeTelephonyProvider()
+    provider = FakeTelephonyProvider(failures=[DialError(DialFailure.BUSY, sip_status=486)])
     request = OutboundCallRequest(
         tenant_id=uuid.uuid4(),
         call_id=uuid.uuid4(),
-        to_number="+911234567890",
+        room="room-1",
+        to_number="+919876543210",
         from_number="+911400000000",
         compliance_decision_id=uuid.uuid4(),
+        ring_timeout_seconds=30,
     )
-    handle = asyncio.run(provider.place_call(request))
-    asyncio.run(provider.hang_up(handle.provider_call_id))
-    assert provider.placed == [request]
-    assert provider.hung_up == [handle.provider_call_id]
+    with pytest.raises(DialError) as busy:
+        asyncio.run(provider.place_call(request))
+    assert busy.value.failure == DialFailure.BUSY
+    answered = asyncio.run(provider.place_call(request))
+    assert answered.provider_call_id.startswith("fake-call-")
+    assert provider.placed == [request, request]
+
+
+def test_sip_status_mapping_is_conservative() -> None:
+    assert failure_for_sip_status(486) == DialFailure.BUSY
+    assert failure_for_sip_status(480) == DialFailure.NO_ANSWER
+    assert failure_for_sip_status(503) == DialFailure.FAILED
+    assert failure_for_sip_status(None) == DialFailure.FAILED

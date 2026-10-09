@@ -49,6 +49,8 @@ class WorkerSettings(BaseSettings):
     # --- Silence handling (Phase 3). After this many seconds with nobody speaking, the agent
     # re-prompts; after the re-prompts are used up it says goodbye and ends the call.
     silence_timeout_seconds: float = Field(default=15.0, ge=3.0, le=120.0)
+    # Phone calls: how long to wait for the dialed phone to be picked up (outlasts ringing).
+    answer_timeout_seconds: float = Field(default=60.0, ge=5.0, le=180.0)
     silence_reprompts: int = Field(default=1, ge=0, le=3)
     silence_reprompt_text: str = Field(default="Are you still there?", min_length=1, max_length=200)
     silence_goodbye_text: str = Field(

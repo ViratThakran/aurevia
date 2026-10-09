@@ -56,10 +56,51 @@ services:
     profiles: [voice]
     image: livekit/livekit-server:latest
     command: ["--dev", "--bind", "0.0.0.0", "--node-ip", "127.0.0.1"]
+    # Redis links the media server with the SIP service; webhooks (signed with the dev key)
+    # tell the API when rooms end and when a phone line rings in.
+    environment:
+      LIVEKIT_CONFIG: |
+        redis:
+          address: redis:6379
+        webhook:
+          api_key: devkey
+          urls:
+            - http://api:8000/webhooks/livekit
     ports:
       - "127.0.0.1:7880:7880"
       - "127.0.0.1:7881:7881"
       - "127.0.0.1:7882:7882/udp"
+    depends_on:
+      - redis
+
+  redis:
+    profiles: [voice]
+    image: redis:7-alpine
+
+  # --- Phone calls (Phase 6): `docker compose --profile voice --profile telephony up` -------
+  # LiveKit SIP bridges the carrier's SIP trunk (Exotel) into LiveKit rooms. A carrier must
+  # reach this service over the internet, so real calls need a host with a public IP; on a
+  # laptop it only starts. See docs/02-voice/telephony.md.
+  livekit-sip:
+    profiles: [telephony]
+    image: livekit/sip:latest
+    environment:
+      SIP_CONFIG_BODY: |
+        api_key: devkey
+        api_secret: secret
+        ws_url: ws://livekit:7880
+        redis:
+          address: redis:6379
+        sip_port: 5060
+        rtp_port: 10000-10100
+        use_external_ip: false
+    ports:
+      - "127.0.0.1:5060:5060/udp"
+      - "127.0.0.1:5060:5060/tcp"
+      - "127.0.0.1:10000-10100:10000-10100/udp"
+    depends_on:
+      - livekit
+      - redis
 
   # Shares LiveKit's network namespace so that "127.0.0.1" means the same thing to the worker
   # as to the media server. Speech keys live only here, never in the API container; the
