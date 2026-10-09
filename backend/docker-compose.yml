@@ -11,6 +11,9 @@ services:
     environment:
       AUREVIA_DATABASE_URL: postgresql+asyncpg://aurevia_app:${AUREVIA_APP_DB_PASSWORD:?set AUREVIA_APP_DB_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
       AUREVIA_MIGRATION_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
+      # env_file passes the whole .env; speech keys belong to the voice worker only.
+      DEEPGRAM_API_KEY: ""
+      CARTESIA_API_KEY: ""
     command:
       - sh
       - -c
@@ -59,13 +62,16 @@ services:
       - "127.0.0.1:7882:7882/udp"
 
   # Shares LiveKit's network namespace so that "127.0.0.1" means the same thing to the worker
-  # as to the media server. Vendor keys live only here, never in the API container.
+  # as to the media server. Speech keys live only here, never in the API container; the
+  # worker gets no model key (no env_file): it never calls a model.
   voice-worker:
     profiles: [voice]
     build: ../voice-worker
     network_mode: "service:livekit"
     environment:
       AUREVIA_BACKEND_URL: http://api:8000
+      AUREVIA_STT_PROVIDER: ${AUREVIA_STT_PROVIDER:-deepgram}
+      AUREVIA_TTS_PROVIDER: ${AUREVIA_TTS_PROVIDER:-cartesia}
       LIVEKIT_URL: ws://127.0.0.1:7880
       LIVEKIT_API_KEY: devkey
       LIVEKIT_API_SECRET: secret

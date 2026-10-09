@@ -7,10 +7,11 @@ import json
 from typing import Any
 
 import httpx2
+import pytest
 from anthropic import DefaultAsyncHttpxClient
 
 from aurevia.providers.anthropic_model import FALLBACK_BETA, AnthropicModelProvider
-from aurevia.providers.model import ModelMessage, ModelRequest
+from aurevia.providers.model import ModelMessage, ModelProviderError, ModelRequest
 
 REQUEST = ModelRequest(
     model="claude-opus-5-5",
@@ -146,3 +147,26 @@ def test_reports_the_model_that_actually_answered() -> None:
     provider = _provider(seen, fallback=True, served_model="claude-opus-4-8")
     final = asyncio.run(provider.generate(REQUEST))
     assert final.model == "claude-opus-4-8"
+
+
+@pytest.mark.parametrize(
+    ("status", "kind"),
+    [(400, "invalid_request"), (401, "auth_failed"), (429, "rate_limited"), (529, "unavailable")],
+)
+def test_errors_are_normalized_without_vendor_text(status: int, kind: str) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            status,
+            json={"type": "error", "error": {"type": "x", "message": "vendor details"}},
+        )
+
+    provider = AnthropicModelProvider(
+        api_key="sk-ant-test-not-real",
+        effort="low",
+        server_fallback=False,
+        max_retries=0,
+        http_client=DefaultAsyncHttpxClient(transport=httpx2.MockTransport(handler)),
+    )
+    with pytest.raises(ModelProviderError) as exc:
+        asyncio.run(provider.generate(REQUEST))
+    assert exc.value.kind == kind and str(exc.value) == f"anthropic: {kind}"

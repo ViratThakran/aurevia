@@ -17,7 +17,14 @@ Gate: a full spoken conversation works end to end in the browser.
 ## Phase 3 — Voice Quality
 Per-step latency tracing, interruption/barge-in and cancellation, silence handling, backchannel
 experiments, simulated-prospect evaluation and regression tests.
-Gate: latency and barge-in targets met on the regression set.
+Gate: latency and barge-in targets met on the regression set (median < 1.0 s, p95 < 1.8 s,
+prospect stops speaking -> agent's first audio).
+Status (2026-10-09): built and measured with the simulated-prospect suite. Barge-in is
+detected. Pipeline overhead is ~0.8 s (end-of-turn wait ~0.58 s, TTS ~0.2 s, backend hop
+<0.1 s; end-of-turn ceiling cut from 3.0 s to 1.5 s). The rest is the model: Gemini on the
+development key gives ~1.1-1.9 s to first token with occasional stalls (handled by fallback +
+circuit breaker). Decision (2026-10-09): the latency gate is deferred until a faster model or
+key is available (planned: Anthropic); development continues with Phase 4.
 
 ## Phase 4 — Memory
 Transcript persistence, post-call fact extraction, durable lead facts, retrieval, confidence,

@@ -26,7 +26,7 @@ Source of truth: `00-foundation/master-brief.md`, including its approved amendme
 
 ## Current milestone
 Phase 2 — Browser voice: LiveKit voice worker (Deepgram STT, Cartesia TTS), backend Model
-Gateway (Claude), server-built prompt with honesty rules, opening sales states, calls and
+Gateway (Gemini in development, Anthropic selectable by configuration), server-built prompt with honesty rules, opening sales states, calls and
 usage events, browser test page. Phase 1 (foundation) is complete. Gate for Phase 2: a full
 spoken conversation works end to end in the browser.
 

@@ -46,3 +46,12 @@ Provider credentials are server-side secrets only.
 
 ## Phase 1
 Implement the gateway with one provider first. Add more providers only after the abstraction is tested.
+
+## Implemented (2026-10-08)
+- Adapters: Gemini (`providers/gemini_model.py`, current development provider) and Anthropic
+  (`providers/anthropic_model.py`). Selected by `AUREVIA_AI_PROVIDER`; built only in
+  `providers/registry.py`.
+- One normalized error type (`ModelProviderError`: auth_failed, rate_limited,
+  invalid_request, unavailable, timeout) for every adapter.
+- Fallback: Anthropic's server-side fallback when `llm_fallback_policy=server_default`;
+  refused at startup for providers without one.

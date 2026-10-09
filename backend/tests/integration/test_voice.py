@@ -286,3 +286,58 @@ def test_worker_failure_marks_the_call_failed(voice: VoiceEnv, db: PgEnv) -> Non
     assert ended.status_code == 204
     call = voice.client.get(f"/api/v1/voice/calls/{call_id}", headers=bearer(tokens)).json()
     assert (call["status"], call["end_reason"]) == ("failed", "worker_error")
+
+
+def _report(env: VoiceEnv, call_id: str, token: str, turns: list[dict[str, Any]]) -> Any:
+    return env.client.post(
+        f"/internal/v1/calls/{call_id}/turn-metrics", json={"turns": turns}, headers=_worker(token)
+    )
+
+
+def test_turn_latency_is_recorded_and_summarized(voice: VoiceEnv, db: PgEnv) -> None:
+    tokens = signup(voice.client, "owner@example.com", "Acme")
+    call_id, call_token = _start_session(voice, tokens)
+    turns: list[dict[str, Any]] = []
+    for i, e2e in enumerate([700, 800, 900, 1000, 2500]):
+        turns.append({"seq": 2 * i, "role": "prospect", "end_of_turn_delay_ms": 400})
+        turns.append(
+            {"seq": 2 * i + 1, "role": "agent", "e2e_latency_ms": e2e, "llm_ttft_ms": e2e - 300}
+        )
+    turns.append({"seq": 10, "role": "agent", "interrupted": True})
+    assert _report(voice, call_id, call_token, turns).status_code == 204
+
+    latency = voice.client.get(f"/api/v1/voice/calls/{call_id}", headers=bearer(tokens)).json()[
+        "latency"
+    ]
+    assert (latency["agent_turns"], latency["measured_turns"], latency["interrupted_turns"]) == (
+        6,
+        5,
+        1,
+    )
+    assert latency["e2e_p50_ms"] == 900
+    assert latency["e2e_p95_ms"] == 2200  # interpolated between 1000 and 2500
+    assert latency["end_of_turn_delay_p50_ms"] == 400
+    assert latency["meets_target"] is False  # p95 is over 1800 ms
+
+    tenant = voice.client.get("/api/v1/voice/latency?days=1", headers=bearer(tokens)).json()
+    assert tenant["e2e_p50_ms"] == 900
+
+    # Reporting the same turns again is refused, not double counted.
+    again = _report(voice, call_id, call_token, turns[:1])
+    assert again.status_code == 409
+
+
+def test_turn_metrics_are_tenant_isolated_and_validated(voice: VoiceEnv, db: PgEnv) -> None:
+    a = signup(voice.client, "a@example.com", "Alpha")
+    b = signup(voice.client, "b@example.com", "Beta")
+    call_id, call_token = _start_session(voice, a)
+    _report(voice, call_id, call_token, [{"seq": 1, "role": "agent", "e2e_latency_ms": 850}])
+    other = voice.client.get("/api/v1/voice/latency", headers=bearer(b)).json()
+    assert other["agent_turns"] == 0 and other["e2e_p50_ms"] is None
+
+    bad = [{"seq": 2, "role": "agent", "e2e_latency_ms": -5}]
+    assert _report(voice, call_id, call_token, bad).status_code == 422
+    dup = [{"seq": 3, "role": "agent"}, {"seq": 3, "role": "prospect"}]
+    assert _report(voice, call_id, call_token, dup).status_code == 422
+    text = [{"seq": 4, "role": "agent", "transcript": "no text allowed"}]
+    assert _report(voice, call_id, call_token, text).status_code == 422

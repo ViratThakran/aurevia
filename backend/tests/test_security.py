@@ -71,7 +71,7 @@ def test_malformed_claims_are_rejected(mutate: object) -> None:
 def test_alg_none_is_rejected() -> None:
     token = create_access_token(CLAIMS, secret=TEST_JWT_SECRET, ttl_seconds=300)
     claims = jwt.decode(token, TEST_JWT_SECRET, algorithms=["HS256"])
-    unsigned = jwt.encode(claims, key=None, algorithm="none")
+    unsigned = jwt.encode(claims, key=None, algorithm="none")  # type: ignore[arg-type]
     with pytest.raises(AuthenticationError):
         decode_access_token(unsigned, secret=TEST_JWT_SECRET)
 

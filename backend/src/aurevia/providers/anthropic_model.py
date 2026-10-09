@@ -5,10 +5,12 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Literal
 
+import anthropic
 from anthropic import AsyncAnthropic, DefaultAsyncHttpxClient, omit
 from anthropic.types.beta import BetaMessageParam
 
 from aurevia.providers.model import (
+    ModelProviderError,
     ModelRequest,
     ModelResponse,
     ModelStreamEvent,
@@ -16,10 +18,6 @@ from aurevia.providers.model import (
 )
 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
-
-
-class ModelProviderError(Exception):
-    """The provider failed; the message is safe to log, never shown to a caller."""
 
 
 class AnthropicModelProvider:
@@ -47,10 +45,17 @@ class AnthropicModelProvider:
             if event.final is not None:
                 final = event.final
         if final is None:
-            raise ModelProviderError("stream ended without a final message")
+            raise ModelProviderError(self.name, "unavailable")
         return final
 
     async def stream(self, request: ModelRequest) -> AsyncIterator[ModelStreamEvent]:
+        try:
+            async for event in self._stream(request):
+                yield event
+        except anthropic.APIError as exc:
+            raise _normalize(exc) from None  # vendor text is dropped: it may echo the request
+
+    async def _stream(self, request: ModelRequest) -> AsyncIterator[ModelStreamEvent]:
         messages: list[BetaMessageParam] = [
             {"role": m.role, "content": m.content} for m in request.messages
         ]
@@ -96,3 +101,17 @@ class AnthropicModelProvider:
 
     async def aclose(self) -> None:
         await self._client.close()
+
+
+def _normalize(exc: anthropic.APIError) -> ModelProviderError:
+    if isinstance(exc, anthropic.APITimeoutError):
+        return ModelProviderError("anthropic", "timeout")
+    if isinstance(exc, anthropic.APIConnectionError):
+        return ModelProviderError("anthropic", "unavailable")
+    if isinstance(exc, anthropic.AuthenticationError | anthropic.PermissionDeniedError):
+        return ModelProviderError("anthropic", "auth_failed")
+    if isinstance(exc, anthropic.RateLimitError):
+        return ModelProviderError("anthropic", "rate_limited")
+    if isinstance(exc, anthropic.APIStatusError) and exc.status_code < 500:
+        return ModelProviderError("anthropic", "invalid_request")
+    return ModelProviderError("anthropic", "unavailable")

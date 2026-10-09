@@ -40,7 +40,10 @@ def test_openapi_and_docs_available_outside_production(client: TestClient) -> No
 
 def test_openapi_and_docs_disabled_in_production(make_settings: SettingsFactory) -> None:
     settings = make_settings(
-        environment="production", jwt_secret=TEST_JWT_SECRET, database_url=TEST_DATABASE_URL
+        environment="production",
+        jwt_secret=TEST_JWT_SECRET,
+        database_url=TEST_DATABASE_URL,
+        gemini_api_key="gemini-test-key-0000000000",
     )
     with TestClient(create_app(settings)) as prod_client:
         assert prod_client.get("/openapi.json").status_code == 404

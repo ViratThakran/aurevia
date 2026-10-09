@@ -9,16 +9,23 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass, field
 
-from aurevia.providers.model import ModelMessage, ModelProvider, ModelRequest
+from aurevia.providers.model import (
+    ModelMessage,
+    ModelProvider,
+    ModelProviderError,
+    ModelRequest,
+)
 
 
 class GatewayError(Exception):
     def __init__(self, code: str) -> None:
         super().__init__(code)
-        self.code = code  # "timeout" | "provider_error"
+        # "timeout" | "provider_error" | a normalized provider kind ("auth_failed",
+        # "rate_limited", "invalid_request", "unavailable").
+        self.code = code
 
 
 @dataclass
@@ -35,12 +42,44 @@ class GenerationRecord:
     provider_request_id: str | None = None
     completed: bool = False
     error: str | None = None
+    # Every model tried, in order; more than one means the fallback policy was used.
+    attempted_models: list[str] = field(default_factory=list)
     metadata: Mapping[str, str] = field(default_factory=dict)
 
     @property
     def interrupted(self) -> bool:
         """The consumer stopped reading before the reply finished (e.g. barge-in)."""
         return not self.completed and self.error is None
+
+
+# Failures that justify trying the next configured model: the model never started answering.
+_FALLBACK_CODES = frozenset({"timeout", "unavailable", "rate_limited"})
+
+
+class CircuitBreaker:
+    """Skips a model for ``cooldown_seconds`` after ``threshold`` consecutive failures, so an
+    outage costs one first-token timeout per cooldown instead of one per turn. The last
+    configured model is never skipped: with everything open there is still something to try.
+    """
+
+    def __init__(self, *, threshold: int = 2, cooldown_seconds: float = 60.0) -> None:
+        self._threshold = threshold
+        self._cooldown = cooldown_seconds
+        self._failures: dict[str, int] = {}
+        self._open_until: dict[str, float] = {}
+
+    def is_open(self, model: str, now: float) -> bool:
+        return self._open_until.get(model, 0.0) > now
+
+    def failure(self, model: str, now: float) -> None:
+        self._failures[model] = self._failures.get(model, 0) + 1
+        # After a cooldown the next request is a probe: one failure reopens the breaker.
+        if self._failures[model] >= self._threshold or model in self._open_until:
+            self._open_until[model] = now + self._cooldown
+
+    def success(self, model: str) -> None:
+        self._failures.pop(model, None)
+        self._open_until.pop(model, None)
 
 
 class ModelGateway:
@@ -52,9 +91,13 @@ class ModelGateway:
         max_tokens: int,
         first_token_timeout_seconds: float,
         total_timeout_seconds: float,
+        fallback_models: Sequence[str] = (),
+        breaker: CircuitBreaker | None = None,
     ) -> None:
         self._provider = provider
+        self._breaker = breaker or CircuitBreaker()
         self._model = model
+        self._fallback_models = tuple(m for m in fallback_models if m != model)
         self._max_tokens = max_tokens
         self._first_token_timeout = first_token_timeout_seconds
         self._total_timeout = total_timeout_seconds
@@ -62,6 +105,10 @@ class ModelGateway:
     @property
     def model(self) -> str:
         return self._model
+
+    @property
+    def fallback_models(self) -> tuple[str, ...]:
+        return self._fallback_models
 
     def new_record(self, metadata: Mapping[str, str] | None = None) -> GenerationRecord:
         return GenerationRecord(
@@ -79,20 +126,58 @@ class ModelGateway:
     ) -> AsyncIterator[str]:
         """Yield text deltas. Raises ``GatewayError`` on timeout or provider failure.
 
+        Explicit fallback: if a model times out, is unavailable or is rate limited *before its
+        first word*, the next configured fallback model is tried within the same overall
+        deadline. A reply that has started is never switched to another model. The record
+        keeps the requested model, every model attempted, and the model that answered.
+
         If the consumer stops early, closing this generator closes the provider stream, so
         the model stops generating (and billing) as soon as possible.
         """
+        started = time.monotonic()
+        deadline = started + self._total_timeout
+        candidates = (self._model, *self._fallback_models)
+        for index, model in enumerate(candidates):
+            is_last = index == len(candidates) - 1
+            if not is_last and self._breaker.is_open(model, time.monotonic()):
+                continue  # failing recently: go straight to the next model
+            record.attempted_models.append(model)
+            record.error = None
+            try:
+                async for delta in self._attempt(
+                    model, system, messages, record, started=started, deadline=deadline
+                ):
+                    yield delta
+            except GatewayError as exc:
+                if record.first_token_ms is None and exc.code in _FALLBACK_CODES:
+                    self._breaker.failure(model, time.monotonic())
+                if is_last or record.first_token_ms is not None or exc.code not in _FALLBACK_CODES:
+                    raise
+                if time.monotonic() >= deadline:
+                    raise
+            else:
+                self._breaker.success(model)
+                return
+
+    async def _attempt(
+        self,
+        model: str,
+        system: str,
+        messages: tuple[ModelMessage, ...],
+        record: GenerationRecord,
+        *,
+        started: float,
+        deadline: float,
+    ) -> AsyncIterator[str]:
         request = ModelRequest(
-            model=self._model,
+            model=model,
             system=system,
             messages=messages,
             max_tokens=self._max_tokens,
-            timeout_seconds=self._total_timeout,
+            timeout_seconds=max(deadline - time.monotonic(), 0.1),
             metadata=record.metadata,
         )
-        started = time.monotonic()
-        deadline = started + self._total_timeout
-        first_token_deadline = started + self._first_token_timeout
+        first_token_deadline = min(time.monotonic() + self._first_token_timeout, deadline)
         events = aiter(self._provider.stream(request))
         try:
             while True:
@@ -106,6 +191,9 @@ class ModelGateway:
                 except TimeoutError:
                     record.error = "timeout"
                     raise GatewayError("timeout") from None
+                except ModelProviderError as exc:
+                    record.error = exc.kind
+                    raise GatewayError(exc.kind) from exc
                 except Exception as exc:
                     record.error = "provider_error"
                     raise GatewayError("provider_error") from exc

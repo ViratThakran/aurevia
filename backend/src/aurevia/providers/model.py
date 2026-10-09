@@ -10,6 +10,27 @@ from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass, field
 from typing import Literal, Protocol, runtime_checkable
 
+ProviderErrorKind = Literal[
+    "auth_failed", "rate_limited", "invalid_request", "unavailable", "timeout"
+]
+
+
+class ModelProviderError(Exception):
+    """A provider failure, normalized so callers never handle vendor SDK exceptions.
+
+    The message is generic by construction: vendor error text (which can echo request
+    details) is never copied into it, so it is safe to log.
+    """
+
+    def __init__(self, provider: str, kind: ProviderErrorKind) -> None:
+        super().__init__(f"{provider}: {kind}")
+        self.provider = provider
+        self.kind: ProviderErrorKind = kind
+
+    @property
+    def retryable(self) -> bool:
+        return self.kind in ("rate_limited", "unavailable", "timeout")
+
 
 @dataclass(frozen=True)
 class ModelMessage:

@@ -15,6 +15,7 @@ from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Request, Response, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy.exc import IntegrityError
 
 from aurevia.conversation.engine import (
     ConversationEngine,
@@ -22,14 +23,21 @@ from aurevia.conversation.engine import (
     Utterance,
 )
 from aurevia.db.session import Database
-from aurevia.errors import AureviaError, ServiceUnavailableError
+from aurevia.errors import AureviaError, ConflictError, ServiceUnavailableError
 from aurevia.gateway import GatewayError, ModelGateway
 from aurevia.identity.dependencies import SessionDep
 from aurevia.sales.state import SalesState, after_prospect_turn
 from aurevia.usage.models import UsageEvent
 from aurevia.usage.recorder import record_llm_usage
 from aurevia.voice.call_auth import CallPrincipalDep
-from aurevia.voice.schemas import CallEndRequest, CallStartResponse, TurnRequest, UsageReport
+from aurevia.voice.metrics import TurnMetric
+from aurevia.voice.schemas import (
+    CallEndRequest,
+    CallStartResponse,
+    TurnMetricsReport,
+    TurnRequest,
+    UsageReport,
+)
 from aurevia.voice.service import CallService, profile_of, require_in_progress
 
 logger = logging.getLogger(__name__)
@@ -117,6 +125,30 @@ async def report_usage(
         )
     )
     await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/turn-metrics",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Report per-turn latency (timings only)",
+)
+async def report_turn_metrics(
+    call_id: uuid.UUID, body: TurnMetricsReport, principal: CallPrincipalDep, session: SessionDep
+) -> Response:
+    await CallService(session, principal.tenant_id).get(call_id)  # 404 if not this tenant's
+    seqs = [turn.seq for turn in body.turns]
+    if len(set(seqs)) != len(seqs):
+        raise AureviaError("Duplicate turn seq", status_code=422, code="duplicate_seq")
+    session.add_all(
+        TurnMetric(tenant_id=principal.tenant_id, call_id=call_id, **turn.model_dump())
+        for turn in body.turns
+    )
+    try:
+        await session.commit()
+    except IntegrityError as exc:  # the same turns reported twice
+        await session.rollback()
+        raise ConflictError("Turn metrics already reported", code="duplicate_seq") from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

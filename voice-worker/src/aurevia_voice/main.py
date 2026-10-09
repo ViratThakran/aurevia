@@ -11,19 +11,36 @@ the call.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-import os
 import sys
 from typing import Any
 
-from livekit.agents import Agent, AgentServer, AgentSession, JobContext, JobProcess, cli
+from livekit.agents import (
+    Agent,
+    AgentServer,
+    AgentSession,
+    JobContext,
+    JobProcess,
+    TurnHandlingOptions,
+    cli,
+)
 from livekit.agents.metrics.usage import STTModelUsage, TTSModelUsage
-from livekit.plugins import cartesia, deepgram, silero
 
 from aurevia_voice.backend_client import BackendClient, BackendError
 from aurevia_voice.config import WorkerSettings
 from aurevia_voice.llm_bridge import BackendLLM
+from aurevia_voice.redaction import install_log_redaction
+from aurevia_voice.silence import SilenceTracker
+from aurevia_voice.speech_providers import (
+    SpeechOptions,
+    build_stt,
+    build_tts,
+    load_vad,
+    missing_keys,
+)
+from aurevia_voice.turn_metrics import TurnMetricsCollector
 
 logger = logging.getLogger("aurevia.voice")
 
@@ -32,14 +49,22 @@ settings = WorkerSettings()  # type: ignore[call-arg]  # backend_url comes from 
 
 def prewarm(proc: JobProcess) -> None:
     # Loading the voice activity model once per process keeps call start fast.
-    proc.userdata["vad"] = silero.VAD.load()
+    install_log_redaction()  # job processes log too
+    proc.userdata["vad"] = load_vad()
 
 
 server = AgentServer(setup_fnc=prewarm)
 
 
-async def _finish(session: AgentSession[Any], backend: BackendClient, reason: str) -> None:
+async def _finish(
+    session: AgentSession[Any],
+    backend: BackendClient,
+    collector: TurnMetricsCollector,
+    reason: str,
+) -> None:
     try:
+        if collector.turns:
+            await backend.report_turn_metrics(collector.turns)
         for usage in session.usage.model_usage:
             if isinstance(usage, STTModelUsage):
                 await backend.report_usage(
@@ -62,6 +87,18 @@ async def _finish(session: AgentSession[Any], backend: BackendClient, reason: st
         await backend.aclose()
 
 
+def turn_handling(config: WorkerSettings) -> TurnHandlingOptions:
+    return {
+        "endpointing": {
+            "mode": config.endpointing_mode,
+            "min_delay": config.endpointing_min_delay,
+            "max_delay": config.endpointing_max_delay,
+        },
+        "preemptive_generation": {"enabled": config.preemptive_generation},
+        "interruption": {"min_duration": config.interruption_min_duration},
+    }
+
+
 def _reason_code(reason: str) -> str:
     code = "".join(c if c.isalnum() else "_" for c in reason.lower()).strip("_")
     return code[:100] or "unknown"
@@ -79,17 +116,22 @@ async def entrypoint(ctx: JobContext) -> None:
     logger.info("Call started", extra={"call_id": metadata["call_id"]})
 
     try:
-        tts_options: dict[str, Any] = {"language": opening.language.split("-")[0]}
-        if settings.tts_model:
-            tts_options["model"] = settings.tts_model
-        if opening.voice or settings.tts_voice:
-            tts_options["voice"] = opening.voice or settings.tts_voice
-
+        speech = SpeechOptions(
+            stt_provider=settings.stt_provider,
+            tts_provider=settings.tts_provider,
+            stt_model=settings.stt_model,
+            stt_language=settings.stt_language,
+            tts_model=settings.tts_model,
+            tts_voice=opening.voice or settings.tts_voice,
+            tts_language=opening.language.split("-")[0],
+        )
         session: AgentSession[Any] = AgentSession(
-            stt=deepgram.STT(model=settings.stt_model, language=settings.stt_language),
-            tts=cartesia.TTS(**tts_options),
+            stt=build_stt(speech),
+            tts=build_tts(speech),
             vad=ctx.proc.userdata["vad"],
             llm=BackendLLM(backend),
+            turn_handling=turn_handling(settings),
+            user_away_timeout=settings.silence_timeout_seconds,
         )
         await ctx.connect()
         # The instructions are a placeholder: the backend builds the real prompt every turn.
@@ -106,20 +148,39 @@ async def entrypoint(ctx: JobContext) -> None:
             await backend.aclose()
         raise
 
+    silence = SilenceTracker(reprompts_before_hang_up=settings.silence_reprompts)
+
+    async def end_after_goodbye() -> None:
+        handle = session.say(settings.silence_goodbye_text, allow_interruptions=False)
+        await handle.wait_for_playout()
+        ctx.shutdown(reason="prospect_silent")
+
+    def on_user_state(event: Any) -> None:
+        action = silence.on_user_state(event.new_state)
+        if action == "reprompt":
+            session.say(settings.silence_reprompt_text)
+        elif action == "hang_up":
+            tasks.add(task := asyncio.create_task(end_after_goodbye()))
+            task.add_done_callback(tasks.discard)
+
+    tasks: set[asyncio.Task[None]] = set()
+    session.on("user_state_changed", on_user_state)
+
+    collector = TurnMetricsCollector()
+    session.on("conversation_item_added", lambda event: collector.add(event.item))
+
     async def on_shutdown(reason: str) -> None:
-        await _finish(session, backend, reason)
+        await _finish(session, backend, collector, reason)
 
     ctx.add_shutdown_callback(on_shutdown)
     session.on("close", lambda event: ctx.shutdown(reason=str(event.reason)))
     session.say(opening.greeting)
 
 
-REQUIRED_VENDOR_KEYS = ("DEEPGRAM_API_KEY", "CARTESIA_API_KEY")
-
-
 def main() -> None:
+    install_log_redaction()
     serving = len(sys.argv) > 1 and sys.argv[1] in ("start", "dev", "connect")
-    missing = [key for key in REQUIRED_VENDOR_KEYS if not os.environ.get(key)]
+    missing = missing_keys(settings.stt_provider, settings.tts_provider)
     if serving and missing:
         # A worker that cannot speak or listen must not accept calls.
         sys.exit(f"Refusing to start: set {', '.join(missing)}")

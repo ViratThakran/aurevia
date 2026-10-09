@@ -66,7 +66,10 @@ def test_deployed_environments_accept_complete_config(
     make_settings: SettingsFactory, environment: str
 ) -> None:
     settings = make_settings(
-        environment=environment, jwt_secret=TEST_JWT_SECRET, database_url=TEST_DATABASE_URL
+        environment=environment,
+        jwt_secret=TEST_JWT_SECRET,
+        database_url=TEST_DATABASE_URL,
+        gemini_api_key="gemini-test-key-0000000000",
     )
     assert settings.environment == environment
 
