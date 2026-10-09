@@ -17,7 +17,17 @@ from aurevia.providers.model import (
     ModelProvider,
     ModelProviderError,
     ModelRequest,
+    ModelResponse,
+    ToolSpec,
 )
+
+
+@dataclass(frozen=True)
+class GatewayEvent:
+    """A text delta, or (once, last) the final response, including any tool calls."""
+
+    delta: str = ""
+    final: ModelResponse | None = None
 
 
 class GatewayError(Exception):
@@ -41,6 +51,8 @@ class GenerationRecord:
     stop_reason: str | None = None
     provider_request_id: str | None = None
     completed: bool = False
+    # The model produced output (text or a tool call): no more fallback for this reply.
+    output_started: bool = False
     error: str | None = None
     # Every model tried, in order; more than one means the fallback policy was used.
     attempted_models: list[str] = field(default_factory=list)
@@ -124,6 +136,19 @@ class ModelGateway:
         messages: tuple[ModelMessage, ...],
         record: GenerationRecord,
     ) -> AsyncIterator[str]:
+        """Text-only convenience over :meth:`stream` (no tools)."""
+        async for event in self.stream(system=system, messages=messages, record=record):
+            if event.delta:
+                yield event.delta
+
+    async def stream(
+        self,
+        *,
+        system: str,
+        messages: tuple[ModelMessage, ...],
+        record: GenerationRecord,
+        tools: tuple[ToolSpec, ...] = (),
+    ) -> AsyncIterator[GatewayEvent]:
         """Yield text deltas. Raises ``GatewayError`` on timeout or provider failure.
 
         Explicit fallback: if a model times out, is unavailable or is rate limited *before its
@@ -144,14 +169,14 @@ class ModelGateway:
             record.attempted_models.append(model)
             record.error = None
             try:
-                async for delta in self._attempt(
-                    model, system, messages, record, started=started, deadline=deadline
+                async for event in self._attempt(
+                    model, system, messages, tools, record, started=started, deadline=deadline
                 ):
-                    yield delta
+                    yield event
             except GatewayError as exc:
-                if record.first_token_ms is None and exc.code in _FALLBACK_CODES:
+                if not record.output_started and exc.code in _FALLBACK_CODES:
                     self._breaker.failure(model, time.monotonic())
-                if is_last or record.first_token_ms is not None or exc.code not in _FALLBACK_CODES:
+                if is_last or record.output_started or exc.code not in _FALLBACK_CODES:
                     raise
                 if time.monotonic() >= deadline:
                     raise
@@ -164,15 +189,17 @@ class ModelGateway:
         model: str,
         system: str,
         messages: tuple[ModelMessage, ...],
+        tools: tuple[ToolSpec, ...],
         record: GenerationRecord,
         *,
         started: float,
         deadline: float,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[GatewayEvent]:
         request = ModelRequest(
             model=model,
             system=system,
             messages=messages,
+            tools=tools,
             max_tokens=self._max_tokens,
             timeout_seconds=max(deadline - time.monotonic(), 0.1),
             metadata=record.metadata,
@@ -181,7 +208,7 @@ class ModelGateway:
         events = aiter(self._provider.stream(request))
         try:
             while True:
-                limit = deadline if record.first_token_ms is not None else first_token_deadline
+                limit = deadline if record.output_started else first_token_deadline
                 try:
                     event = await asyncio.wait_for(
                         anext(events), timeout=max(limit - time.monotonic(), 0)
@@ -201,10 +228,13 @@ class ModelGateway:
                 if event.usage is not None:
                     record.input_tokens = event.usage.input_tokens
                     record.output_tokens = event.usage.output_tokens
+                if event.started:
+                    record.output_started = True
                 if event.delta:
+                    record.output_started = True
                     if record.first_token_ms is None:
                         record.first_token_ms = round((time.monotonic() - started) * 1000)
-                    yield event.delta
+                    yield GatewayEvent(delta=event.delta)
                 if event.final is not None:
                     final = event.final
                     record.served_model = final.model
@@ -213,6 +243,7 @@ class ModelGateway:
                     record.stop_reason = final.stop_reason
                     record.provider_request_id = final.provider_request_id
                     record.completed = True
+                    yield GatewayEvent(final=final)
         finally:
             await events.aclose()  # type: ignore[attr-defined]
 

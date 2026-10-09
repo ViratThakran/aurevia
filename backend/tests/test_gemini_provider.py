@@ -162,3 +162,89 @@ def test_thinking_config_per_model_family() -> None:
     assert thinking_config("gemini-2.5-flash", "low").thinking_budget == 0
     assert thinking_config("gemini-2.5-pro", "low").thinking_budget == 128
     assert thinking_config("gemini-2.5-flash", "high").thinking_budget == -1
+
+
+def test_tool_calls_and_signature_replay() -> None:
+    from aurevia.providers.model import ToolResult, ToolSpec
+
+    seen: list[httpx.Request] = []
+    call_chunk = _chunk(
+        [
+            {"text": "Let me check. "},
+            {
+                "functionCall": {"id": "fc1", "name": "get_available_slots", "args": {"days": 3}},
+                "thoughtSignature": "c2lnbmF0dXJlLWJ5dGVz",
+            },
+        ],
+        finishReason="STOP",
+        usageMetadata={"promptTokenCount": 50, "candidatesTokenCount": 9},
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, content=_sse(call_chunk)
+        )
+
+    provider = _provider(handler)
+    tools = (
+        ToolSpec(
+            name="get_available_slots",
+            description="List free times.",
+            parameters={"type": "object", "properties": {"days": {"type": "integer"}}},
+        ),
+    )
+    request = ModelRequest(
+        model="gemini-3.5-flash", system="s", messages=REQUEST.messages, max_tokens=256, tools=tools
+    )
+
+    async def collect(req: ModelRequest) -> list[ModelStreamEvent]:
+        return [e async for e in provider.stream(req)]
+
+    events = asyncio.run(collect(request))
+    assert any(e.started for e in events)
+    final = events[-1].final
+    assert final is not None
+    assert [(c.id, c.name, dict(c.arguments)) for c in final.tool_calls] == [
+        ("fc1", "get_available_slots", {"days": 3})
+    ]
+    body = json.loads(seen[0].content)
+    declaration = body["tools"][0]["functionDeclarations"][0]
+    assert declaration["name"] == "get_available_slots"
+
+    # The follow-up request replays the model turn unchanged and answers the call.
+    follow_up = ModelRequest(
+        model="gemini-3.5-flash",
+        system="s",
+        messages=(
+            *REQUEST.messages,
+            ModelMessage(
+                role="assistant",
+                content=final.text,
+                tool_calls=final.tool_calls,
+                provider_state=final.provider_state,
+            ),
+            ModelMessage(
+                role="user",
+                tool_results=(
+                    ToolResult(call_id="fc1", name="get_available_slots", content={"ok": True}),
+                ),
+            ),
+        ),
+        max_tokens=256,
+        tools=tools,
+    )
+    asyncio.run(collect(follow_up))
+    contents = json.loads(seen[1].content)["contents"]
+    replayed, answer = contents[-2], contents[-1]
+    assert replayed["role"] == "model"
+    signature_part = next(
+        p for p in replayed["parts"] if "functionCall" in p or "function_call" in p
+    )
+    assert signature_part.get("thoughtSignature") or signature_part.get("thought_signature")
+    response_part = answer["parts"][0]
+    function_response = response_part.get("functionResponse") or response_part.get(
+        "function_response"
+    )
+    assert function_response["name"] == "get_available_slots"
+    assert function_response["response"] == {"ok": True}

@@ -11,16 +11,25 @@ from aurevia.providers.model import (
     ModelResponse,
     ModelStreamEvent,
     ModelUsage,
+    ToolCall,
 )
 from aurevia.providers.speech import AudioChunk, STTConfig, TranscriptEvent, TTSConfig
 from aurevia.providers.telephony import CallHandle, CallStatus, OutboundCallRequest
 
 
+@dataclass(frozen=True)
+class FakeTurn:
+    """A scripted reply that asks for tools (and may say something first)."""
+
+    tool_calls: tuple[ToolCall, ...]
+    text: str = ""
+
+
 @dataclass
 class FakeModelProvider:
-    """Replies with scripted texts in order. Records every request it receives."""
+    """Replies with scripted texts (or FakeTurns) in order. Records every request."""
 
-    replies: list[str]
+    replies: list[str | FakeTurn]
     name: str = "fake-model"
     requests: list[ModelRequest] = field(default_factory=list)
 
@@ -28,9 +37,12 @@ class FakeModelProvider:
         self.requests.append(request)
         if not self.replies:
             raise RuntimeError("FakeModelProvider has no scripted reply left")
-        text = self.replies.pop(0)
+        reply = self.replies.pop(0)
+        text = reply.text if isinstance(reply, FakeTurn) else reply
+        calls = reply.tool_calls if isinstance(reply, FakeTurn) else ()
         return ModelResponse(
             text=text,
+            tool_calls=calls,
             model=request.model,
             usage=ModelUsage(
                 input_tokens=sum(len(m.content.split()) for m in request.messages),
@@ -47,8 +59,11 @@ class FakeModelProvider:
         yield ModelStreamEvent(
             usage=ModelUsage(input_tokens=response.usage.input_tokens, output_tokens=0)
         )
-        for word in response.text.split(" "):
-            yield ModelStreamEvent(delta=word + " ")
+        if response.text:
+            for word in response.text.split(" "):
+                yield ModelStreamEvent(delta=word + " ")
+        if response.tool_calls:
+            yield ModelStreamEvent(started=True)
         yield ModelStreamEvent(final=response)
 
     async def health(self) -> bool:

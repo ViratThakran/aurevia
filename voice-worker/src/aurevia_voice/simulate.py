@@ -47,6 +47,13 @@ SCENARIOS: dict[str, list[str]] = {
         "Can you just tell me in one sentence what this is?",
         "Call me back next week then.",
     ],
+    "booking": [
+        "Hi, yes, I was expecting a call about group health cover.",
+        "We have about forty staff and our renewal is in two months.",
+        "Sure, a meeting with your specialist sounds good. What times do you have?",
+        "The first time you mentioned works for me.",
+        "Great, thanks. Bye.",
+    ],
 }
 
 

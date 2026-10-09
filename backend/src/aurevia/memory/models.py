@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -23,6 +24,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aurevia.db.base import Base, Timestamps, UUIDPrimaryKey, one_of
@@ -31,6 +33,12 @@ from aurevia.db.base import Base, Timestamps, UUIDPrimaryKey, one_of
 class LeadStatus(StrEnum):
     ACTIVE = "active"
     ARCHIVED = "archived"
+
+
+class LeadInterest(StrEnum):
+    UNKNOWN = "unknown"
+    INTERESTED = "interested"
+    NOT_INTERESTED = "not_interested"
 
 
 class Speaker(StrEnum):
@@ -49,7 +57,10 @@ class MemoryKind(StrEnum):
 
 class Lead(UUIDPrimaryKey, Timestamps, Base):
     __tablename__ = "leads"
-    __table_args__ = (CheckConstraint(one_of("status", LeadStatus), name="status"),)
+    __table_args__ = (
+        CheckConstraint(one_of("status", LeadStatus), name="status"),
+        CheckConstraint(one_of("interest", LeadInterest), name="interest"),
+    )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("tenants.id", ondelete="CASCADE"), index=True
@@ -59,6 +70,10 @@ class Lead(UUIDPrimaryKey, Timestamps, Base):
     email: Mapped[str | None] = mapped_column(String(320))
     company: Mapped[str | None] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(20), default=LeadStatus.ACTIVE)
+    # Set only by validated sales tools (Phase 5).
+    interest: Mapped[str] = mapped_column(String(20), default=LeadInterest.UNKNOWN)
+    interest_reason: Mapped[str | None] = mapped_column(String(500))
+    qualification: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
 
 class ConversationMessage(UUIDPrimaryKey, Base):

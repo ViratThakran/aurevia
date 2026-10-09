@@ -1,17 +1,18 @@
 """System prompt assembly for a voice sales turn.
 
-The prompt is built only from the tenant's validated agent configuration and the server-owned
-sales state. Nothing the caller says is ever placed in the system prompt.
+The prompt is built only from the tenant's validated agent configuration, the server-owned
+sales state and server-held lead data. Nothing the caller says is placed in the system prompt
+except remembered facts, which are flattened and explicitly framed as notes, not instructions.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from aurevia.sales.state import STATE_GOALS, SalesState
 
-PROMPT_VERSION = "voice-2026-10-09.1"
+PROMPT_VERSION = "voice-2026-10-09.3"
 
 
 @dataclass(frozen=True)
@@ -29,11 +30,23 @@ class RememberedFact:
     fact: str
 
 
+@dataclass(frozen=True)
+class PromptContext:
+    memories: Sequence[RememberedFact] = field(default_factory=tuple)
+    prospect_name: str | None = None
+    prospect_company: str | None = None
+    now_spoken: str | None = None  # e.g. "Friday 9 October 2026, 3:40 PM (Asia/Kolkata)"
+
+
+def _flat(text: str, limit: int) -> str:
+    return " ".join(text.split())[:limit]
+
+
 def _notes(facts: Sequence[RememberedFact]) -> str:
     if not facts:
         return ""
     # One line per fact, newlines removed: a fact can never open a new prompt section.
-    lines = "\n".join(f"- ({f.kind}) {' '.join(f.fact.split())[:300]}" for f in facts)
+    lines = "\n".join(f"- ({f.kind}) {_flat(f.fact, 300)}" for f in facts)
     return f"""
 
 # Notes from earlier calls with this prospect
@@ -42,9 +55,39 @@ them out as a list), and if the prospect says something has changed, go with wha
 {lines}"""
 
 
+def _actions(company: str, tools_enabled: bool) -> str:
+    if not tools_enabled:
+        return (
+            "- You cannot book meetings, send emails or change any records during this call. "
+            "Never say you have done any of these; offer that a colleague will follow up instead."
+        )
+    return (
+        "- You can record information and book meetings only by using your tools. Never say "
+        "something is booked, scheduled, saved or arranged unless the tool result says ok is "
+        "true. If a tool result is not ok, say plainly that it did not work and offer an "
+        "alternative, such as another time or a colleague following up.\n"
+        "- Before offering meeting times, look them up with get_available_slots; never guess.\n"
+        "- When you only record something (stage, qualification, interest, objection, note, "
+        "handoff), say your reply to the prospect in the same response as the tool call.\n"
+        f"- You cannot send emails or messages yourself; a colleague at {company} does that."
+    )
+
+
 def build_system_prompt(
-    agent: AgentProfile, state: SalesState, memories: Sequence[RememberedFact] = ()
+    agent: AgentProfile,
+    state: SalesState,
+    context: PromptContext | None = None,
+    *,
+    tools_enabled: bool = False,
 ) -> str:
+    ctx = context or PromptContext()
+    prospect = ""
+    if ctx.prospect_name:
+        who = _flat(ctx.prospect_name, 100)
+        if ctx.prospect_company:
+            who += f" of {_flat(ctx.prospect_company, 100)}"
+        prospect = f"\n\n# Who you are calling\n{who}"
+    now = f"\n\n# Current time\n{ctx.now_spoken}" if ctx.now_spoken else ""
     return f"""You are {agent.name}, calling on behalf of {agent.company_name}. You are on a live \
 voice call: everything you write is spoken aloud by a text-to-speech voice.
 
@@ -55,13 +98,12 @@ assistant for {agent.company_name}, then carry on helpfully.
 - Talk about {agent.company_name} only using the information in "About the company" below. \
 If you do not know something, say so and offer to have a colleague follow up. Never invent \
 prices, features, clients, dates or guarantees.
-- You cannot book meetings, send emails or change any records during this call. Never say \
-you have done any of these; offer that a colleague will follow up instead.
+{_actions(agent.company_name, tools_enabled)}
 
 # How to speak
 - Keep each reply to one to three short sentences, then let the prospect talk.
 - Plain conversational sentences only: no lists, headings, markdown, emoji or URLs.
-- Say numbers the way a person would say them aloud.
+- Say numbers, dates and times the way a person would say them aloud.
 - Respond to what the prospect means and how they feel, not only to their literal words. If \
 they sound busy, annoyed or uninterested, acknowledge it and offer to end the call or call back.
 - Reply in the language the prospect uses; default to {agent.language}.
@@ -70,7 +112,7 @@ they sound busy, annoyed or uninterested, acknowledge it and offer to end the ca
 {agent.company_description}
 
 # Goal of this call
-{agent.objective}
+{agent.objective}{prospect}{now}
 
 # Right now
-{STATE_GOALS[state]}{_notes(memories)}"""
+{STATE_GOALS[state]}{_notes(ctx.memories)}"""
