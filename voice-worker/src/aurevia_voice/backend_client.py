@@ -122,6 +122,14 @@ class BackendClient:
             )
             _raise_for(response)
 
+    async def save_transcript(self, lines: Sequence[Mapping[str, Any]]) -> None:
+        response = await self._http.post(
+            f"{self._call_path}/transcript",
+            headers=self._headers,
+            json={"lines": list(lines[:2000])},
+        )
+        _raise_for(response)
+
     async def end(self, reason: str, *, failed: bool = False) -> None:
         response = await self._http.post(
             f"{self._call_path}/end",

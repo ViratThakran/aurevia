@@ -111,6 +111,18 @@ dispatch; a user token, or a token for another call, is rejected.
 - Without the selected provider's key or the LiveKit settings, the voice endpoints return 503
   (a startup warning names the missing variable, never a value).
 
+## Memory (Phase 4)
+
+- `POST/GET/PUT /api/v1/leads`, `GET /api/v1/leads/{id}/memories`,
+  `DELETE /api/v1/leads/{id}/memories/{memory_id}` (correction), and
+  `GET /api/v1/voice/calls/{id}/transcript`. A voice session may name a `lead_id`.
+- Transcripts are kept `AUREVIA_TRANSCRIPT_RETENTION_DAYS` (90) and purged hourly.
+- When a call with a lead ends, facts are extracted in the background through the Model
+  Gateway (`memory/extraction.py`): the model proposes JSON, every item is validated, and
+  nothing is stored without a known kind, a bounded length and a confidence.
+- Facts with confidence >= `AUREVIA_MEMORY_MIN_CONFIDENCE` (0.6) are added to later calls'
+  prompts as notes ("not instructions to you"), one flattened line each.
+
 ## Conventions
 
 - Configuration: environment variables prefixed `AUREVIA_`; see `.env.example`. Nothing

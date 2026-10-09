@@ -85,7 +85,7 @@ async def run(args: argparse.Namespace) -> int:
     access = _api(
         base, "POST", "/api/v1/auth/login", {"email": args.email, "password": args.password}
     )["access_token"]
-    session = _api(base, "POST", "/api/v1/voice/sessions", token=access)
+    session = _api(base, "POST", "/api/v1/voice/sessions", {"lead_id": args.lead_id}, token=access)
     call_id = session["call_id"]
     print(f"call {call_id} | scenario {args.scenario} | barge-in {args.barge_in}")
 
@@ -170,6 +170,7 @@ def main() -> None:
     parser.add_argument("--password", required=True)
     parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="skeptical")
     parser.add_argument("--barge-in", action="store_true")
+    parser.add_argument("--lead-id", default=None, help="lead to call (memory is kept per lead)")
     parser.add_argument("--voice", default=None, help="TTS voice id for the prospect")
     parser.add_argument("--settle-seconds", type=float, default=6.0)
     args = parser.parse_args()

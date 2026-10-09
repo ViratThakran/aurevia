@@ -11,6 +11,8 @@ from sqlalchemy import case, func, select
 
 from aurevia.errors import ServiceUnavailableError
 from aurevia.identity.dependencies import AdminDep, PrincipalDep, SessionDep, SettingsDep
+from aurevia.memory.schemas import TranscriptLine, TranscriptResponse
+from aurevia.memory.service import LeadService, TranscriptService
 from aurevia.providers.voice_transport import VoiceTransport
 from aurevia.usage.models import UsageEvent, UsageKind
 from aurevia.voice.call_auth import create_call_token
@@ -21,6 +23,7 @@ from aurevia.voice.schemas import (
     CallResponse,
     CallUsage,
     LatencyResponse,
+    VoiceSessionRequest,
     VoiceSessionResponse,
 )
 from aurevia.voice.service import AgentService, AgentSettings, CallService
@@ -81,13 +84,20 @@ async def update_default_agent(
     summary="Start a browser voice call with the default agent",
 )
 async def create_voice_session(
-    request: Request, principal: PrincipalDep, session: SessionDep, settings: SettingsDep
+    request: Request,
+    principal: PrincipalDep,
+    session: SessionDep,
+    settings: SettingsDep,
+    body: VoiceSessionRequest | None = None,
 ) -> VoiceSessionResponse:
     transport = _transport(request)
     assert settings.jwt_secret is not None  # noqa: S101 - authenticated requests imply it
+    lead_id = body.lead_id if body else None
+    if lead_id is not None:
+        await LeadService(session, principal.tenant_id).get(lead_id)  # 404 if not this tenant's
     agent = await AgentService(session, principal.tenant_id).default_agent()
     call = await CallService(session, principal.tenant_id).create_browser_call(
-        agent=agent, user_id=principal.user_id
+        agent=agent, user_id=principal.user_id, lead_id=lead_id
     )
     await session.commit()
 
@@ -112,6 +122,18 @@ async def create_voice_session(
             name="Prospect",
             ttl_seconds=PARTICIPANT_TOKEN_TTL_SECONDS,
         ),
+    )
+
+
+@router.get("/voice/calls/{call_id}/transcript", summary="What was said (until it expires)")
+async def get_transcript(
+    call_id: uuid.UUID, principal: PrincipalDep, session: SessionDep
+) -> TranscriptResponse:
+    await CallService(session, principal.tenant_id).get(call_id)  # 404 if not this tenant's
+    lines = await TranscriptService(session, principal.tenant_id).for_call(call_id)
+    return TranscriptResponse(
+        call_id=call_id,
+        lines=[TranscriptLine(seq=ln.seq, speaker=ln.speaker.value, text=ln.text) for ln in lines],
     )
 
 

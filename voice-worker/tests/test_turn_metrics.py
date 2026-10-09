@@ -111,3 +111,17 @@ def test_silence_reprompts_then_hangs_up_and_speech_resets() -> None:
 
     immediate = SilenceTracker(reprompts_before_hang_up=0)
     assert immediate.on_user_state("away") == "hang_up"
+
+
+def test_transcript_collects_spoken_text_in_order() -> None:
+    from aurevia_voice.transcript import TranscriptCollector
+
+    collector = TranscriptCollector()
+    collector.add(_message("assistant", {}))  # "what was said is never collected" content
+    collector.add(llm.ChatMessage(role="user", content=["  hello there  "]))
+    collector.add(llm.ChatMessage(role="user", content=[""]))  # empty: skipped
+    collector.add(llm.ChatMessage(role="system", content=["instructions"]))  # skipped
+    assert collector.lines == [
+        {"seq": 0, "speaker": "agent", "text": "what was said is never collected"},
+        {"seq": 1, "speaker": "prospect", "text": "hello there"},
+    ]

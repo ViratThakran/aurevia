@@ -77,6 +77,10 @@ class Call(UUIDPrimaryKey, Timestamps, Base):
         ForeignKey("tenants.id", ondelete="CASCADE"), index=True
     )
     agent_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("agents.id", ondelete="RESTRICT"))
+    # The prospect being called (Phase 4). Optional: ad-hoc test calls may have no lead.
+    lead_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("leads.id", ondelete="SET NULL"), index=True
+    )
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL")
     )

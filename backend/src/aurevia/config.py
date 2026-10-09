@@ -91,6 +91,14 @@ class Settings(BaseSettings):
     # by default. The usage record shows every model attempted and the one that answered.
     llm_fallback_models: list[str] = Field(default_factory=list, max_length=3)
 
+    # --- Memory (Phase 4) ---
+    # Full transcripts are deleted this many days after they are written (DPDP data
+    # minimisation); extracted lead facts are kept separately until removed.
+    transcript_retention_days: int = Field(default=90, ge=1, le=3650)
+    # Facts below this confidence are stored but never shown to the model on later calls.
+    memory_min_confidence: float = Field(default=0.6, ge=0, le=1)
+    memory_max_facts_in_prompt: int = Field(default=12, ge=0, le=50)
+
     # --- Voice transport: LiveKit (Phase 2) ---
     livekit_url: str | None = None  # server-to-server, e.g. http://livekit:7880
     livekit_public_url: str | None = None  # what browsers connect to, e.g. ws://localhost:7880

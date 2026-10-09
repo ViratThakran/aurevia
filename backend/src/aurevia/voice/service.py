@@ -111,12 +111,15 @@ class CallService:
         self._session = session
         self._tenant_id = tenant_id
 
-    async def create_browser_call(self, *, agent: Agent, user_id: uuid.UUID) -> Call:
+    async def create_browser_call(
+        self, *, agent: Agent, user_id: uuid.UUID, lead_id: uuid.UUID | None = None
+    ) -> Call:
         call_id = uuid.uuid4()
         call = Call(
             id=call_id,
             tenant_id=self._tenant_id,
             agent_id=agent.id,
+            lead_id=lead_id,
             created_by_user_id=user_id,
             channel=CallChannel.BROWSER,
             status=CallStatus.CREATED,

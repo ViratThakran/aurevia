@@ -40,6 +40,7 @@ from aurevia_voice.speech_providers import (
     load_vad,
     missing_keys,
 )
+from aurevia_voice.transcript import TranscriptCollector
 from aurevia_voice.turn_metrics import TurnMetricsCollector
 
 logger = logging.getLogger("aurevia.voice")
@@ -60,11 +61,14 @@ async def _finish(
     session: AgentSession[Any],
     backend: BackendClient,
     collector: TurnMetricsCollector,
+    transcript: TranscriptCollector,
     reason: str,
 ) -> None:
     try:
         if collector.turns:
             await backend.report_turn_metrics(collector.turns)
+        if transcript.lines:
+            await backend.save_transcript(transcript.lines)
         for usage in session.usage.model_usage:
             if isinstance(usage, STTModelUsage):
                 await backend.report_usage(
@@ -167,10 +171,16 @@ async def entrypoint(ctx: JobContext) -> None:
     session.on("user_state_changed", on_user_state)
 
     collector = TurnMetricsCollector()
-    session.on("conversation_item_added", lambda event: collector.add(event.item))
+    transcript = TranscriptCollector()
+
+    def on_item(event: Any) -> None:
+        collector.add(event.item)
+        transcript.add(event.item)
+
+    session.on("conversation_item_added", on_item)
 
     async def on_shutdown(reason: str) -> None:
-        await _finish(session, backend, collector, reason)
+        await _finish(session, backend, collector, transcript, reason)
 
     ctx.add_shutdown_callback(on_shutdown)
     session.on("close", lambda event: ctx.shutdown(reason=str(event.reason)))

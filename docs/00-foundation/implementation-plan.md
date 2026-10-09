@@ -30,6 +30,11 @@ key is available (planned: Anthropic); development continues with Phase 4.
 Transcript persistence, post-call fact extraction, durable lead facts, retrieval, confidence,
 correction/deletion, tenant-safe memory.
 Gate: a second call recalls the first, tenant-safe.
+Status (2026-10-09): built. Leads; calls linked to a lead; transcripts kept 90 days
+(`transcript_retention_days`) then purged by `purge_expired_transcripts()`; post-call fact
+extraction (validated JSON, provenance + confidence) into `lead_memories`; confident facts are
+added to later calls' prompts as notes, never instructions; facts can be deleted (correction).
+Gate met in integration tests and verified live with Gemini.
 
 ## Phase 5 — Sales Tools
 Tool framework, qualification, lead updates, objections, follow-ups, calendar slots and

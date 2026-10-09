@@ -5,6 +5,7 @@ Run with: ``uvicorn aurevia.main:create_app --factory``
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -21,6 +22,7 @@ from aurevia.db.session import Database
 from aurevia.errors import register_exception_handlers
 from aurevia.gateway import ModelGateway
 from aurevia.logging import configure_logging
+from aurevia.memory.jobs import retention_loop
 from aurevia.middleware import RequestContextMiddleware
 from aurevia.providers.registry import (
     ClosableModelProvider,
@@ -31,6 +33,7 @@ from aurevia.providers.voice_transport import LiveKitTransport
 
 API_V1_PREFIX = "/api/v1"
 INTERNAL_PREFIX = "/internal/v1"
+RETENTION_INTERVAL_SECONDS = 3600  # transcript purge cadence
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +66,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         "Aurevia starting",
         extra={"fields": {"environment": settings.environment, "version": __version__}},
     )
+    retention: asyncio.Task[None] | None = None
     if database is not None:
         await _check_database_role(database, settings)
+        if settings.environment != "test":
+            retention = asyncio.create_task(retention_loop(database, RETENTION_INTERVAL_SECONDS))
     try:
         yield
     finally:
+        if retention is not None:
+            retention.cancel()
         provider: ClosableModelProvider | None = app.state.model_provider
         if provider is not None:
             await provider.aclose()

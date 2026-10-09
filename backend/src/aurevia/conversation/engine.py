@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from aurevia.conversation.prompt import AgentProfile, build_system_prompt
+from aurevia.conversation.prompt import AgentProfile, RememberedFact, build_system_prompt
 from aurevia.gateway import GenerationRecord, ModelGateway
 from aurevia.providers.model import ModelMessage
 from aurevia.sales.state import SalesState
@@ -51,9 +51,10 @@ class ConversationEngine:
         state: SalesState,
         history: Sequence[Utterance],
         record: GenerationRecord,
+        memories: Sequence[RememberedFact] = (),
     ) -> AsyncIterator[str]:
         return self._gateway.stream_text(
-            system=build_system_prompt(agent, state),
+            system=build_system_prompt(agent, state, memories),
             messages=to_model_messages(history),
             record=record,
         )
