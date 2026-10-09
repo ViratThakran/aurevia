@@ -145,3 +145,60 @@ def test_backend_llm_surfaces_non_retryable_errors() -> None:
 
     with pytest.raises(APIStatusError):
         asyncio.run(run())
+
+
+def test_only_an_answered_phone_line_counts_as_answered() -> None:
+    from types import SimpleNamespace
+
+    from livekit import rtc
+
+    from aurevia_voice.phone import is_answered_phone
+
+    sip = rtc.ParticipantKind.PARTICIPANT_KIND_SIP
+    standard = rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
+    assert is_answered_phone(SimpleNamespace(kind=sip, attributes={"sip.callStatus": "active"}))
+    for status in ("dialing", "ringing", "hangup", ""):
+        line = SimpleNamespace(kind=sip, attributes={"sip.callStatus": status})
+        assert not is_answered_phone(line)
+    browser = SimpleNamespace(kind=standard, attributes={"sip.callStatus": "active"})
+    assert not is_answered_phone(browser)
+
+
+def test_waiting_for_an_answer_ends_when_the_room_closes_or_the_phone_is_answered() -> None:
+    import asyncio
+    from types import SimpleNamespace
+    from typing import Any
+
+    from livekit import rtc
+
+    from aurevia_voice.phone import wait_for_answer
+
+    class FakeRoom:
+        def __init__(self) -> None:
+            self.handlers: dict[str, Any] = {}
+            self.remote_participants: dict[str, Any] = {}
+
+        def on(self, event: str, callback: Any) -> None:
+            self.handlers[event] = callback
+
+        def off(self, event: str, callback: Any) -> None:
+            self.handlers.pop(event, None)
+
+    async def scenario(trigger: str) -> bool:
+        room = FakeRoom()
+        waiting = asyncio.create_task(wait_for_answer(room, 5))  # type: ignore[arg-type]
+        await asyncio.sleep(0)
+        if trigger == "closed":
+            room.handlers["disconnected"]("room_deleted")
+        else:
+            line = SimpleNamespace(
+                kind=rtc.ParticipantKind.PARTICIPANT_KIND_SIP,
+                attributes={"sip.callStatus": "active"},
+            )
+            room.handlers["participant_attributes_changed"]({"sip.callStatus": "active"}, line)
+        result = await waiting
+        assert room.handlers == {}  # listeners removed
+        return result
+
+    assert asyncio.run(scenario("answered")) is True
+    assert asyncio.run(scenario("closed")) is False

@@ -106,6 +106,19 @@ class Settings(BaseSettings):
     livekit_api_secret: SecretStr | None = None
     livekit_agent_name: str = "aurevia-voice"
 
+    # --- Telephony + compliance gate (Phase 6) ---
+    # "test" dials only the tenant's registered test numbers. "live" also needs a policy pack
+    # reviewed by counsel; until then the gate blocks every live call.
+    telephony_mode: Literal["test", "live"] = "test"
+    # Phone calls are enabled only when a provider and its outbound trunk are configured.
+    telephony_provider: Literal["livekit_sip"] | None = None
+    livekit_sip_outbound_trunk_id: str | None = Field(default=None, max_length=100)
+    # Rooms created by the inbound SIP dispatch rule start with this prefix.
+    inbound_room_prefix: str = Field(default="aurevia-in-", min_length=3, max_length=40)
+    compliance_policy_pack: Literal["india"] = "india"
+    ring_timeout_seconds: int = Field(default=40, ge=10, le=120)
+    max_test_numbers: int = Field(default=5, ge=1, le=20)
+
     @field_validator("log_level", mode="before")
     @classmethod
     def _normalize_log_level(cls, value: Any) -> Any:
@@ -120,6 +133,8 @@ class Settings(BaseSettings):
         "livekit_api_secret",
         "llm_model",
         "llm_fallback_policy",
+        "telephony_provider",
+        "livekit_sip_outbound_trunk_id",
         mode="before",
     )
     @classmethod

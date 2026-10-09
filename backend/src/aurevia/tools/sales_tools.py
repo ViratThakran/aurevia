@@ -11,6 +11,9 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
+from aurevia.compliance.models import DoNotCallReason
+from aurevia.compliance.phone import normalize_e164
+from aurevia.compliance.service import DoNotCallService
 from aurevia.memory.models import Lead, LeadInterest
 from aurevia.sales.models import (
     Appointment,
@@ -370,6 +373,42 @@ class FlagForHandoff(Tool[HandoffArgs]):
         return ToolOutcome.ok("A colleague has been asked to follow up personally.")
 
 
+# --- Compliance (Phase 6) ------------------------------------------------------------------
+
+
+class DoNotCallArgs(_Args):
+    note: str | None = Field(default=None, max_length=300)
+
+
+class RequestDoNotCall(Tool[DoNotCallArgs]):
+    name = "request_do_not_call"
+    description = (
+        "The prospect asked not to be called again. Adds their number to the do-not-call list; "
+        "after this, no call to that number is ever placed. Use it whenever they ask, even "
+        "politely or in passing."
+    )
+    args_model = DoNotCallArgs
+    requires_lead = False
+    record_only = True
+
+    async def run(self, ctx: ToolContext, args: DoNotCallArgs) -> ToolOutcome:
+        call = ctx.call
+        # The line actually in use: the number we dialed, or the number that called us.
+        phone = call.to_number if call.direction == "outbound" else call.from_number
+        if phone is None and ctx.lead is not None:
+            phone = normalize_e164(ctx.lead.phone)
+        if phone is None:
+            return ToolOutcome.rejected(
+                "no_phone_number",
+                "There is no phone number for this conversation; a colleague will make sure "
+                "they are not contacted.",
+            )
+        await DoNotCallService(ctx.session, ctx.tenant_id).add(
+            phone, DoNotCallReason.PROSPECT_REQUEST, note=args.note, source_call_id=call.id
+        )
+        return ToolOutcome.ok("Their number will not be called again.")
+
+
 def default_registry() -> ToolRegistry:
     return ToolRegistry(
         [
@@ -384,5 +423,6 @@ def default_registry() -> ToolRegistry:
             BookMeeting(),
             CancelMeeting(),
             FlagForHandoff(),
+            RequestDoNotCall(),
         ]
     )

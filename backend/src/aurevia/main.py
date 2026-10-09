@@ -9,6 +9,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +18,7 @@ from aurevia import __version__
 from aurevia.api.health import router as liveness_router
 from aurevia.api.internal import internal_router
 from aurevia.api.v1.router import api_v1_router
+from aurevia.api.webhooks import router as webhooks_router
 from aurevia.config import DEPLOYED_ENVIRONMENTS, Settings, get_settings
 from aurevia.db.session import Database
 from aurevia.errors import register_exception_handlers
@@ -24,6 +26,8 @@ from aurevia.gateway import ModelGateway
 from aurevia.logging import configure_logging
 from aurevia.memory.jobs import retention_loop
 from aurevia.middleware import RequestContextMiddleware
+from aurevia.providers.dnd import UnconfiguredDndRegistry
+from aurevia.providers.livekit_sip import LiveKitSipTelephony
 from aurevia.providers.registry import (
     ClosableModelProvider,
     build_model_provider,
@@ -134,6 +138,24 @@ def _build_voice_transport(settings: Settings) -> LiveKitTransport | None:
     )
 
 
+def _build_telephony(settings: Settings) -> LiveKitSipTelephony | None:
+    if settings.telephony_provider != "livekit_sip" or not settings.voice_configured:
+        return None
+    if not settings.livekit_sip_outbound_trunk_id:
+        logger.warning("Phone calls disabled: set AUREVIA_LIVEKIT_SIP_OUTBOUND_TRUNK_ID")
+        return None
+    assert settings.livekit_url and settings.livekit_api_key  # noqa: S101 - voice_configured
+    assert settings.livekit_api_secret  # noqa: S101
+    if settings.telephony_mode == "live":
+        logger.warning("Telephony is in live mode; the gate still blocks unreviewed policy packs")
+    return LiveKitSipTelephony(
+        url=settings.livekit_url,
+        api_key=settings.livekit_api_key,
+        api_secret=settings.livekit_api_secret.get_secret_value(),
+        outbound_trunk_id=settings.livekit_sip_outbound_trunk_id,
+    )
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(
@@ -165,6 +187,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     model = _build_model_gateway(settings)
     app.state.model_provider, app.state.model_gateway = model if model else (None, None)
     app.state.voice_transport = _build_voice_transport(settings)
+    app.state.telephony = _build_telephony(settings)
+    # No national DND registry is integrated yet: every lookup answers "unknown", which the
+    # policy pack treats as a block for anyone but the tenant's own test numbers.
+    app.state.dnd_registry = UnconfiguredDndRegistry()
+    # The time compliance decisions are taken at; tests pin it (calling windows).
+    app.state.clock = lambda: datetime.now(UTC)
 
     app.add_middleware(RequestContextMiddleware)
     if settings.cors_origins:
@@ -179,4 +207,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(liveness_router)
     app.include_router(api_v1_router, prefix=API_V1_PREFIX)
     app.include_router(internal_router, prefix=INTERNAL_PREFIX)
+    app.include_router(webhooks_router)
     return app

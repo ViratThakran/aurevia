@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import itertools
+import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from datetime import datetime
 
+from aurevia.providers.dnd import DndLookup, DndStatus
 from aurevia.providers.model import (
     ModelRequest,
     ModelResponse,
@@ -14,7 +17,8 @@ from aurevia.providers.model import (
     ToolCall,
 )
 from aurevia.providers.speech import AudioChunk, STTConfig, TranscriptEvent, TTSConfig
-from aurevia.providers.telephony import CallHandle, CallStatus, OutboundCallRequest
+from aurevia.providers.telephony import AnsweredCall, DialError, OutboundCallRequest
+from aurevia.providers.voice_transport import InvalidWebhookError, TransportEvent
 
 
 @dataclass(frozen=True)
@@ -106,17 +110,38 @@ class FakeTTSProvider:
 
 @dataclass
 class FakeTelephonyProvider:
+    """Answers every call unless a ``DialError`` is queued in ``failures``."""
+
     name: str = "fake-telephony"
     placed: list[OutboundCallRequest] = field(default_factory=list)
-    hung_up: list[str] = field(default_factory=list)
+    failures: list[DialError] = field(default_factory=list)
     _ids: itertools.count[int] = field(default_factory=lambda: itertools.count(1))
 
-    async def place_call(self, request: OutboundCallRequest) -> CallHandle:
+    async def place_call(self, request: OutboundCallRequest) -> AnsweredCall:
         self.placed.append(request)
-        return CallHandle(provider_call_id=f"fake-call-{next(self._ids)}", status=CallStatus.QUEUED)
+        if self.failures:
+            raise self.failures.pop(0)
+        return AnsweredCall(provider_call_id=f"fake-call-{next(self._ids)}")
 
-    async def hang_up(self, provider_call_id: str) -> None:
-        self.hung_up.append(provider_call_id)
+
+@dataclass
+class FakeDndRegistry:
+    """Numbers in ``registered`` are on the DND list; ``unknown`` ones cannot be checked."""
+
+    name: str = "fake-dnd"
+    registered: set[str] = field(default_factory=set)
+    unknown: set[str] = field(default_factory=set)
+    lookups: list[str] = field(default_factory=list)
+
+    async def lookup(self, e164: str, *, now: datetime) -> DndLookup:
+        self.lookups.append(e164)
+        if e164 in self.unknown:
+            status = DndStatus.UNKNOWN
+        elif e164 in self.registered:
+            status = DndStatus.REGISTERED
+        else:
+            status = DndStatus.NOT_REGISTERED
+        return DndLookup(status=status, source=self.name, checked_at=now)
 
 
 @dataclass
@@ -131,3 +156,25 @@ class FakeVoiceTransport:
 
     async def open_room_with_agent(self, *, room: str, agent_name: str, metadata: str) -> None:
         self.rooms.append((room, agent_name, metadata))
+
+    dispatches: list[tuple[str, str, str]] = field(default_factory=list)
+    closed: list[str] = field(default_factory=list)
+
+    async def dispatch_agent(self, *, room: str, agent_name: str, metadata: str) -> None:
+        self.dispatches.append((room, agent_name, metadata))
+
+    async def close_room(self, room: str) -> None:
+        self.closed.append(room)
+
+    def parse_webhook(self, body: str, authorization: str) -> TransportEvent:
+        """Accepts JSON bodies authorized with the literal ``signed``."""
+        if authorization != "signed":
+            raise InvalidWebhookError("invalid webhook")
+        data = json.loads(body)
+        return TransportEvent(
+            kind=data["kind"],
+            room=data["room"],
+            participant_identity=data.get("identity", ""),
+            is_phone=data.get("is_phone", False),
+            attributes=data.get("attributes", {}),
+        )

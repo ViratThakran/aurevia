@@ -35,6 +35,21 @@ class CallStatus(StrEnum):
     FAILED = "failed"
 
 
+class CallDirection(StrEnum):
+    OUTBOUND = "outbound"
+    INBOUND = "inbound"
+
+
+class DialStatus(StrEnum):
+    """Phone leg only. ``answered`` is the only state in which the agent speaks."""
+
+    QUEUED = "queued"
+    ANSWERED = "answered"
+    NO_ANSWER = "no_answer"
+    BUSY = "busy"
+    FAILED = "failed"
+
+
 class Agent(UUIDPrimaryKey, Timestamps, Base):
     """A tenant's AI sales agent: who it is, what it sells, how it opens a call.
 
@@ -71,6 +86,18 @@ class Call(UUIDPrimaryKey, Timestamps, Base):
         CheckConstraint(one_of("channel", CallChannel), name="channel"),
         CheckConstraint(one_of("status", CallStatus), name="status"),
         CheckConstraint(one_of("sales_state", SalesState), name="sales_state"),
+        CheckConstraint(
+            f"direction IS NULL OR {one_of('direction', CallDirection)}", name="direction"
+        ),
+        CheckConstraint(
+            f"dial_status IS NULL OR {one_of('dial_status', DialStatus)}", name="dial_status"
+        ),
+        # A phone call placed by us always carries the gate decision that allowed it.
+        CheckConstraint(
+            "direction IS DISTINCT FROM 'outbound' OR compliance_decision_id IS NOT NULL",
+            name="outbound_has_decision",
+        ),
+        Index("ix_calls_tenant_to_number_created", "tenant_id", "to_number", "created_at"),
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
@@ -92,3 +119,16 @@ class Call(UUIDPrimaryKey, Timestamps, Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     end_reason: Mapped[str | None] = mapped_column(String(100))
+    # Phone calls (Phase 6); all NULL for browser calls.
+    direction: Mapped[str | None] = mapped_column(String(10))
+    to_number: Mapped[str | None] = mapped_column(String(20))
+    from_number: Mapped[str | None] = mapped_column(String(20))
+    dial_status: Mapped[str | None] = mapped_column(String(20))
+    provider_call_id: Mapped[str | None] = mapped_column(String(100))
+    # One decision allows exactly one call.
+    compliance_decision_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("compliance_decisions.id", ondelete="RESTRICT"), unique=True
+    )
+    phone_number_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("phone_numbers.id", ondelete="SET NULL")
+    )

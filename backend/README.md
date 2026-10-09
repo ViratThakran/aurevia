@@ -124,6 +124,22 @@ dispatch; a user token, or a token for another call, is rejected.
 - Facts with confidence >= `AUREVIA_MEMORY_MIN_CONFIDENCE` (0.6) are added to later calls'
   prompts as notes ("not instructions to you"), one flattened line each.
 
+## Phone calls and the compliance gate (Phase 6)
+
+- `POST /api/v1/calls/outbound {lead_id, purpose}`: the gate (`compliance/gate.py`) checks
+  the call and records a decision either way; blocked calls return 403 `call_blocked` with
+  the decision id and reasons. Allowed calls are dialed in the background through LiveKit SIP
+  (`providers/livekit_sip.py`).
+- Numbers: `/api/v1/telephony/numbers` (caller ids / inbound lines) and
+  `/api/v1/telephony/test-numbers` (your own phones; test mode dials only these). Owners and
+  admins can change them.
+- Consent: `/api/v1/leads/{id}/consents` (+ `/revoke`). Do-not-call: `/api/v1/do-not-call`.
+  Decisions: `/api/v1/compliance/decisions`.
+- `POST /webhooks/livekit` (signed by LiveKit) handles inbound calls and closes calls whose
+  room ended.
+- Off until `AUREVIA_TELEPHONY_PROVIDER=livekit_sip` and the trunk id are set. See
+  docs/02-voice/telephony.md.
+
 ## Sales tools (Phase 5)
 
 - The model gets native function-calling tools (`tools/sales_tools.py`); the backend runs the

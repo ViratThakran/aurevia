@@ -22,17 +22,19 @@ from aurevia.providers.speech import (
     TTSProvider,
 )
 from aurevia.providers.telephony import (
-    CallHandle,
-    CallStatus,
+    AnsweredCall,
+    DialError,
+    DialFailure,
     OutboundCallRequest,
     TelephonyProvider,
 )
 
 __all__ = [
+    "AnsweredCall",
     "AudioChunk",
     "AudioFormat",
-    "CallHandle",
-    "CallStatus",
+    "DialError",
+    "DialFailure",
     "ModelMessage",
     "ModelProvider",
     "ModelRequest",

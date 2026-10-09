@@ -17,6 +17,12 @@ Telecom requirements can change; production implementation must verify current r
 The pre-call gate ships with telephony in Phase 6: no call is placed to a real number until the
 gate passes its test suite. Phase 7 hardens it (versioned policies, campaign rules, audit).
 
+Phase 6 status: the gate and the India **draft** pack (`india-2026-10-draft-1`,
+`counsel_reviewed=False`) are built; rules and values are in docs/02-voice/telephony.md. Live
+calling is impossible until the pack is reviewed. Not yet built: a real-time DND registry
+integration (unknown status blocks), campaign rules, per-tenant policy selection, and audio
+recording with consent notices.
+
 ## Policy packs
 The engine is generic; market rules are configuration, selected per tenant.
 
