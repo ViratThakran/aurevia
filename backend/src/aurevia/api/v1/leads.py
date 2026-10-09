@@ -6,9 +6,19 @@ import uuid
 
 from fastapi import APIRouter, Query, Response, status
 
-from aurevia.identity.dependencies import PrincipalDep, SessionDep
+from aurevia.campaigns.queue import add_leads
+from aurevia.campaigns.service import CampaignService
+from aurevia.db.session import set_tenant_context
+from aurevia.identity.dependencies import LeadsManageDep, PrincipalDep, SessionDep
+from aurevia.memory.importer import import_leads
 from aurevia.memory.models import Lead, LeadMemory
-from aurevia.memory.schemas import LeadIn, LeadResponse, MemoryResponse
+from aurevia.memory.schemas import (
+    LeadImportIn,
+    LeadImportResult,
+    LeadIn,
+    LeadResponse,
+    MemoryResponse,
+)
 from aurevia.memory.service import LeadFields, LeadService, MemoryService
 
 router = APIRouter(prefix="/leads", tags=["leads"])
@@ -32,9 +42,26 @@ def _fields(body: LeadIn) -> LeadFields:
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="Create a lead")
-async def create_lead(body: LeadIn, principal: PrincipalDep, session: SessionDep) -> LeadResponse:
+async def create_lead(body: LeadIn, principal: LeadsManageDep, session: SessionDep) -> LeadResponse:
     lead = await LeadService(session, principal.tenant_id).create(_fields(body), principal.user_id)
     return _lead(lead)
+
+
+@router.post("/import", summary="Create leads from CSV (name, phone, email, company)")
+async def import_leads_csv(
+    body: LeadImportIn, principal: LeadsManageDep, session: SessionDep
+) -> LeadImportResult:
+    campaign = None
+    if body.campaign_id is not None:  # check before creating anything
+        campaign = await CampaignService(session, principal.tenant_id).get(body.campaign_id)
+    result = await import_leads(session, principal.tenant_id, body.csv, principal.user_id)
+    added = 0
+    if campaign is not None and result.lead_ids:
+        await set_tenant_context(session, principal.tenant_id)  # the import committed
+        added = await add_leads(session, principal.tenant_id, campaign, result.lead_ids)
+    return LeadImportResult(
+        created=len(result.lead_ids), added_to_campaign=added, errors=result.errors
+    )
 
 
 @router.get("", summary="List leads")
@@ -59,7 +86,7 @@ async def get_lead(
 
 @router.put("/{lead_id}", summary="Update a lead")
 async def update_lead(
-    lead_id: uuid.UUID, body: LeadIn, principal: PrincipalDep, session: SessionDep
+    lead_id: uuid.UUID, body: LeadIn, principal: LeadsManageDep, session: SessionDep
 ) -> LeadResponse:
     lead = await LeadService(session, principal.tenant_id).update(
         lead_id, _fields(body), principal.user_id
@@ -82,7 +109,7 @@ async def list_memories(
     summary="Forget one remembered fact (correction)",
 )
 async def delete_memory(
-    lead_id: uuid.UUID, memory_id: uuid.UUID, principal: PrincipalDep, session: SessionDep
+    lead_id: uuid.UUID, memory_id: uuid.UUID, principal: LeadsManageDep, session: SessionDep
 ) -> Response:
     await MemoryService(session, principal.tenant_id).delete(lead_id, memory_id, principal.user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

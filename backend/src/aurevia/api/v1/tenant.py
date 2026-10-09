@@ -6,7 +6,7 @@ import uuid
 
 from fastapi import APIRouter, Response, status
 
-from aurevia.identity.dependencies import AdminDep, PrincipalDep, SessionDep
+from aurevia.identity.dependencies import PrincipalDep, SessionDep, TeamDep
 from aurevia.identity.schemas import ChangeRoleRequest, MemberResponse, TenantResponse
 from aurevia.identity.tenancy import TenancyService
 
@@ -30,6 +30,7 @@ async def list_members(principal: PrincipalDep, session: SessionDep) -> list[Mem
             full_name=m.full_name,
             role=m.role,
             joined_at=m.joined_at,
+            custom_role_id=m.custom_role_id,
         )
         for m in members
     ]
@@ -41,9 +42,11 @@ async def list_members(principal: PrincipalDep, session: SessionDep) -> list[Mem
     summary="Change a member's role (owner/admin)",
 )
 async def change_role(
-    membership_id: uuid.UUID, body: ChangeRoleRequest, principal: AdminDep, session: SessionDep
+    membership_id: uuid.UUID, body: ChangeRoleRequest, principal: TeamDep, session: SessionDep
 ) -> Response:
-    await TenancyService(session, principal).change_role(membership_id, body.role)
+    await TenancyService(session, principal).change_role(
+        membership_id, body.role, body.custom_role_id
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -53,7 +56,7 @@ async def change_role(
     summary="Remove a member (owner/admin)",
 )
 async def remove_member(
-    membership_id: uuid.UUID, principal: AdminDep, session: SessionDep
+    membership_id: uuid.UUID, principal: TeamDep, session: SessionDep
 ) -> Response:
     await TenancyService(session, principal).remove_member(membership_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

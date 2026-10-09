@@ -80,3 +80,19 @@ apply only to the schema owner, and only while the function is running.
 | `leads` (column) | `erased_at`; an erased lead stays as an anonymous stub |
 
 `erase_lead(lead)` (SECURITY DEFINER, current tenant only) performs an erasure in one step.
+
+## Added in Phase 8a (migration `0008`)
+
+| Table | Notes |
+| --- | --- |
+| `custom_roles` | Tenant-defined permission sets; `memberships.custom_role_id` assigns one to a member |
+| `invitations` | Email, role, optional custom role, SHA-256 of the token, expiry, accepted / revoked |
+| `tenant_plans` | Monthly call / minute / cost limits and concurrency; changed by platform admins only |
+| `prices` | Platform-wide, insert-only provider prices (amount per quantity of a resource, effective from) |
+| `campaign_leads` | A campaign's lead list and queue: status, attempts, next attempt, last call and result |
+| `campaigns` (columns) | `retry_delay_minutes`, `auto_dial`, `max_concurrent_calls` |
+| `agents` (columns) | `personality`, `qualification_questions`, `objection_guidance`, `escalation_guidance` |
+| `users` (column) | `is_platform_admin`; the application role cannot update it (column-level grant) |
+
+SECURITY DEFINER lookups: `resolve_invitation(hash)`, `platform_tenants()`,
+`due_auto_campaigns()`.

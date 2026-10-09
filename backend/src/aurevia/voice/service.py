@@ -15,6 +15,8 @@ from aurevia.errors import ConflictError, NotFoundError
 from aurevia.identity.audit import record_audit_event
 from aurevia.identity.models import Tenant
 from aurevia.sales.state import SalesState, transition
+from aurevia.telephony.models import PhoneNumber
+from aurevia.usage.models import UsageEvent, UsageKind
 from aurevia.voice.models import Agent, Call, CallChannel, CallStatus
 
 DEFAULT_AGENT_NAME = "Aria"
@@ -31,6 +33,10 @@ class AgentSettings:
     greeting: str
     language: str
     voice: str | None
+    personality: str = ""
+    qualification_questions: tuple[str, ...] = ()
+    objection_guidance: str = ""
+    escalation_guidance: str = ""
 
 
 def profile_of(agent: Agent) -> AgentProfile:
@@ -40,6 +46,10 @@ def profile_of(agent: Agent) -> AgentProfile:
         company_description=agent.company_description,
         objective=agent.objective,
         language=agent.language,
+        personality=agent.personality or "",
+        qualification_questions=tuple(agent.qualification_questions or ()),
+        objection_guidance=agent.objection_guidance or "",
+        escalation_guidance=agent.escalation_guidance or "",
     )
 
 
@@ -94,6 +104,10 @@ class AgentService:
         agent.greeting = values.greeting
         agent.language = values.language
         agent.voice = values.voice
+        agent.personality = values.personality
+        agent.qualification_questions = list(values.qualification_questions)
+        agent.objection_guidance = values.objection_guidance
+        agent.escalation_guidance = values.escalation_guidance
         record_audit_event(
             self._session,
             tenant_id=self._tenant_id,
@@ -169,8 +183,32 @@ class CallService:
         call.ended_at = datetime.now(UTC)
         call.end_reason = reason
         call.sales_state = SalesState.COMPLETED
+        if call.channel == CallChannel.PHONE and call.started_at is not None:
+            await self._record_phone_minutes(call)
         await self._session.commit()
         return call
+
+    async def _record_phone_minutes(self, call: Call) -> None:
+        """Telephony usage, priced per carrier (Phase 8): the connected time of the call."""
+        assert call.started_at is not None and call.ended_at is not None  # noqa: S101
+        carrier = None
+        if call.phone_number_id is not None:
+            carrier = await self._session.scalar(
+                select(PhoneNumber.carrier).where(
+                    PhoneNumber.id == call.phone_number_id,
+                    PhoneNumber.tenant_id == self._tenant_id,
+                )
+            )
+        self._session.add(
+            UsageEvent(
+                tenant_id=self._tenant_id,
+                call_id=call.id,
+                kind=UsageKind.TELEPHONY,
+                provider=carrier or "unknown",
+                model=call.direction or "phone",
+                audio_seconds=max((call.ended_at - call.started_at).total_seconds(), 0.0),
+            )
+        )
 
 
 def require_in_progress(call: Call) -> None:

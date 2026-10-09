@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aurevia.campaigns.results import record_dial_result
 from aurevia.compliance.gate import Approval
 from aurevia.compliance.phone import lookup_variants, mask, normalize_e164
 from aurevia.db.session import Database, set_tenant_context
@@ -146,6 +147,7 @@ async def dial(
             call = await CallService(session, approval.tenant_id).get(call_id)
             call.dial_status = status
             call.provider_call_id = provider_call_id
+            await record_dial_result(session, approval.tenant_id, call, status, datetime.now(UTC))
             await session.commit()
             if status != DialStatus.ANSWERED:
                 await set_tenant_context(session, approval.tenant_id)

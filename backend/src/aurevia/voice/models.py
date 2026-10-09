@@ -17,6 +17,7 @@ from sqlalchemy import (
     Text,
     text,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aurevia.db.base import Base, Timestamps, UUIDPrimaryKey, one_of
@@ -78,6 +79,13 @@ class Agent(UUIDPrimaryKey, Timestamps, Base):
     language: Mapped[str] = mapped_column(String(20))
     voice: Mapped[str | None] = mapped_column(String(100))
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Phase 8 agent setup. Empty means "not configured" and is left out of the prompt.
+    personality: Mapped[str] = mapped_column(String(300), default="", server_default="")
+    qualification_questions: Mapped[list[str]] = mapped_column(
+        ARRAY(String(200)), default=list, server_default="{}"
+    )
+    objection_guidance: Mapped[str] = mapped_column(Text, default="", server_default="")
+    escalation_guidance: Mapped[str] = mapped_column(Text, default="", server_default="")
 
 
 class Call(UUIDPrimaryKey, Timestamps, Base):

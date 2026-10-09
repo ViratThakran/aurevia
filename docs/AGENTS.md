@@ -25,6 +25,12 @@ Source of truth: `00-foundation/master-brief.md`, including its approved amendme
 - Never claim a failed tool action succeeded.
 
 ## Current milestone
+Phase 8a (SaaS platform backend) built on top of Phase 7; next is 8b, the Next.js dashboard.
+Authorization is by permission (`identity/permissions.py`, `require_permission`), never by
+role name in routers. Every outbound call, from any source, goes through
+`telephony/outbound.py` `place_outbound` (plan limits, then the gate). Platform admins are
+made only with `python -m aurevia.platform.operator`.
+
 Phase 7 (compliance hardening) built on top of Phase 6. Its gate needs counsel's review of
 the India policy version (docs/04-compliance-security/counsel-review-pack.md). The first real
 phone call waits for hosting with a public IP. The Phase 3 latency gate is deferred until a

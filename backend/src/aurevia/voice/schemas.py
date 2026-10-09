@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -26,6 +26,12 @@ class AgentUpdate(_Body):
     greeting: str = Field(min_length=1, max_length=500)
     language: str = Field(default="en-IN", pattern=r"^[a-z]{2}(-[A-Z]{2})?$")
     voice: str | None = Field(default=None, max_length=100, pattern=r"^[A-Za-z0-9_.:-]+$")
+    personality: str = Field(default="", max_length=300)
+    qualification_questions: list[Annotated[str, Field(min_length=3, max_length=200)]] = Field(
+        default_factory=list, max_length=10
+    )
+    objection_guidance: str = Field(default="", max_length=2000)
+    escalation_guidance: str = Field(default="", max_length=1000)
 
 
 class AgentResponse(BaseModel):
@@ -37,6 +43,10 @@ class AgentResponse(BaseModel):
     greeting: str
     language: str
     voice: str | None
+    personality: str = ""
+    qualification_questions: list[str] = []
+    objection_guidance: str = ""
+    escalation_guidance: str = ""
 
 
 # --- Voice sessions and calls ------------------------------------------------------------
