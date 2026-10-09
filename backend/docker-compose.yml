@@ -122,6 +122,21 @@ services:
       - livekit
       - api
 
+  # The dashboard (Phase 8b), at http://localhost:3002. The browser calls the API at
+  # localhost:8000; the dashboard's own session routes reach it as http://api:8000.
+  dashboard:
+    profiles: [voice]
+    build:
+      context: ../web/dashboard
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    environment:
+      AUREVIA_API_URL: http://api:8000
+    ports:
+      - "127.0.0.1:3002:3002"
+    depends_on:
+      - api
+
   # The browser test page, at http://localhost:3000 (or VOICE_TEST_PORT)
   voice-test:
     profiles: [voice]

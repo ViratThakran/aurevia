@@ -126,7 +126,19 @@ Status 8a (2026-10-10): built.
 - Campaign lead lists, queue and "call next" with retries and outcomes; the automatic dialer.
 - CSV lead import; analytics summary; richer agent setup (personality, qualification
   questions, objection and escalation guidance).
-Status 8b: next.
+Status 8b (2026-10-10): built (`web/dashboard`, Next.js + TypeScript + Tailwind, port 3002).
+- Pages: sign-up, sign-in, invitation, a three-step onboarding (agent setup → browser test call
+  → next steps), overview, agent, test call, leads (CSV import, consent, memories, phone call,
+  DPDP export / erase), campaigns (queue, call next, auto-dial, limits), calls with
+  transcripts, meetings and tasks, usage, compliance (policy, decisions, do-not-call,
+  numbers), team (members, custom roles, invitations), audit log with verification, and
+  platform admin.
+- The refresh token lives only in an httpOnly cookie (`/session` routes); types are generated
+  from the API's OpenAPI schema, and CI checks they are current.
+- New list endpoints (calls, meetings, follow-ups, handoffs) and fuller lead responses.
+Gate check (2026-10-10): sign-up → onboarding → agent saved → test call started, all in the
+browser, without help. The live voice part needs a microphone; the automated browser has
+none, so a person confirms it in a real browser.
 
 ## Phase 9 — Pilot
 Acceptance tests, controlled pilots with 2–3 friendly customers, voice-quality and

@@ -38,6 +38,9 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy
       - run: uv run pytest
+      # The dashboard's typed API contract must match the API.
+      - run: uv run python scripts/export_openapi.py ../web/dashboard/openapi.json
+      - run: git diff --exit-code ../web/dashboard/openapi.json
 
   voice-worker:
     runs-on: ubuntu-latest
@@ -56,3 +59,24 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy
       - run: uv run pytest
+
+  dashboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run gen:api
+      - run: git diff --exit-code src/lib/api-schema.d.ts
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

@@ -13,5 +13,9 @@ Next.js, TypeScript, Tailwind CSS.
 - UI authorization is not a security boundary.
 - Keep components modular and responsive.
 
+## Implemented (Phase 8b)
+See `web/dashboard/README.md`: typed client from OpenAPI, cookie-held refresh token behind
+`/session` routes, permission-aware navigation, onboarding wizard and all dashboard areas.
+
 ## Initial UI
 App shell, authentication, dashboard skeleton, agent configuration, lead list and voice test page.

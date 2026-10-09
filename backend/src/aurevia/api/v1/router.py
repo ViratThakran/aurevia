@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from aurevia.api.v1 import (
+    activity,
     analytics,
     audit,
     auth,
@@ -32,3 +33,4 @@ api_v1_router.include_router(audit.router)
 api_v1_router.include_router(team.router)
 api_v1_router.include_router(analytics.router)
 api_v1_router.include_router(platform.router)
+api_v1_router.include_router(activity.router)
