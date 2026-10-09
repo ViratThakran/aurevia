@@ -26,8 +26,9 @@ Inbound: phone -> Exotel -> LiveKit SIP -> room "aurevia-in-..."
   reference the decision that allowed it, and one decision allows exactly one call.
 - **Test mode (default)** dials only the tenant's registered test numbers (its own phones, at
   most 5). Every other number is blocked and the block is recorded.
-- **Live mode** is blocked by the gate (`policy_not_reviewed`) until the India policy pack is
-  reviewed by counsel (Phase 7). Setting `AUREVIA_TELEPHONY_MODE=live` alone cannot place a
+- **Live mode** is blocked by the gate (`policy_not_reviewed`) until the platform operator
+  records counsel's review of the policy version in use (Phase 7), and each live call must
+  belong to an active campaign. Setting `AUREVIA_TELEPHONY_MODE=live` alone cannot place a
   live call.
 - **No DND registry is integrated yet.** Lookups answer "unknown", which the India pack treats
   as blocked. Own test numbers are not scrubbed.

@@ -4,26 +4,54 @@ missing data, time boundaries and conflicting policies, for every check."""
 from __future__ import annotations
 
 import dataclasses
-from datetime import UTC, datetime, timedelta
+import json
+from datetime import UTC, datetime, time, timedelta
 
 import pytest
 
-from aurevia.compliance.checks import CallerIdFact, ConsentFact, GateFacts, evaluate
+from aurevia.compliance.checks import (
+    CallerIdFact,
+    CampaignFact,
+    ConsentFact,
+    GateFacts,
+    evaluate,
+    missing_disclosures,
+)
 from aurevia.compliance.phone import lookup_variants, mask, normalize_e164
 from aurevia.compliance.policy import (
     INDIA_DRAFT,
+    INDIA_DRAFT_FILE,
     CallPurpose,
     ConsentKind,
     PolicyPack,
+    PolicyStatus,
     TelephonyMode,
+    load_builtin,
 )
 from aurevia.providers.dnd import DndStatus
 
 # 12:00 in India (UTC+5:30), inside the 09:00-21:00 window.
 NOON_IST = datetime(2026, 10, 9, 6, 30, tzinfo=UTC)
-REVIEWED = dataclasses.replace(INDIA_DRAFT, counsel_reviewed=True)
+REVIEWED = dataclasses.replace(INDIA_DRAFT, status=PolicyStatus.REVIEWED)
 PROSPECT = "+919876543210"
 PROMO_LINE = CallerIdFact("+911401234567", CallPurpose.PROMOTIONAL, True, True)
+# Pinned: changing a published policy file must fail this test (publish a new version).
+INDIA_DRAFT_SHA256 = "c10ff64e9d19357c5d9276ac750de78bcbb83d1ad3e57b75fa642946c86a45fd"
+INDIA_DRAFT_RULES: dict[str, object] = json.loads(
+    load_builtin(INDIA_DRAFT_FILE).rules.model_dump_json()
+)
+CAMPAIGN = CampaignFact(
+    status="active",
+    purpose=CallPurpose.PROMOTIONAL,
+    starts_on=NOON_IST.date() - timedelta(days=1),
+    ends_on=None,
+    window_start=None,
+    window_end=None,
+    max_attempts_per_lead=3,
+    attempts_for_lead=0,
+    daily_call_cap=None,
+    calls_today=0,
+)
 
 
 def _consent(kind: ConsentKind = ConsentKind.EXPRESS, **changes: object) -> ConsentFact:
@@ -52,6 +80,7 @@ def _live(**changes: object) -> GateFacts:
         calls_today=0,
         calls_this_week=0,
         caller_ids=(PROMO_LINE,),
+        campaign=CAMPAIGN,
     )
     return dataclasses.replace(base, **changes)  # type: ignore[arg-type]
 
@@ -91,6 +120,8 @@ def test_a_compliant_live_call_is_allowed_with_its_caller_id() -> None:
         "calling_window",
         "attempts",
         "caller_id",
+        "disclosure",
+        "campaign",
     ]
 
 
@@ -275,3 +306,119 @@ def test_normalize_e164(raw: str | None, expected: str | None) -> None:
 def test_lookup_variants_and_masking() -> None:
     assert set(lookup_variants("+919876543210")) >= {"9876543210", "09876543210", "+919876543210"}
     assert mask("+919876543210") == "+91********10"
+
+
+# --- Phase 7: campaigns ------------------------------------------------------------------
+
+
+def test_live_calls_need_a_campaign_but_test_calls_do_not() -> None:
+    assert _reasons(_live(campaign=None)) == ["campaign_required"]
+    outcome = evaluate(INDIA_DRAFT, _test_call(campaign=None), NOON_IST)
+    assert outcome.allowed
+    assert {c.name: c.reason for c in outcome.checks}["campaign"] == "no_campaign"
+
+
+@pytest.mark.parametrize(
+    ("changes", "reason"),
+    [
+        ({"status": "paused"}, "campaign_not_active"),
+        ({"status": "draft"}, "campaign_not_active"),
+        ({"purpose": CallPurpose.SERVICE}, "campaign_purpose_mismatch"),
+        ({"starts_on": NOON_IST.date() + timedelta(days=1)}, "campaign_not_running"),
+        ({"ends_on": NOON_IST.date() - timedelta(days=1)}, "campaign_not_running"),
+        ({"window_start": time(13, 0)}, "outside_campaign_hours"),
+        ({"window_end": time(12, 0)}, "outside_campaign_hours"),  # end is exclusive
+        ({"attempts_for_lead": 3}, "campaign_attempts_reached"),
+        ({"daily_call_cap": 50, "calls_today": 50}, "campaign_daily_cap_reached"),
+    ],
+)
+def test_campaign_limits(changes: dict[str, object], reason: str) -> None:
+    campaign = dataclasses.replace(CAMPAIGN, **changes)  # type: ignore[arg-type]
+    assert _reasons(_live(campaign=campaign)) == [reason]
+
+
+def test_campaign_hours_narrow_but_never_widen_the_policy_window() -> None:
+    wide = dataclasses.replace(CAMPAIGN, window_start=time(6, 0), window_end=time(23, 0))
+    late = datetime(2026, 10, 9, 22, 0, tzinfo=UTC) - timedelta(hours=5, minutes=30)
+    assert _reasons(_live(campaign=wide), now=late) == ["outside_calling_window"]
+    ends_on_today = dataclasses.replace(CAMPAIGN, ends_on=NOON_IST.date())  # inclusive
+    assert _reasons(_live(campaign=ends_on_today)) == []
+
+
+# --- Phase 7: mandatory disclosures ------------------------------------------------------
+
+REQUIRED = ("ai_identity", "agent_name", "company_name")
+
+
+@pytest.mark.parametrize(
+    ("greeting", "missing"),
+    [
+        ("Hi, this is Aria, an AI assistant calling from Acme Insurance.", ()),
+        ("Hello, Aria here from ACME INSURANCE, an artificial intelligence agent.", ()),
+        ("Hi, this is Aria from Acme Insurance.", ("ai_identity",)),
+        ("Hi, I'm an AI assistant from Acme Insurance.", ("agent_name",)),
+        ("Hi, this is Aria, an AI assistant.", ("company_name",)),
+        ("Hi, this is Kaira calling.", REQUIRED),  # "ai" inside a word is not a disclosure
+    ],
+)
+def test_missing_disclosures(greeting: str, missing: tuple[str, ...]) -> None:
+    found = missing_disclosures(
+        REQUIRED, greeting=greeting, agent_name="Aria", company_name="Acme Insurance"
+    )
+    assert found == missing
+
+
+def test_a_greeting_without_disclosures_blocks_the_call() -> None:
+    assert _reasons(_live(missing_disclosures=("ai_identity",))) == ["missing_disclosure"]
+
+
+# --- Phase 7: versioned policies and tenant tightening -----------------------------------
+
+
+def test_builtin_policy_files_never_change() -> None:
+    """Published versions are immutable: edit nothing, publish a new file instead."""
+    import hashlib
+
+    raw = load_builtin(INDIA_DRAFT_FILE).raw
+    assert hashlib.sha256(raw.encode("utf-8")).hexdigest() == INDIA_DRAFT_SHA256
+
+
+def test_rules_are_validated() -> None:
+    from pydantic import ValidationError
+
+    from aurevia.compliance.policy import PolicyRules
+
+    rules = INDIA_DRAFT_RULES | {"window_start": "21:00:00", "window_end": "09:00:00"}
+    with pytest.raises(ValidationError):
+        PolicyRules.model_validate(rules)
+    with pytest.raises(ValidationError):
+        PolicyRules.model_validate(INDIA_DRAFT_RULES | {"surprise": True})
+
+
+def test_overrides_only_ever_tighten() -> None:
+    from aurevia.compliance.policy import PolicyOverrides, apply_overrides, looser_overrides
+
+    strict = PolicyOverrides(
+        window_start=time(10, 0),
+        window_end=time(18, 0),
+        max_calls_per_number_per_day=1,
+        express_consent_overrides_dnd=False,
+    )
+    assert looser_overrides(INDIA_DRAFT, strict) == []
+    tightened = apply_overrides(INDIA_DRAFT, strict)
+    assert (tightened.window_start, tightened.window_end) == (time(10, 0), time(18, 0))
+    assert tightened.max_calls_per_number_per_day == 1
+    assert tightened.express_consent_overrides_dnd is False
+
+    loose = PolicyOverrides(
+        window_start=time(8, 0), window_end=time(22, 0), max_calls_per_number_per_week=50
+    )
+    assert looser_overrides(INDIA_DRAFT, loose) == [
+        "window_start",
+        "window_end",
+        "max_calls_per_number_per_week",
+    ]
+    # Even if a looser value got stored, applying it changes nothing.
+    unchanged = apply_overrides(INDIA_DRAFT, loose)
+    assert (unchanged.window_start, unchanged.window_end) == (time(9, 0), time(21, 0))
+    assert unchanged.max_calls_per_number_per_week == 6

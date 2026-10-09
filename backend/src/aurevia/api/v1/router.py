@@ -4,7 +4,17 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from aurevia.api.v1 import auth, compliance, health, leads, telephony, tenant, voice
+from aurevia.api.v1 import (
+    audit,
+    auth,
+    campaigns,
+    compliance,
+    health,
+    leads,
+    telephony,
+    tenant,
+    voice,
+)
 
 api_v1_router = APIRouter()
 api_v1_router.include_router(health.router)
@@ -14,3 +24,5 @@ api_v1_router.include_router(voice.router)
 api_v1_router.include_router(leads.router)
 api_v1_router.include_router(telephony.router)
 api_v1_router.include_router(compliance.router)
+api_v1_router.include_router(campaigns.router)
+api_v1_router.include_router(audit.router)

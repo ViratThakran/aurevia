@@ -85,6 +85,24 @@ call.
 Versioned policies, India policy pack (DLT, 140/160 series, calling window, DND scrubbing, DPDP,
 IRDAI), campaign restrictions, full audit trail, counsel review.
 Gate: compliance test suite passes; counsel review done.
+Status (2026-10-09): built; the test suite passes; **counsel review pending**. The review pack
+is docs/04-compliance-security/counsel-review-pack.md.
+Decisions (2026-10-09):
+- Only the platform operator records reviews (a server-side command, not an API).
+- Minimal campaigns now; Phase 8 adds lists, schedules and UI.
+- DPDP erasure keeps the legal minimum: do-not-call entry, decisions, consents and call
+  metadata.
+- DND stays an adapter; unknown status blocks.
+Built:
+- Immutable policy versions in the database (a trigger forbids changing rules, deleting
+  versions, or undoing a review) and the operator command (publish / review / retire).
+- Tenants can pin a version and tighten it, never loosen it. Decisions reference the exact
+  version and the effective rules.
+- Live calls need a reviewed version **and** an active campaign.
+- Gate checks for campaign limits (status, purpose, dates, hours, attempts per lead, daily cap)
+  and for mandatory disclosures (AI identity, agent name, company name in the greeting).
+- Per-tenant hash-chained audit log with export and verification.
+- DPDP access export and erasure.
 
 ## Phase 8 — SaaS Platform
 Dashboard, agent setup, campaigns, analytics, usage/cost, billing boundaries, custom roles and

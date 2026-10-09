@@ -132,3 +132,6 @@ class Call(UUIDPrimaryKey, Timestamps, Base):
     phone_number_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("phone_numbers.id", ondelete="SET NULL")
     )
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("campaigns.id", ondelete="SET NULL"), index=True
+    )

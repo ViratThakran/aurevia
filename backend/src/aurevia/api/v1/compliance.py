@@ -3,20 +3,31 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Query, status
+from fastapi.encoders import jsonable_encoder
 
+from aurevia.compliance.gate import effective_policy_json
 from aurevia.compliance.models import ComplianceDecision, Consent, DoNotCallEntry, DoNotCallReason
+from aurevia.compliance.policy_service import PolicyService
+from aurevia.compliance.privacy import PrivacyService
 from aurevia.compliance.schemas import (
+    ComplianceSettingsIn,
+    ComplianceSettingsResponse,
     ConsentIn,
     ConsentResponse,
     DecisionResponse,
     DoNotCallIn,
     DoNotCallResponse,
+    ErasureIn,
+    ErasureResponse,
+    PolicyVersionResponse,
 )
 from aurevia.compliance.service import ConsentService, DecisionService, DoNotCallService
+from aurevia.db.session import set_tenant_context
 from aurevia.identity.audit import record_audit_event
-from aurevia.identity.dependencies import PrincipalDep, SessionDep
+from aurevia.identity.dependencies import AdminDep, PrincipalDep, SessionDep, SettingsDep
 from aurevia.memory.service import LeadService
 
 router = APIRouter(tags=["compliance"])
@@ -107,3 +118,79 @@ async def list_decisions(
         lead_id=lead_id, limit=limit
     )
     return [_decision(d) for d in decisions]
+
+
+# --- Policy versions and the tenant's settings (Phase 7) ----------------------------------
+
+
+@router.get("/compliance/policy-versions", summary="Policy versions of the configured pack")
+async def list_policy_versions(
+    principal: PrincipalDep, session: SessionDep, settings: SettingsDep
+) -> list[PolicyVersionResponse]:
+    versions = await PolicyService(session, principal.tenant_id).versions(
+        settings.compliance_policy_pack
+    )
+    return [PolicyVersionResponse.model_validate(v, from_attributes=True) for v in versions]
+
+
+async def _settings_response(service: PolicyService, pack: str) -> ComplianceSettingsResponse:
+    current = await service.settings()
+    return ComplianceSettingsResponse(
+        policy_version_id=current.policy_version_id if current else None,
+        overrides=current.overrides if current else {},
+        effective_policy=effective_policy_json(await service.effective_pack(pack)),
+    )
+
+
+@router.get("/compliance/settings", summary="The policy this tenant's calls are checked against")
+async def get_compliance_settings(
+    principal: PrincipalDep, session: SessionDep, settings: SettingsDep
+) -> ComplianceSettingsResponse:
+    service = PolicyService(session, principal.tenant_id)
+    return await _settings_response(service, settings.compliance_policy_pack)
+
+
+@router.put(
+    "/compliance/settings",
+    summary="Pin a policy version and tighten its rules (owner/admin; stricter only)",
+)
+async def update_compliance_settings(
+    body: ComplianceSettingsIn, principal: AdminDep, session: SessionDep, settings: SettingsDep
+) -> ComplianceSettingsResponse:
+    service = PolicyService(session, principal.tenant_id)
+    await service.update_settings(
+        settings.compliance_policy_pack,
+        policy_version_id=body.policy_version_id,
+        overrides=body.overrides,
+        actor=principal.user_id,
+    )
+    await set_tenant_context(session, principal.tenant_id)  # the update committed
+    return await _settings_response(service, settings.compliance_policy_pack)
+
+
+# --- Data-principal rights (DPDP) ---------------------------------------------------------
+
+
+@router.post(
+    "/leads/{lead_id}/erase",
+    status_code=status.HTTP_201_CREATED,
+    summary="Erase a person's data on their request (owner/admin)",
+)
+async def erase_lead(
+    lead_id: uuid.UUID, body: ErasureIn, principal: AdminDep, session: SessionDep
+) -> ErasureResponse:
+    request = await PrivacyService(session, principal.tenant_id).erase_lead(
+        lead_id, received_via=body.received_via, actor=principal.user_id
+    )
+    return ErasureResponse.model_validate(request, from_attributes=True)
+
+
+@router.get("/leads/{lead_id}/export", summary="Everything held about a person (owner/admin)")
+async def export_lead(
+    lead_id: uuid.UUID, principal: AdminDep, session: SessionDep
+) -> dict[str, Any]:
+    data = await PrivacyService(session, principal.tenant_id).export_lead(
+        lead_id, actor=principal.user_id
+    )
+    encoded: dict[str, Any] = jsonable_encoder(data)
+    return encoded

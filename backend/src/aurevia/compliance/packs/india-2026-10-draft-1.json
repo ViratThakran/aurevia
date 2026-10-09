@@ -1,0 +1,23 @@
+{
+  "pack": "india",
+  "version": "india-2026-10-draft-1",
+  "notes": "DRAFT from the product brief (2026-10). Not reviewed by counsel. Every value is listed for review in docs/04-compliance-security/counsel-review-pack.md.",
+  "rules": {
+    "timezone": "Asia/Kolkata",
+    "country_code": "91",
+    "window_start": "09:00:00",
+    "window_end": "21:00:00",
+    "max_calls_per_number_per_day": 2,
+    "max_calls_per_number_per_week": 6,
+    "test_max_calls_per_number_per_day": 20,
+    "inquiry_consent_valid_days": 30,
+    "express_consent_overrides_dnd": true,
+    "block_when_dnd_unknown": true,
+    "caller_id_prefixes": {
+      "promotional": ["+91140"],
+      "service": ["+91160"]
+    },
+    "required_disclosures": ["ai_identity", "agent_name", "company_name"],
+    "require_campaign_for_live": true
+  }
+}

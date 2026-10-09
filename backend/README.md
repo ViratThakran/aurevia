@@ -140,6 +140,18 @@ dispatch; a user token, or a token for another call, is rejected.
 - Off until `AUREVIA_TELEPHONY_PROVIDER=livekit_sip` and the trunk id are set. See
   docs/02-voice/telephony.md.
 
+## Compliance hardening (Phase 7)
+
+- Policy versions: `GET /api/v1/compliance/policy-versions`. The tenant's choice and stricter
+  overrides: `GET/PUT /api/v1/compliance/settings` (a looser value is rejected with 422).
+- The platform operator manages versions from the API container:
+  `python -m aurevia.compliance.operator list | publish FILE | review VERSION --by --reference
+  | retire VERSION` (uses `AUREVIA_MIGRATION_DATABASE_URL`).
+- Campaigns: `/api/v1/campaigns` (+ `/status`: draft -> active <-> paused -> ended). An
+  outbound call may name a `campaign_id`; live calls must.
+- Audit: `GET /api/v1/audit/events` (with chain hashes) and `GET /api/v1/audit/verify`.
+- DPDP: `GET /api/v1/leads/{id}/export` and `POST /api/v1/leads/{id}/erase`.
+
 ## Sales tools (Phase 5)
 
 - The model gets native function-calling tools (`tools/sales_tools.py`); the backend runs the

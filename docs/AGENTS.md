@@ -25,10 +25,14 @@ Source of truth: `00-foundation/master-brief.md`, including its approved amendme
 - Never claim a failed tool action succeeded.
 
 ## Current milestone
-Phase 6 (telephony + compliance gate) built on top of Phase 5; the first real phone call
-waits for hosting with a public IP (docs/02-voice/telephony.md). Phase 3 latency gate still
-deferred until a faster model or key (Anthropic planned). Next: Phase 7 (compliance
-hardening).
+Phase 7 (compliance hardening) built on top of Phase 6. Its gate needs counsel's review of
+the India policy version (docs/04-compliance-security/counsel-review-pack.md). The first real
+phone call waits for hosting with a public IP. The Phase 3 latency gate is deferred until a
+faster model or key. Next: Phase 8 (SaaS platform).
+
+Policy rules: published policy versions and their JSON files never change; publish a new
+version. Only the platform operator records reviews (`python -m aurevia.compliance.operator`).
+Tenant settings may only tighten rules.
 
 Telephony rules: nothing dials except `telephony/service.py` `dial()`, and it needs an
 `Approval` that only `compliance/gate.py` can create (architecture tests). Telephony stays in

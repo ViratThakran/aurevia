@@ -15,6 +15,7 @@ from aurevia.compliance.schemas import e164_or_error
 class OutboundCallIn(BaseModel):
     lead_id: uuid.UUID
     purpose: CallPurpose = CallPurpose.PROMOTIONAL
+    campaign_id: uuid.UUID | None = None
 
 
 class OutboundCallResponse(BaseModel):

@@ -6,8 +6,11 @@ import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 
+from aurevia.campaigns.service import CampaignService
 from aurevia.compliance.gate import ComplianceGate
-from aurevia.compliance.policy import POLICY_PACKS, TelephonyMode
+from aurevia.compliance.policy import TelephonyMode
+from aurevia.compliance.policy_service import PolicyService
+from aurevia.db.session import set_tenant_context
 from aurevia.errors import ServiceUnavailableError
 from aurevia.identity.dependencies import AdminDep, PrincipalDep, SessionDep, SettingsDep
 from aurevia.memory.service import LeadService
@@ -60,10 +63,17 @@ async def place_outbound_call(
     dnd: DndRegistry = request.app.state.dnd_registry
 
     lead = await LeadService(session, principal.tenant_id).get(body.lead_id)
+    campaign = None
+    if body.campaign_id is not None:
+        campaign = await CampaignService(session, principal.tenant_id).get(body.campaign_id)
+    agent = await AgentService(session, principal.tenant_id).default_agent()
+    pack = await PolicyService(session, principal.tenant_id).effective_pack(
+        settings.compliance_policy_pack
+    )
     gate = ComplianceGate(
         session,
         principal.tenant_id,
-        pack=POLICY_PACKS[settings.compliance_policy_pack],
+        pack=pack,
         mode=TelephonyMode(settings.telephony_mode),
         dnd=dnd,
     )
@@ -72,9 +82,10 @@ async def place_outbound_call(
         lead=lead,
         purpose=body.purpose,
         requested_by=principal.user_id,
+        agent=agent,
+        campaign=campaign,
         now=request.app.state.clock(),
     )
-    agent = await AgentService(session, principal.tenant_id).default_agent()
     call = await create_outbound_call(
         session,
         approval=approval,
@@ -94,6 +105,7 @@ async def place_outbound_call(
             room=call.room, agent_name=dispatch.agent_name, metadata=dispatch.metadata(call)
         )
     except Exception as exc:
+        await set_tenant_context(session, principal.tenant_id)  # lost at the commit above
         await CallService(session, principal.tenant_id).end(
             call.id, "room_setup_failed", failed=True
         )

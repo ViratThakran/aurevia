@@ -8,6 +8,7 @@ is committed by the caller in the same transaction as the call it allows.
 
 from __future__ import annotations
 
+import dataclasses
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -16,7 +17,16 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aurevia.compliance.checks import CallerIdFact, ConsentFact, GateFacts, GateOutcome, evaluate
+from aurevia.campaigns.models import Campaign
+from aurevia.compliance.checks import (
+    CallerIdFact,
+    CampaignFact,
+    ConsentFact,
+    GateFacts,
+    GateOutcome,
+    evaluate,
+    missing_disclosures,
+)
 from aurevia.compliance.models import ComplianceDecision, Consent, DoNotCallEntry, GateDecision
 from aurevia.compliance.phone import normalize_e164
 from aurevia.compliance.policy import CallPurpose, ConsentKind, PolicyPack, TelephonyMode
@@ -24,7 +34,7 @@ from aurevia.errors import AureviaError
 from aurevia.memory.models import Lead
 from aurevia.providers.dnd import DndRegistry, DndStatus
 from aurevia.telephony.models import PhoneNumber, TestNumber
-from aurevia.voice.models import Call, CallDirection
+from aurevia.voice.models import Agent, Call, CallDirection
 
 OUTBOUND_CALL = "outbound_call"
 _GATE_KEY = object()
@@ -46,6 +56,7 @@ class Approval:
     from_number: str
     purpose: CallPurpose
     issued_at: datetime
+    campaign_id: uuid.UUID | None = None
     _key: object = field(repr=False, compare=False, default=None)
 
     def __post_init__(self) -> None:
@@ -75,9 +86,17 @@ class ComplianceGate:
         lead: Lead,
         purpose: CallPurpose,
         requested_by: uuid.UUID | None,
+        agent: Agent,
+        campaign: Campaign | None = None,
         now: datetime | None = None,
     ) -> Approval:
         now = now or datetime.now(UTC)
+        if campaign is not None:
+            # Serialize decisions within a campaign, so its daily cap cannot be overrun.
+            await self._session.execute(
+                text("SELECT pg_advisory_xact_lock(hashtext(:key))"),
+                {"key": f"campaign:{campaign.id}"},
+            )
         to_number = normalize_e164(lead.phone, default_country_code=self._pack.country_code)
         if to_number is not None:
             # Serialize decisions for one number, so concurrent requests cannot both pass the
@@ -87,8 +106,28 @@ class ComplianceGate:
                 {"key": f"{self._tenant_id}:{to_number}"},
             )
         facts, recorded = await self._facts(lead, to_number, purpose, now)
+        missing = missing_disclosures(
+            self._pack.required_disclosures,
+            greeting=agent.greeting,
+            agent_name=agent.name,
+            company_name=agent.company_name,
+        )
+        campaign_fact = await self._campaign_fact(campaign, lead, now)
+        facts = dataclasses.replace(facts, missing_disclosures=missing, campaign=campaign_fact)
+        recorded["missing_disclosures"] = list(missing)
+        recorded["campaign"] = (
+            None
+            if campaign_fact is None
+            else {
+                "status": campaign_fact.status,
+                "attempts_for_lead": campaign_fact.attempts_for_lead,
+                "calls_today": campaign_fact.calls_today,
+            }
+        )
+        recorded["effective_policy"] = effective_policy_json(self._pack)
         outcome = evaluate(self._pack, facts, now)
         decision = self._record(lead, purpose, facts, recorded, outcome, requested_by)
+        decision.campaign_id = campaign.id if campaign else None
         self._session.add(decision)
         await self._session.flush()
         if not outcome.allowed:
@@ -106,6 +145,7 @@ class ComplianceGate:
             from_number=outcome.from_number,
             purpose=purpose,
             issued_at=now,
+            campaign_id=campaign.id if campaign else None,
             _key=_GATE_KEY,
         )
 
@@ -141,12 +181,7 @@ class ComplianceGate:
                 )
                 for c in rows
             )
-            local_midnight = (
-                now.astimezone(ZoneInfo(self._pack.timezone))
-                .replace(hour=0, minute=0, second=0, microsecond=0)
-                .astimezone(UTC)
-            )
-            calls_today = await self._outbound_calls_since(to_number, local_midnight)
+            calls_today = await self._outbound_calls_since(to_number, self._local_midnight(now))
             calls_week = await self._outbound_calls_since(to_number, now - timedelta(days=7))
             if not (self._mode == TelephonyMode.TEST and is_test):
                 lookup = await self._dnd.lookup(to_number, now=now)
@@ -224,6 +259,7 @@ class ComplianceGate:
             mode=self._mode,
             policy_pack=self._pack.name,
             policy_version=self._pack.version,
+            policy_version_id=self._pack.version_id,
             checks=[c.as_dict() for c in outcome.checks],
             facts=recorded,
             decision=GateDecision.ALLOW if outcome.allowed else GateDecision.BLOCK,
@@ -232,6 +268,42 @@ class ComplianceGate:
 
     async def _exists(self, query: object) -> bool:
         return (await self._session.scalar(query)) is not None  # type: ignore[call-overload]
+
+    async def _campaign_fact(
+        self, campaign: Campaign | None, lead: Lead, now: datetime
+    ) -> CampaignFact | None:
+        if campaign is None:
+            return None
+        base = (
+            select(func.count())
+            .select_from(Call)
+            .where(
+                Call.tenant_id == self._tenant_id,
+                Call.direction == CallDirection.OUTBOUND,
+                Call.campaign_id == campaign.id,
+            )
+        )
+        attempts = await self._session.scalar(base.where(Call.lead_id == lead.id))
+        today = await self._session.scalar(base.where(Call.created_at >= self._local_midnight(now)))
+        return CampaignFact(
+            status=campaign.status,
+            purpose=CallPurpose(campaign.purpose),
+            starts_on=campaign.starts_on,
+            ends_on=campaign.ends_on,
+            window_start=campaign.window_start,
+            window_end=campaign.window_end,
+            max_attempts_per_lead=campaign.max_attempts_per_lead,
+            attempts_for_lead=int(attempts or 0),
+            daily_call_cap=campaign.daily_call_cap,
+            calls_today=int(today or 0),
+        )
+
+    def _local_midnight(self, now: datetime) -> datetime:
+        return (
+            now.astimezone(ZoneInfo(self._pack.timezone))
+            .replace(hour=0, minute=0, second=0, microsecond=0)
+            .astimezone(UTC)
+        )
 
     async def _outbound_calls_since(self, to_number: str, since: datetime) -> int:
         count = await self._session.scalar(
@@ -245,3 +317,20 @@ class ComplianceGate:
             )
         )
         return int(count or 0)
+
+
+def effective_policy_json(pack: PolicyPack) -> dict[str, object]:
+    """The rules the decision was taken under (after the tenant's tightening), as JSON."""
+    rules: dict[str, object] = {}
+    for item in dataclasses.fields(pack):
+        value = getattr(pack, item.name)
+        if item.name == "version_id":
+            value = str(value) if value else None
+        elif item.name == "caller_id_prefixes":
+            value = {str(k): list(v) for k, v in value.items()}
+        elif isinstance(value, tuple):
+            value = list(value)
+        elif hasattr(value, "isoformat"):
+            value = value.isoformat()
+        rules[item.name] = value
+    return rules

@@ -66,3 +66,17 @@ note and objection rows cannot be updated either.
 Webhooks arrive without a tenant, so two SECURITY DEFINER functions resolve exactly one row:
 `resolve_call_room(room)` and `resolve_inbound_number(e164)`. They read through policies that
 apply only to the schema owner, and only while the function is running.
+
+## Added in Phase 7 (migration `0007`)
+
+| Table | Notes |
+| --- | --- |
+| `policy_versions` | Platform-wide (not tenant-owned) immutable pack versions: rules JSONB, source hash, status draft / reviewed / retired, review record. The app can only read it. A trigger forbids rule changes, deletion and un-reviewing |
+| `tenant_compliance_settings` | One row per tenant: pinned version (optional) and stricter-only overrides |
+| `campaigns` | Purpose, status, dates, calling hours, attempts per lead, daily cap; `calls.campaign_id` and `compliance_decisions.campaign_id` reference it |
+| `erasure_requests` | Who asked to be forgotten, how, and what was removed; insert-only |
+| `audit_events` (columns) | `seq`, `prev_hash`, `hash`: per-tenant hash chain set by trigger `audit_events_chain` with `audit_event_hash()` |
+| `compliance_decisions` (column) | `policy_version_id`: the exact version applied |
+| `leads` (column) | `erased_at`; an erased lead stays as an anonymous stub |
+
+`erase_lead(lead)` (SECURITY DEFINER, current tenant only) performs an erasure in one step.

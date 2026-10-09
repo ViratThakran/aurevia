@@ -94,6 +94,7 @@ async def create_outbound_call(
         dial_status=DialStatus.QUEUED,
         compliance_decision_id=approval.decision_id,
         phone_number_id=caller_id.id if caller_id else None,
+        campaign_id=approval.campaign_id,
     )
     session.add(call)
     await session.flush()

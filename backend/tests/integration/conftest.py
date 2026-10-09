@@ -37,7 +37,8 @@ TABLES = (
     "tenants, users, memberships, refresh_tokens, audit_events, agents, calls, usage_events,"
     " turn_metrics, leads, conversation_messages, lead_memories, lead_notes, objections,"
     " followups, scheduling_settings, appointments, handoffs, tool_executions, phone_numbers,"
-    " test_numbers, consents, do_not_call, compliance_decisions"
+    " test_numbers, consents, do_not_call, compliance_decisions, campaigns,"
+    " tenant_compliance_settings, erasure_requests"
 )
 
 
@@ -129,7 +130,18 @@ def upgrade_to_head(env: PgEnv) -> None:
 def db(pg: PgEnv) -> Iterator[PgEnv]:
     """The session database, emptied after each test."""
     yield pg
-    asyncio.run(_execute(pg.admin_dsn, f"TRUNCATE {TABLES} CASCADE"))
+    asyncio.run(_execute(pg.admin_dsn, f"TRUNCATE {TABLES} CASCADE", *_RESET_POLICY_VERSIONS))
+
+
+# Policy versions are platform data that tests may publish, review or retire. Back to the
+# seeded draft only (the guard trigger forbids this outside tests, by design).
+_RESET_POLICY_VERSIONS = (
+    "ALTER TABLE policy_versions DISABLE TRIGGER policy_versions_guard",
+    "DELETE FROM policy_versions WHERE version <> 'india-2026-10-draft-1'",
+    "UPDATE policy_versions SET status = 'draft', reviewed_at = NULL, reviewed_by = NULL, "
+    "review_reference = NULL, retired_at = NULL",
+    "ALTER TABLE policy_versions ENABLE TRIGGER policy_versions_guard",
+)
 
 
 def admin_fetch(env: PgEnv, query: str, *args: Any) -> list[asyncpg.Record]:

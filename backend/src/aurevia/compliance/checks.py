@@ -7,8 +7,10 @@ allowed only if all of them pass.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from aurevia.compliance.policy import CallPurpose, ConsentKind, PolicyPack, TelephonyMode
@@ -36,6 +38,20 @@ class CallerIdFact:
 
 
 @dataclass(frozen=True)
+class CampaignFact:
+    status: str
+    purpose: CallPurpose
+    starts_on: date
+    ends_on: date | None
+    window_start: time | None
+    window_end: time | None
+    max_attempts_per_lead: int
+    attempts_for_lead: int  # outbound calls to this lead in this campaign so far
+    daily_call_cap: int | None
+    calls_today: int  # outbound calls in this campaign today (policy time zone)
+
+
+@dataclass(frozen=True)
 class GateFacts:
     mode: TelephonyMode
     purpose: CallPurpose
@@ -49,6 +65,8 @@ class GateFacts:
     calls_today: int
     calls_this_week: int
     caller_ids: tuple[CallerIdFact, ...]
+    missing_disclosures: tuple[str, ...] = ()  # from ``missing_disclosures`` below
+    campaign: CampaignFact | None = None
 
 
 @dataclass(frozen=True)
@@ -78,6 +96,22 @@ class GateOutcome:
     @property
     def failed_reasons(self) -> list[str]:
         return [c.reason for c in self.checks if not c.passed]
+
+
+_AI_IDENTITY = re.compile(r"\b(AI|artificial intelligence)\b", re.IGNORECASE)
+
+
+def missing_disclosures(
+    required: Sequence[str], *, greeting: str, agent_name: str, company_name: str
+) -> tuple[str, ...]:
+    """Which mandatory disclosures the agent's opening line leaves out."""
+    spoken = greeting.casefold()
+    present = {
+        "ai_identity": bool(_AI_IDENTITY.search(greeting)),
+        "agent_name": agent_name.strip().casefold() in spoken,
+        "company_name": company_name.strip().casefold() in spoken,
+    }
+    return tuple(item for item in required if not present.get(item, False))
 
 
 def _ok(name: str, reason: str = "ok") -> CheckResult:
@@ -196,6 +230,39 @@ def _caller_id(pack: PolicyPack, facts: GateFacts) -> tuple[CheckResult, str | N
     return _fail("caller_id", "no_registered_caller_id"), None
 
 
+def _disclosure(facts: GateFacts) -> CheckResult:
+    if facts.missing_disclosures:
+        return _fail("disclosure", "missing_disclosure")
+    return _ok("disclosure")
+
+
+def _campaign(pack: PolicyPack, facts: GateFacts, now: datetime) -> CheckResult:
+    campaign = facts.campaign
+    if campaign is None:
+        live = facts.mode == TelephonyMode.LIVE
+        if live and pack.require_campaign_for_live:
+            return _fail("campaign", "campaign_required")
+        return _ok("campaign", "no_campaign")
+    local = now.astimezone(ZoneInfo(pack.timezone))
+    if campaign.status != "active":
+        return _fail("campaign", "campaign_not_active")
+    if campaign.purpose != facts.purpose:
+        return _fail("campaign", "campaign_purpose_mismatch")
+    if local.date() < campaign.starts_on or (
+        campaign.ends_on is not None and local.date() > campaign.ends_on
+    ):
+        return _fail("campaign", "campaign_not_running")
+    start = campaign.window_start or time.min
+    end = campaign.window_end or time.max
+    if not start <= local.time() < end:
+        return _fail("campaign", "outside_campaign_hours")
+    if campaign.attempts_for_lead >= campaign.max_attempts_per_lead:
+        return _fail("campaign", "campaign_attempts_reached")
+    if campaign.daily_call_cap is not None and campaign.calls_today >= campaign.daily_call_cap:
+        return _fail("campaign", "campaign_daily_cap_reached")
+    return _ok("campaign")
+
+
 def evaluate(pack: PolicyPack, facts: GateFacts, now: datetime) -> GateOutcome:
     caller_id, from_number = _caller_id(pack, facts)
     checks = (
@@ -208,5 +275,7 @@ def evaluate(pack: PolicyPack, facts: GateFacts, now: datetime) -> GateOutcome:
         _window(pack, now),
         _attempts(pack, facts),
         caller_id,
+        _disclosure(facts),
+        _campaign(pack, facts, now),
     )
     return GateOutcome(checks=checks, from_number=from_number)
