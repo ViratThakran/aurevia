@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
@@ -80,6 +81,7 @@ async def take_turn(
     session: SessionDep,
     settings: SettingsDep,
 ) -> StreamingResponse:
+    turn_started = time.monotonic()
     gateway: ModelGateway | None = request.app.state.model_gateway
     database: Database = request.app.state.database
     if gateway is None:
@@ -117,6 +119,7 @@ async def take_turn(
     call.turn_count += 1
     profile = profile_of(agent)
     await session.commit()
+    prepared_ms = round((time.monotonic() - turn_started) * 1000)
 
     registry = default_registry()
     records = TurnRecords()
@@ -124,6 +127,7 @@ async def take_turn(
 
     async def stream() -> AsyncIterator[bytes]:
         final_state = state.value
+        spoke = False
         try:
             # Tools write through their own session, scoped to this tenant and committed per
             # tool together with its audit row.
@@ -153,6 +157,21 @@ async def take_turn(
                     executor=executor,
                 ):
                     if event.delta:
+                        if not spoke:
+                            spoke = True
+                            logger.info(
+                                "Turn first word",
+                                extra={
+                                    "fields": {
+                                        "call_id": str(call_id),
+                                        "prepare_ms": prepared_ms,
+                                        "first_word_ms": round(
+                                            (time.monotonic() - turn_started) * 1000
+                                        ),
+                                        "rounds": len(records.records),
+                                    }
+                                },
+                            )
                         yield _line({"type": "delta", "text": event.delta})
                     for result in event.tool_results:
                         yield _line(
