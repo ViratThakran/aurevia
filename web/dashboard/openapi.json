@@ -1,0 +1,7577 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Aurevia API",
+  "version": "0.1.0"
+ },
+ "paths": {
+  "/health": {
+   "get": {
+    "tags": [
+     "health"
+    ],
+    "summary": "Liveness probe",
+    "description": "The process is up. Deliberately checks no dependencies.",
+    "operationId": "liveness_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LivenessResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/health/ready": {
+   "get": {
+    "tags": [
+     "health"
+    ],
+    "summary": "Readiness probe",
+    "operationId": "readiness_api_v1_health_ready_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ReadinessResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/signup": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Create a tenant and owner",
+    "operationId": "signup_api_v1_auth_signup_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SignupRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/login": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Sign in to one tenant",
+    "operationId": "login_api_v1_auth_login_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LoginRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/invitations/accept": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Join a tenant with an invitation token",
+    "operationId": "accept_invitation_api_v1_auth_invitations_accept_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AcceptInvitationRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/refresh": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Rotate a refresh token",
+    "operationId": "refresh_api_v1_auth_refresh_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RefreshRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/logout": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "End this session",
+    "operationId": "logout_api_v1_auth_logout_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RefreshRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/me": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "The signed-in user, tenant and role",
+    "operationId": "me_api_v1_auth_me_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MeResponse"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/tenant": {
+   "get": {
+    "tags": [
+     "tenant"
+    ],
+    "summary": "Current tenant",
+    "operationId": "get_tenant_api_v1_tenant_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TenantResponse"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/tenant/members": {
+   "get": {
+    "tags": [
+     "tenant"
+    ],
+    "summary": "Active members of the current tenant",
+    "operationId": "list_members_api_v1_tenant_members_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/MemberResponse"
+         },
+         "type": "array",
+         "title": "Response List Members Api V1 Tenant Members Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/tenant/members/{membership_id}": {
+   "patch": {
+    "tags": [
+     "tenant"
+    ],
+    "summary": "Change a member's role (owner/admin)",
+    "operationId": "change_role_api_v1_tenant_members__membership_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "membership_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Membership Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ChangeRoleRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "tenant"
+    ],
+    "summary": "Remove a member (owner/admin)",
+    "operationId": "remove_member_api_v1_tenant_members__membership_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "membership_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Membership Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/agents/default": {
+   "get": {
+    "tags": [
+     "voice"
+    ],
+    "summary": "The tenant's default AI agent",
+    "operationId": "get_default_agent_api_v1_agents_default_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AgentResponse"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "put": {
+    "tags": [
+     "voice"
+    ],
+    "summary": "Configure the default AI agent (owner/admin)",
+    "operationId": "update_default_agent_api_v1_agents_default_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AgentUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AgentResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/voice/sessions": {
+   "post": {
+    "tags": [
+     "voice"
+    ],
+    "summary": "Start a browser voice call with the default agent",
+    "operationId": "create_voice_session_api_v1_voice_sessions_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/VoiceSessionRequest"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VoiceSessionResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/voice/calls/{call_id}/transcript": {
+   "get": {
+    "tags": [
+     "voice"
+    ],
+    "summary": "What was said (until it expires)",
+    "operationId": "get_transcript_api_v1_voice_calls__call_id__transcript_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "call_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Call Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TranscriptResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/voice/calls/{call_id}": {
+   "get": {
+    "tags": [
+     "voice"
+    ],
+    "summary": "Call status and usage",
+    "operationId": "get_call_api_v1_voice_calls__call_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "call_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Call Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CallResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/voice/latency": {
+   "get": {
+    "tags": [
+     "voice"
+    ],
+    "summary": "Turn latency across the tenant's recent calls",
+    "operationId": "get_latency_api_v1_voice_latency_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 90,
+       "minimum": 1,
+       "default": 7,
+       "title": "Days"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LatencyResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/leads": {
+   "post": {
+    "tags": [
+     "leads"
+    ],
+    "summary": "Create a lead",
+    "operationId": "create_lead_api_v1_leads_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LeadIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LeadResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "leads"
+    ],
+    "summary": "List leads",
+    "operationId": "list_leads_api_v1_leads_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "include_archived",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Include Archived"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 500,
+       "minimum": 1,
+       "default": 100,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/LeadResponse"
+         },
+         "title": "Response List Leads Api V1 Leads Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/leads/import": {
+   "post": {
+    "tags": [
+     "leads"
+    ],
+    "summary": "Create leads from CSV (name, phone, email, company)",
+    "operationId": "import_leads_csv_api_v1_leads_import_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LeadImportIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LeadImportResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/leads/{lead_id}": {
+   "get": {
+    "tags": [
+     "leads"
+    ],
+    "summary": "Get a lead",
+    "operationId": "get_lead_api_v1_leads__lead_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Lead Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LeadResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "leads"
+    ],
+    "summary": "Update a lead",
+    "operationId": "update_lead_api_v1_leads__lead_id__put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Lead Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LeadIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LeadResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/leads/{lead_id}/memories": {
+   "get": {
+    "tags": [
+     "leads"
+    ],
+    "summary": "What Aurevia remembers about this lead",
+    "operationId": "list_memories_api_v1_leads__lead_id__memories_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Lead Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/MemoryResponse"
+         },
+         "title": "Response List Memories Api V1 Leads  Lead Id  Memories Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/leads/{lead_id}/memories/{memory_id}": {
+   "delete": {
+    "tags": [
+     "leads"
+    ],
+    "summary": "Forget one remembered fact (correction)",
+    "operationId": "delete_memory_api_v1_leads__lead_id__memories__memory_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Lead Id"
+      }
+     },
+     {
+      "name": "memory_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Memory Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/calls/outbound": {
+   "post": {
+    "tags": [
+     "telephony"
+    ],
+    "summary": "Call a lead by phone (only if the compliance gate allows it)",
+    "operationId": "place_outbound_call_api_v1_calls_outbound_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OutboundCallIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OutboundCallResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/telephony/numbers": {
+   "get": {
+    "tags": [
+     "telephony"
+    ],
+    "summary": "The tenant's carrier numbers",
+    "operationId": "list_phone_numbers_api_v1_telephony_numbers_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/PhoneNumberResponse"
+         },
+         "type": "array",
+         "title": "Response List Phone Numbers Api V1 Telephony Numbers Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "telephony"
+    ],
+    "summary": "Register a carrier number (owner/admin)",
+    "operationId": "add_phone_number_api_v1_telephony_numbers_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PhoneNumberIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PhoneNumberResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/telephony/numbers/{number_id}": {
+   "patch": {
+    "tags": [
+     "telephony"
+    ],
+    "summary": "Change a carrier number (owner/admin)",
+    "operationId": "update_phone_number_api_v1_telephony_numbers__number_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "number_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Number Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PhoneNumberUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PhoneNumberResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/telephony/test-numbers": {
+   "get": {
+    "tags": [
+     "telephony"
+    ],
+    "summary": "Your registered test numbers",
+    "operationId": "list_test_numbers_api_v1_telephony_test_numbers_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/TestNumberResponse"
+         },
+         "type": "array",
+         "title": "Response List Test Numbers Api V1 Telephony Test Numbers Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "telephony"
+    ],
+    "summary": "Register one of your own phones for test calls (owner/admin)",
+    "operationId": "add_test_number_api_v1_telephony_test_numbers_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TestNumberIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TestNumberResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/telephony/test-numbers/{number_id}": {
+   "delete": {
+    "tags": [
+     "telephony"
+    ],
+    "summary": "Remove a test number (owner/admin)",
+    "operationId": "remove_test_number_api_v1_telephony_test_numbers__number_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "number_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Number Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/leads/{lead_id}/consents": {
+   "post": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "Record the lead's consent to be called",
+    "operationId": "record_consent_api_v1_leads__lead_id__consents_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Lead Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ConsentIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConsentResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "The lead's consent records",
+    "operationId": "list_consents_api_v1_leads__lead_id__consents_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Lead Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ConsentResponse"
+         },
+         "title": "Response List Consents Api V1 Leads  Lead Id  Consents Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/leads/{lead_id}/consents/{consent_id}/revoke": {
+   "post": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "Revoke a consent",
+    "operationId": "revoke_consent_api_v1_leads__lead_id__consents__consent_id__revoke_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Lead Id"
+      }
+     },
+     {
+      "name": "consent_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Consent Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConsentResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/do-not-call": {
+   "get": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "The tenant's do-not-call list",
+    "operationId": "list_do_not_call_api_v1_do_not_call_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/DoNotCallResponse"
+         },
+         "type": "array",
+         "title": "Response List Do Not Call Api V1 Do Not Call Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "Never call this number again",
+    "operationId": "add_do_not_call_api_v1_do_not_call_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DoNotCallIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DoNotCallResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/compliance/decisions": {
+   "get": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "Why calls were allowed or blocked",
+    "operationId": "list_decisions_api_v1_compliance_decisions_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "uuid"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lead Id"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 200,
+       "minimum": 1,
+       "default": 50,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DecisionResponse"
+         },
+         "title": "Response List Decisions Api V1 Compliance Decisions Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/compliance/policy-versions": {
+   "get": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "Policy versions of the configured pack",
+    "operationId": "list_policy_versions_api_v1_compliance_policy_versions_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/PolicyVersionResponse"
+         },
+         "type": "array",
+         "title": "Response List Policy Versions Api V1 Compliance Policy Versions Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/compliance/settings": {
+   "get": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "The policy this tenant's calls are checked against",
+    "operationId": "get_compliance_settings_api_v1_compliance_settings_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ComplianceSettingsResponse"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "put": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "Pin a policy version and tighten its rules (owner/admin; stricter only)",
+    "operationId": "update_compliance_settings_api_v1_compliance_settings_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ComplianceSettingsIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ComplianceSettingsResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/leads/{lead_id}/erase": {
+   "post": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "Erase a person's data on their request (owner/admin)",
+    "operationId": "erase_lead_api_v1_leads__lead_id__erase_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Lead Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ErasureIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErasureResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/leads/{lead_id}/export": {
+   "get": {
+    "tags": [
+     "compliance"
+    ],
+    "summary": "Everything held about a person (owner/admin)",
+    "operationId": "export_lead_api_v1_leads__lead_id__export_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Lead Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": true,
+         "title": "Response Export Lead Api V1 Leads  Lead Id  Export Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/campaigns": {
+   "get": {
+    "tags": [
+     "campaigns"
+    ],
+    "summary": "List campaigns",
+    "operationId": "list_campaigns_api_v1_campaigns_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/CampaignResponse"
+         },
+         "type": "array",
+         "title": "Response List Campaigns Api V1 Campaigns Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "campaigns"
+    ],
+    "summary": "Create a campaign (owner/admin)",
+    "operationId": "create_campaign_api_v1_campaigns_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CampaignIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/campaigns/{campaign_id}": {
+   "get": {
+    "tags": [
+     "campaigns"
+    ],
+    "summary": "One campaign",
+    "operationId": "get_campaign_api_v1_campaigns__campaign_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Campaign Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "campaigns"
+    ],
+    "summary": "Change a campaign's limits (owner/admin)",
+    "operationId": "update_campaign_api_v1_campaigns__campaign_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Campaign Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CampaignUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/campaigns/{campaign_id}/status": {
+   "post": {
+    "tags": [
+     "campaigns"
+    ],
+    "summary": "Start, pause or end a campaign (owner/admin)",
+    "operationId": "set_campaign_status_api_v1_campaigns__campaign_id__status_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Campaign Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CampaignStatusIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/campaigns/{campaign_id}/leads": {
+   "post": {
+    "tags": [
+     "campaigns"
+    ],
+    "summary": "Add leads to the campaign's queue",
+    "operationId": "add_campaign_leads_api_v1_campaigns__campaign_id__leads_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Campaign Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CampaignLeadsIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignLeadsAdded"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "campaigns"
+    ],
+    "summary": "The campaign's leads and where they are",
+    "operationId": "list_campaign_leads_api_v1_campaigns__campaign_id__leads_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Campaign Id"
+      }
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Status"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 1000,
+       "minimum": 1,
+       "default": 200,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CampaignLeadResponse"
+         },
+         "title": "Response List Campaign Leads Api V1 Campaigns  Campaign Id  Leads Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/campaigns/{campaign_id}/leads/{lead_id}": {
+   "delete": {
+    "tags": [
+     "campaigns"
+    ],
+    "summary": "Take a lead off the campaign (not while it is being called)",
+    "operationId": "remove_campaign_lead_api_v1_campaigns__campaign_id__leads__lead_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Campaign Id"
+      }
+     },
+     {
+      "name": "lead_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Lead Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/campaigns/{campaign_id}/call-next": {
+   "post": {
+    "tags": [
+     "campaigns"
+    ],
+    "summary": "Call the next due lead in the campaign",
+    "operationId": "call_next_lead_api_v1_campaigns__campaign_id__call_next_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Campaign Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CallNextResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/audit/events": {
+   "get": {
+    "tags": [
+     "audit"
+    ],
+    "summary": "Audit events in order, with their chain hashes (owner/admin)",
+    "operationId": "get_audit_events_api_v1_audit_events_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "after_seq",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "default": 0,
+       "title": "After Seq"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 1000,
+       "minimum": 1,
+       "default": 100,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/AuditEventResponse"
+         },
+         "title": "Response Get Audit Events Api V1 Audit Events Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/audit/verify": {
+   "get": {
+    "tags": [
+     "audit"
+    ],
+    "summary": "Check that no audit event was changed or removed (owner/admin)",
+    "operationId": "verify_audit_log_api_v1_audit_verify_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AuditVerifyResponse"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/team/roles": {
+   "get": {
+    "tags": [
+     "team"
+    ],
+    "summary": "Custom roles",
+    "operationId": "list_roles_api_v1_team_roles_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/CustomRoleResponse"
+         },
+         "type": "array",
+         "title": "Response List Roles Api V1 Team Roles Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "team"
+    ],
+    "summary": "Create a custom role",
+    "operationId": "create_role_api_v1_team_roles_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CustomRoleIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CustomRoleResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/team/roles/{role_id}": {
+   "patch": {
+    "tags": [
+     "team"
+    ],
+    "summary": "Rename a custom role or change its permissions",
+    "operationId": "update_role_api_v1_team_roles__role_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "role_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Role Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CustomRoleUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CustomRoleResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "team"
+    ],
+    "summary": "Delete a custom role nobody holds",
+    "operationId": "delete_role_api_v1_team_roles__role_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "role_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Role Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/team/invitations": {
+   "get": {
+    "tags": [
+     "team"
+    ],
+    "summary": "Pending invitations",
+    "operationId": "list_invitations_api_v1_team_invitations_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/InvitationResponse"
+         },
+         "type": "array",
+         "title": "Response List Invitations Api V1 Team Invitations Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "team"
+    ],
+    "summary": "Invite someone (the token is shown once)",
+    "operationId": "invite_api_v1_team_invitations_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InvitationIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InvitationCreated"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/team/invitations/{invitation_id}": {
+   "delete": {
+    "tags": [
+     "team"
+    ],
+    "summary": "Revoke an invitation",
+    "operationId": "revoke_invitation_api_v1_team_invitations__invitation_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "invitation_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Invitation Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/analytics/summary": {
+   "get": {
+    "tags": [
+     "analytics"
+    ],
+    "summary": "Activity, sales, AI quality and cost for a period",
+    "operationId": "analytics_summary_api_v1_analytics_summary_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 366,
+       "minimum": 1,
+       "default": 30,
+       "title": "Days"
+      }
+     },
+     {
+      "name": "campaign_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "uuid"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Campaign Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": true,
+         "title": "Response Analytics Summary Api V1 Analytics Summary Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/usage": {
+   "get": {
+    "tags": [
+     "analytics"
+    ],
+    "summary": "This month's usage and cost against the plan's limits",
+    "operationId": "usage_api_v1_usage_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "type": "object",
+         "title": "Response Usage Api V1 Usage Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/platform/tenants": {
+   "get": {
+    "tags": [
+     "platform"
+    ],
+    "summary": "All tenants with members and this month's calls",
+    "operationId": "list_tenants_api_v1_platform_tenants_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "type": "array",
+         "title": "Response List Tenants Api V1 Platform Tenants Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/platform/tenants/{tenant_id}/suspend": {
+   "post": {
+    "tags": [
+     "platform"
+    ],
+    "summary": "Suspend a tenant (signs everyone out)",
+    "operationId": "suspend_tenant_api_v1_platform_tenants__tenant_id__suspend_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tenant_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Tenant Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": {
+          "type": "string"
+         },
+         "title": "Response Suspend Tenant Api V1 Platform Tenants  Tenant Id  Suspend Post"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/platform/tenants/{tenant_id}/resume": {
+   "post": {
+    "tags": [
+     "platform"
+    ],
+    "summary": "Resume a suspended tenant",
+    "operationId": "resume_tenant_api_v1_platform_tenants__tenant_id__resume_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tenant_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Tenant Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": {
+          "type": "string"
+         },
+         "title": "Response Resume Tenant Api V1 Platform Tenants  Tenant Id  Resume Post"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/platform/tenants/{tenant_id}/plan": {
+   "get": {
+    "tags": [
+     "platform"
+    ],
+    "summary": "A tenant's plan limits",
+    "operationId": "get_plan_api_v1_platform_tenants__tenant_id__plan_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tenant_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Tenant Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": true,
+         "title": "Response Get Plan Api V1 Platform Tenants  Tenant Id  Plan Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "platform"
+    ],
+    "summary": "Set a tenant's plan limits",
+    "operationId": "set_plan_api_v1_platform_tenants__tenant_id__plan_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tenant_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Tenant Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PlanIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": true,
+         "title": "Response Set Plan Api V1 Platform Tenants  Tenant Id  Plan Put"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/platform/prices": {
+   "get": {
+    "tags": [
+     "platform"
+    ],
+    "summary": "Provider prices (all versions)",
+    "operationId": "list_prices_api_v1_platform_prices_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "type": "array",
+         "title": "Response List Prices Api V1 Platform Prices Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "platform"
+    ],
+    "summary": "Add a price version",
+    "operationId": "add_price_api_v1_platform_prices_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PriceIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "type": "object",
+         "title": "Response Add Price Api V1 Platform Prices Post"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/voice/calls": {
+   "get": {
+    "tags": [
+     "activity"
+    ],
+    "summary": "Recent calls, newest first",
+    "operationId": "list_calls_api_v1_voice_calls_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "lead_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "uuid"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lead Id"
+      }
+     },
+     {
+      "name": "campaign_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "uuid"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Campaign Id"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 500,
+       "minimum": 1,
+       "default": 50,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CallListItem"
+         },
+         "title": "Response List Calls Api V1 Voice Calls Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/meetings": {
+   "get": {
+    "tags": [
+     "activity"
+    ],
+    "summary": "Booked meetings (upcoming first)",
+    "operationId": "list_meetings_api_v1_meetings_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "include_past",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Include Past"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 500,
+       "minimum": 1,
+       "default": 100,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/MeetingItem"
+         },
+         "title": "Response List Meetings Api V1 Meetings Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/followups": {
+   "get": {
+    "tags": [
+     "activity"
+    ],
+    "summary": "Follow-ups, soonest first",
+    "operationId": "list_followups_api_v1_followups_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "scheduled",
+          "done",
+          "cancelled"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "scheduled",
+       "title": "Status"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 500,
+       "minimum": 1,
+       "default": 100,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/FollowupItem"
+         },
+         "title": "Response List Followups Api V1 Followups Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/followups/{followup_id}": {
+   "patch": {
+    "tags": [
+     "activity"
+    ],
+    "summary": "Mark a follow-up done or cancelled",
+    "operationId": "update_followup_api_v1_followups__followup_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "followup_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Followup Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FollowupUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": {
+          "type": "string"
+         },
+         "title": "Response Update Followup Api V1 Followups  Followup Id  Patch"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/handoffs": {
+   "get": {
+    "tags": [
+     "activity"
+    ],
+    "summary": "Requests for a human colleague",
+    "operationId": "list_handoffs_api_v1_handoffs_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "open",
+          "resolved"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "open",
+       "title": "Status"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 500,
+       "minimum": 1,
+       "default": 100,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/HandoffItem"
+         },
+         "title": "Response List Handoffs Api V1 Handoffs Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/handoffs/{handoff_id}/resolve": {
+   "post": {
+    "tags": [
+     "activity"
+    ],
+    "summary": "Mark a handoff as handled",
+    "operationId": "resolve_handoff_api_v1_handoffs__handoff_id__resolve_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "handoff_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Handoff Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "additionalProperties": {
+          "type": "string"
+         },
+         "title": "Response Resolve Handoff Api V1 Handoffs  Handoff Id  Resolve Post"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/internal/v1/calls/{call_id}/start": {
+   "post": {
+    "tags": [
+     "internal: voice worker"
+    ],
+    "summary": "Worker joined: start the call, get the agent's opening",
+    "operationId": "start_call_internal_v1_calls__call_id__start_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "call_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Call Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CallStartResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/internal/v1/calls/{call_id}/turns": {
+   "post": {
+    "tags": [
+     "internal: voice worker"
+    ],
+    "summary": "Stream the agent's reply to the prospect's latest words",
+    "operationId": "take_turn_internal_v1_calls__call_id__turns_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "call_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Call Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TurnRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/internal/v1/calls/{call_id}/usage": {
+   "post": {
+    "tags": [
+     "internal: voice worker"
+    ],
+    "summary": "Report STT/TTS usage",
+    "operationId": "report_usage_internal_v1_calls__call_id__usage_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "call_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Call Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UsageReport"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/internal/v1/calls/{call_id}/turn-metrics": {
+   "post": {
+    "tags": [
+     "internal: voice worker"
+    ],
+    "summary": "Report per-turn latency (timings only)",
+    "operationId": "report_turn_metrics_internal_v1_calls__call_id__turn_metrics_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "call_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Call Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TurnMetricsReport"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/internal/v1/calls/{call_id}/transcript": {
+   "post": {
+    "tags": [
+     "internal: voice worker"
+    ],
+    "summary": "Save what was said (kept until the retention period ends)",
+    "operationId": "save_transcript_internal_v1_calls__call_id__transcript_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "call_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Call Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TranscriptIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/internal/v1/calls/{call_id}/end": {
+   "post": {
+    "tags": [
+     "internal: voice worker"
+    ],
+    "summary": "Worker left: end the call",
+    "operationId": "end_call_internal_v1_calls__call_id__end_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "call_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Call Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CallEndRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "AcceptInvitationRequest": {
+    "properties": {
+     "token": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 20,
+      "title": "Token"
+     },
+     "password": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Password"
+     },
+     "full_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Full Name"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "token",
+     "password"
+    ],
+    "title": "AcceptInvitationRequest"
+   },
+   "AgentResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "company_name": {
+      "type": "string",
+      "title": "Company Name"
+     },
+     "company_description": {
+      "type": "string",
+      "title": "Company Description"
+     },
+     "objective": {
+      "type": "string",
+      "title": "Objective"
+     },
+     "greeting": {
+      "type": "string",
+      "title": "Greeting"
+     },
+     "language": {
+      "type": "string",
+      "title": "Language"
+     },
+     "voice": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Voice"
+     },
+     "personality": {
+      "type": "string",
+      "title": "Personality",
+      "default": ""
+     },
+     "qualification_questions": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Qualification Questions",
+      "default": []
+     },
+     "objection_guidance": {
+      "type": "string",
+      "title": "Objection Guidance",
+      "default": ""
+     },
+     "escalation_guidance": {
+      "type": "string",
+      "title": "Escalation Guidance",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "company_name",
+     "company_description",
+     "objective",
+     "greeting",
+     "language",
+     "voice"
+    ],
+    "title": "AgentResponse"
+   },
+   "AgentUpdate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 80,
+      "minLength": 1,
+      "title": "Name"
+     },
+     "company_name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Company Name"
+     },
+     "company_description": {
+      "type": "string",
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Company Description"
+     },
+     "objective": {
+      "type": "string",
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Objective"
+     },
+     "greeting": {
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Greeting"
+     },
+     "language": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+      "title": "Language",
+      "default": "en-IN"
+     },
+     "voice": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 100,
+        "pattern": "^[A-Za-z0-9_.:-]+$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Voice"
+     },
+     "personality": {
+      "type": "string",
+      "maxLength": 300,
+      "title": "Personality",
+      "default": ""
+     },
+     "qualification_questions": {
+      "items": {
+       "type": "string",
+       "maxLength": 200,
+       "minLength": 3
+      },
+      "type": "array",
+      "maxItems": 10,
+      "title": "Qualification Questions"
+     },
+     "objection_guidance": {
+      "type": "string",
+      "maxLength": 2000,
+      "title": "Objection Guidance",
+      "default": ""
+     },
+     "escalation_guidance": {
+      "type": "string",
+      "maxLength": 1000,
+      "title": "Escalation Guidance",
+      "default": ""
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "name",
+     "company_name",
+     "company_description",
+     "objective",
+     "greeting"
+    ],
+    "title": "AgentUpdate",
+    "description": "Tenant-supplied agent configuration. Bounded so it cannot swamp the prompt."
+   },
+   "AuditEventResponse": {
+    "properties": {
+     "seq": {
+      "type": "integer",
+      "title": "Seq"
+     },
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "actor_user_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Actor User Id"
+     },
+     "action": {
+      "type": "string",
+      "title": "Action"
+     },
+     "target_type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target Type"
+     },
+     "target_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target Id"
+     },
+     "details": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Details"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "prev_hash": {
+      "type": "string",
+      "title": "Prev Hash"
+     },
+     "hash": {
+      "type": "string",
+      "title": "Hash"
+     }
+    },
+    "type": "object",
+    "required": [
+     "seq",
+     "id",
+     "actor_user_id",
+     "action",
+     "target_type",
+     "target_id",
+     "details",
+     "created_at",
+     "prev_hash",
+     "hash"
+    ],
+    "title": "AuditEventResponse"
+   },
+   "AuditVerifyResponse": {
+    "properties": {
+     "events": {
+      "type": "integer",
+      "title": "Events"
+     },
+     "ok": {
+      "type": "boolean",
+      "title": "Ok"
+     },
+     "first_broken_seq": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "First Broken Seq"
+     },
+     "head_hash": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Head Hash"
+     }
+    },
+    "type": "object",
+    "required": [
+     "events",
+     "ok",
+     "first_broken_seq",
+     "head_hash"
+    ],
+    "title": "AuditVerifyResponse"
+   },
+   "CallEndRequest": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Reason"
+     },
+     "failed": {
+      "type": "boolean",
+      "title": "Failed",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "reason"
+    ],
+    "title": "CallEndRequest"
+   },
+   "CallListItem": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "channel": {
+      "type": "string",
+      "title": "Channel"
+     },
+     "direction": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Direction"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "dial_status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dial Status"
+     },
+     "sales_state": {
+      "type": "string",
+      "title": "Sales State"
+     },
+     "lead_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lead Id"
+     },
+     "lead_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lead Name"
+     },
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
+     },
+     "to_number": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "To Number"
+     },
+     "from_number": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "From Number"
+     },
+     "turn_count": {
+      "type": "integer",
+      "title": "Turn Count"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "started_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Started At"
+     },
+     "ended_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ended At"
+     },
+     "end_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "channel",
+     "direction",
+     "status",
+     "dial_status",
+     "sales_state",
+     "lead_id",
+     "lead_name",
+     "campaign_id",
+     "to_number",
+     "from_number",
+     "turn_count",
+     "created_at",
+     "started_at",
+     "ended_at",
+     "end_reason"
+    ],
+    "title": "CallListItem"
+   },
+   "CallNextResponse": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "lead_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lead Id"
+     },
+     "call_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Call Id"
+     },
+     "reasons": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Reasons"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status",
+     "lead_id",
+     "call_id",
+     "reasons"
+    ],
+    "title": "CallNextResponse"
+   },
+   "CallPurpose": {
+    "type": "string",
+    "enum": [
+     "promotional",
+     "service"
+    ],
+    "title": "CallPurpose"
+   },
+   "CallResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "channel": {
+      "type": "string",
+      "title": "Channel"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "sales_state": {
+      "type": "string",
+      "title": "Sales State"
+     },
+     "turn_count": {
+      "type": "integer",
+      "title": "Turn Count"
+     },
+     "started_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Started At"
+     },
+     "ended_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ended At"
+     },
+     "end_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Reason"
+     },
+     "usage": {
+      "$ref": "#/components/schemas/CallUsage"
+     },
+     "latency": {
+      "$ref": "#/components/schemas/LatencyResponse"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "channel",
+     "status",
+     "sales_state",
+     "turn_count",
+     "started_at",
+     "ended_at",
+     "end_reason",
+     "usage",
+     "latency"
+    ],
+    "title": "CallResponse"
+   },
+   "CallStartResponse": {
+    "properties": {
+     "agent_name": {
+      "type": "string",
+      "title": "Agent Name"
+     },
+     "greeting": {
+      "type": "string",
+      "title": "Greeting"
+     },
+     "language": {
+      "type": "string",
+      "title": "Language"
+     },
+     "voice": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Voice"
+     }
+    },
+    "type": "object",
+    "required": [
+     "agent_name",
+     "greeting",
+     "language",
+     "voice"
+    ],
+    "title": "CallStartResponse"
+   },
+   "CallUsage": {
+    "properties": {
+     "llm_input_tokens": {
+      "type": "integer",
+      "title": "Llm Input Tokens"
+     },
+     "llm_output_tokens": {
+      "type": "integer",
+      "title": "Llm Output Tokens"
+     },
+     "llm_turns": {
+      "type": "integer",
+      "title": "Llm Turns"
+     },
+     "llm_interrupted_turns": {
+      "type": "integer",
+      "title": "Llm Interrupted Turns"
+     },
+     "stt_seconds": {
+      "type": "number",
+      "title": "Stt Seconds"
+     },
+     "tts_characters": {
+      "type": "integer",
+      "title": "Tts Characters"
+     }
+    },
+    "type": "object",
+    "required": [
+     "llm_input_tokens",
+     "llm_output_tokens",
+     "llm_turns",
+     "llm_interrupted_turns",
+     "stt_seconds",
+     "tts_characters"
+    ],
+    "title": "CallUsage"
+   },
+   "CampaignIn": {
+    "properties": {
+     "starts_on": {
+      "type": "string",
+      "format": "date",
+      "title": "Starts On"
+     },
+     "ends_on": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ends On"
+     },
+     "window_start": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Window Start"
+     },
+     "window_end": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Window End"
+     },
+     "max_attempts_per_lead": {
+      "type": "integer",
+      "maximum": 10.0,
+      "minimum": 1.0,
+      "title": "Max Attempts Per Lead",
+      "default": 3
+     },
+     "daily_call_cap": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 100000.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Daily Call Cap"
+     },
+     "retry_delay_minutes": {
+      "type": "integer",
+      "maximum": 10080.0,
+      "minimum": 5.0,
+      "title": "Retry Delay Minutes",
+      "default": 60
+     },
+     "auto_dial": {
+      "type": "boolean",
+      "title": "Auto Dial",
+      "default": false
+     },
+     "max_concurrent_calls": {
+      "type": "integer",
+      "maximum": 5.0,
+      "minimum": 1.0,
+      "title": "Max Concurrent Calls",
+      "default": 1
+     },
+     "name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name"
+     },
+     "purpose": {
+      "$ref": "#/components/schemas/CallPurpose"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "starts_on",
+     "name",
+     "purpose"
+    ],
+    "title": "CampaignIn"
+   },
+   "CampaignLeadResponse": {
+    "properties": {
+     "lead_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Lead Id"
+     },
+     "lead_name": {
+      "type": "string",
+      "title": "Lead Name"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "attempts": {
+      "type": "integer",
+      "title": "Attempts"
+     },
+     "next_attempt_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Next Attempt At"
+     },
+     "last_result": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Result"
+     },
+     "last_call_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Call Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "lead_id",
+     "lead_name",
+     "status",
+     "attempts",
+     "next_attempt_at",
+     "last_result",
+     "last_call_id"
+    ],
+    "title": "CampaignLeadResponse"
+   },
+   "CampaignLeadsAdded": {
+    "properties": {
+     "added": {
+      "type": "integer",
+      "title": "Added"
+     }
+    },
+    "type": "object",
+    "required": [
+     "added"
+    ],
+    "title": "CampaignLeadsAdded"
+   },
+   "CampaignLeadsIn": {
+    "properties": {
+     "lead_ids": {
+      "items": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "type": "array",
+      "maxItems": 5000,
+      "minItems": 1,
+      "title": "Lead Ids"
+     }
+    },
+    "type": "object",
+    "required": [
+     "lead_ids"
+    ],
+    "title": "CampaignLeadsIn"
+   },
+   "CampaignResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "purpose": {
+      "type": "string",
+      "title": "Purpose"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "starts_on": {
+      "type": "string",
+      "format": "date",
+      "title": "Starts On"
+     },
+     "ends_on": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ends On"
+     },
+     "window_start": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Window Start"
+     },
+     "window_end": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Window End"
+     },
+     "max_attempts_per_lead": {
+      "type": "integer",
+      "title": "Max Attempts Per Lead"
+     },
+     "daily_call_cap": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Daily Call Cap"
+     },
+     "retry_delay_minutes": {
+      "type": "integer",
+      "title": "Retry Delay Minutes"
+     },
+     "auto_dial": {
+      "type": "boolean",
+      "title": "Auto Dial"
+     },
+     "max_concurrent_calls": {
+      "type": "integer",
+      "title": "Max Concurrent Calls"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "purpose",
+     "status",
+     "starts_on",
+     "ends_on",
+     "window_start",
+     "window_end",
+     "max_attempts_per_lead",
+     "daily_call_cap",
+     "retry_delay_minutes",
+     "auto_dial",
+     "max_concurrent_calls",
+     "created_at"
+    ],
+    "title": "CampaignResponse"
+   },
+   "CampaignStatusIn": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "active",
+       "paused",
+       "ended"
+      ],
+      "title": "Status"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status"
+    ],
+    "title": "CampaignStatusIn"
+   },
+   "CampaignUpdate": {
+    "properties": {
+     "starts_on": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Starts On"
+     },
+     "ends_on": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ends On"
+     },
+     "window_start": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Window Start"
+     },
+     "window_end": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Window End"
+     },
+     "max_attempts_per_lead": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 10.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Attempts Per Lead"
+     },
+     "daily_call_cap": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 100000.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Daily Call Cap"
+     },
+     "retry_delay_minutes": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 10080.0,
+        "minimum": 5.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Retry Delay Minutes"
+     },
+     "auto_dial": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Auto Dial"
+     },
+     "max_concurrent_calls": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 5.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Concurrent Calls"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200,
+        "minLength": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "CampaignUpdate"
+   },
+   "ChangeRoleRequest": {
+    "properties": {
+     "role": {
+      "$ref": "#/components/schemas/Role"
+     },
+     "custom_role_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Custom Role Id"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "role"
+    ],
+    "title": "ChangeRoleRequest"
+   },
+   "ComplianceSettingsIn": {
+    "properties": {
+     "policy_version_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Policy Version Id"
+     },
+     "overrides": {
+      "$ref": "#/components/schemas/PolicyOverrides"
+     }
+    },
+    "type": "object",
+    "title": "ComplianceSettingsIn"
+   },
+   "ComplianceSettingsResponse": {
+    "properties": {
+     "policy_version_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Policy Version Id"
+     },
+     "overrides": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Overrides"
+     },
+     "effective_policy": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Effective Policy"
+     }
+    },
+    "type": "object",
+    "required": [
+     "policy_version_id",
+     "overrides",
+     "effective_policy"
+    ],
+    "title": "ComplianceSettingsResponse"
+   },
+   "ConsentIn": {
+    "properties": {
+     "kind": {
+      "$ref": "#/components/schemas/ConsentKind"
+     },
+     "purpose": {
+      "$ref": "#/components/schemas/CallPurpose"
+     },
+     "source": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Source"
+     },
+     "evidence": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 1000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Evidence"
+     },
+     "obtained_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Obtained At"
+     },
+     "expires_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind",
+     "purpose",
+     "source"
+    ],
+    "title": "ConsentIn"
+   },
+   "ConsentKind": {
+    "type": "string",
+    "enum": [
+     "express",
+     "inquiry"
+    ],
+    "title": "ConsentKind"
+   },
+   "ConsentResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "lead_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Lead Id"
+     },
+     "phone": {
+      "type": "string",
+      "title": "Phone"
+     },
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "purpose": {
+      "type": "string",
+      "title": "Purpose"
+     },
+     "source": {
+      "type": "string",
+      "title": "Source"
+     },
+     "evidence": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Evidence"
+     },
+     "obtained_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Obtained At"
+     },
+     "expires_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires At"
+     },
+     "revoked_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Revoked At"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "lead_id",
+     "phone",
+     "kind",
+     "purpose",
+     "source",
+     "evidence",
+     "obtained_at",
+     "expires_at",
+     "revoked_at",
+     "created_at"
+    ],
+    "title": "ConsentResponse"
+   },
+   "CustomRoleIn": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 80,
+      "minLength": 1,
+      "title": "Name"
+     },
+     "permissions": {
+      "items": {
+       "$ref": "#/components/schemas/Permission"
+      },
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "title": "Permissions"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "name",
+     "permissions"
+    ],
+    "title": "CustomRoleIn"
+   },
+   "CustomRoleResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "permissions": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Permissions"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "permissions"
+    ],
+    "title": "CustomRoleResponse"
+   },
+   "CustomRoleUpdate": {
+    "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80,
+        "minLength": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "permissions": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/Permission"
+        },
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Permissions"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "CustomRoleUpdate"
+   },
+   "DecisionResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "lead_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lead Id"
+     },
+     "action": {
+      "type": "string",
+      "title": "Action"
+     },
+     "purpose": {
+      "type": "string",
+      "title": "Purpose"
+     },
+     "to_number": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "To Number"
+     },
+     "from_number": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "From Number"
+     },
+     "mode": {
+      "type": "string",
+      "title": "Mode"
+     },
+     "policy_pack": {
+      "type": "string",
+      "title": "Policy Pack"
+     },
+     "policy_version": {
+      "type": "string",
+      "title": "Policy Version"
+     },
+     "checks": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Checks"
+     },
+     "decision": {
+      "type": "string",
+      "title": "Decision"
+     },
+     "reason_code": {
+      "type": "string",
+      "title": "Reason Code"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "lead_id",
+     "action",
+     "purpose",
+     "to_number",
+     "from_number",
+     "mode",
+     "policy_pack",
+     "policy_version",
+     "checks",
+     "decision",
+     "reason_code",
+     "created_at"
+    ],
+    "title": "DecisionResponse"
+   },
+   "DoNotCallIn": {
+    "properties": {
+     "phone": {
+      "type": "string",
+      "maxLength": 25,
+      "minLength": 6,
+      "title": "Phone"
+     },
+     "reason": {
+      "type": "string",
+      "enum": [
+       "manual",
+       "complaint"
+      ],
+      "title": "Reason",
+      "default": "manual"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     }
+    },
+    "type": "object",
+    "required": [
+     "phone"
+    ],
+    "title": "DoNotCallIn"
+   },
+   "DoNotCallResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "phone": {
+      "type": "string",
+      "title": "Phone"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "source_call_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Source Call Id"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "phone",
+     "reason",
+     "note",
+     "source_call_id",
+     "created_at"
+    ],
+    "title": "DoNotCallResponse"
+   },
+   "ErasureIn": {
+    "properties": {
+     "received_via": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Received Via"
+     }
+    },
+    "type": "object",
+    "required": [
+     "received_via"
+    ],
+    "title": "ErasureIn"
+   },
+   "ErasureResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "lead_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Lead Id"
+     },
+     "summary": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Summary"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "lead_id",
+     "summary",
+     "created_at"
+    ],
+    "title": "ErasureResponse"
+   },
+   "FollowupItem": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "lead_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Lead Id"
+     },
+     "lead_name": {
+      "type": "string",
+      "title": "Lead Name"
+     },
+     "call_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Call Id"
+     },
+     "due_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Due At"
+     },
+     "channel": {
+      "type": "string",
+      "title": "Channel"
+     },
+     "note": {
+      "type": "string",
+      "title": "Note"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "lead_id",
+     "lead_name",
+     "call_id",
+     "due_at",
+     "channel",
+     "note",
+     "status"
+    ],
+    "title": "FollowupItem"
+   },
+   "FollowupUpdate": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "done",
+       "cancelled"
+      ],
+      "title": "Status"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status"
+    ],
+    "title": "FollowupUpdate"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "HandoffItem": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "lead_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lead Id"
+     },
+     "lead_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lead Name"
+     },
+     "call_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Call Id"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason"
+     },
+     "urgency": {
+      "type": "string",
+      "title": "Urgency"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "lead_id",
+     "lead_name",
+     "call_id",
+     "reason",
+     "urgency",
+     "status",
+     "created_at"
+    ],
+    "title": "HandoffItem"
+   },
+   "InvitationCreated": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "role": {
+      "type": "string",
+      "title": "Role"
+     },
+     "custom_role_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Custom Role Id"
+     },
+     "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Expires At"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "token": {
+      "type": "string",
+      "title": "Token"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "email",
+     "role",
+     "custom_role_id",
+     "expires_at",
+     "created_at",
+     "token"
+    ],
+    "title": "InvitationCreated"
+   },
+   "InvitationIn": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "format": "email",
+      "title": "Email"
+     },
+     "role": {
+      "$ref": "#/components/schemas/Role",
+      "default": "member"
+     },
+     "custom_role_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Custom Role Id"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "email"
+    ],
+    "title": "InvitationIn"
+   },
+   "InvitationResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "role": {
+      "type": "string",
+      "title": "Role"
+     },
+     "custom_role_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Custom Role Id"
+     },
+     "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Expires At"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "email",
+     "role",
+     "custom_role_id",
+     "expires_at",
+     "created_at"
+    ],
+    "title": "InvitationResponse"
+   },
+   "LatencyResponse": {
+    "properties": {
+     "agent_turns": {
+      "type": "integer",
+      "title": "Agent Turns"
+     },
+     "measured_turns": {
+      "type": "integer",
+      "title": "Measured Turns"
+     },
+     "interrupted_turns": {
+      "type": "integer",
+      "title": "Interrupted Turns"
+     },
+     "e2e_p50_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "E2E P50 Ms"
+     },
+     "e2e_p95_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "E2E P95 Ms"
+     },
+     "llm_ttft_p50_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Llm Ttft P50 Ms"
+     },
+     "tts_ttfb_p50_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Ttfb P50 Ms"
+     },
+     "end_of_turn_delay_p50_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Of Turn Delay P50 Ms"
+     },
+     "target_p50_ms": {
+      "type": "integer",
+      "title": "Target P50 Ms"
+     },
+     "target_p95_ms": {
+      "type": "integer",
+      "title": "Target P95 Ms"
+     },
+     "meets_target": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Meets Target"
+     }
+    },
+    "type": "object",
+    "required": [
+     "agent_turns",
+     "measured_turns",
+     "interrupted_turns",
+     "e2e_p50_ms",
+     "e2e_p95_ms",
+     "llm_ttft_p50_ms",
+     "tts_ttfb_p50_ms",
+     "end_of_turn_delay_p50_ms",
+     "target_p50_ms",
+     "target_p95_ms",
+     "meets_target"
+    ],
+    "title": "LatencyResponse",
+    "description": "Prospect stops speaking -> agent's first audio, against the Phase 3 targets."
+   },
+   "LeadImportIn": {
+    "properties": {
+     "csv": {
+      "type": "string",
+      "maxLength": 2000000,
+      "minLength": 1,
+      "title": "Csv"
+     },
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "csv"
+    ],
+    "title": "LeadImportIn"
+   },
+   "LeadImportResult": {
+    "properties": {
+     "created": {
+      "type": "integer",
+      "title": "Created"
+     },
+     "added_to_campaign": {
+      "type": "integer",
+      "title": "Added To Campaign"
+     },
+     "errors": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Errors"
+     }
+    },
+    "type": "object",
+    "required": [
+     "created",
+     "added_to_campaign",
+     "errors"
+    ],
+    "title": "LeadImportResult"
+   },
+   "LeadIn": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name"
+     },
+     "phone": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^\\+?[0-9][0-9 ()-]{5,18}[0-9]$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Phone"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "email"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "company": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Company"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "LeadIn"
+   },
+   "LeadResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "phone": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Phone"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "company": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Company"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "interest": {
+      "type": "string",
+      "title": "Interest",
+      "default": "unknown"
+     },
+     "interest_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Interest Reason"
+     },
+     "qualification": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Qualification"
+     },
+     "erased_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Erased At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "phone",
+     "email",
+     "company",
+     "status",
+     "created_at"
+    ],
+    "title": "LeadResponse"
+   },
+   "LivenessResponse": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "const": "ok",
+      "title": "Status"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status"
+    ],
+    "title": "LivenessResponse"
+   },
+   "LoginRequest": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "format": "email",
+      "title": "Email"
+     },
+     "password": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Password"
+     },
+     "tenant_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tenant Id"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "email",
+     "password"
+    ],
+    "title": "LoginRequest"
+   },
+   "MeResponse": {
+    "properties": {
+     "user_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "User Id"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "full_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Full Name"
+     },
+     "role": {
+      "$ref": "#/components/schemas/Role"
+     },
+     "tenant": {
+      "$ref": "#/components/schemas/TenantResponse"
+     },
+     "permissions": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Permissions",
+      "default": []
+     },
+     "is_platform_admin": {
+      "type": "boolean",
+      "title": "Is Platform Admin",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "user_id",
+     "email",
+     "full_name",
+     "role",
+     "tenant"
+    ],
+    "title": "MeResponse"
+   },
+   "MeetingItem": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "lead_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Lead Id"
+     },
+     "lead_name": {
+      "type": "string",
+      "title": "Lead Name"
+     },
+     "call_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Call Id"
+     },
+     "starts_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Starts At"
+     },
+     "ends_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Ends At"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "lead_id",
+     "lead_name",
+     "call_id",
+     "starts_at",
+     "ends_at",
+     "status"
+    ],
+    "title": "MeetingItem"
+   },
+   "MemberResponse": {
+    "properties": {
+     "membership_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Membership Id"
+     },
+     "user_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "User Id"
+     },
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "full_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Full Name"
+     },
+     "role": {
+      "$ref": "#/components/schemas/Role"
+     },
+     "joined_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Joined At"
+     },
+     "custom_role_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Custom Role Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "membership_id",
+     "user_id",
+     "email",
+     "full_name",
+     "role",
+     "joined_at"
+    ],
+    "title": "MemberResponse"
+   },
+   "MemoryResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "fact": {
+      "type": "string",
+      "title": "Fact"
+     },
+     "confidence": {
+      "type": "number",
+      "title": "Confidence"
+     },
+     "source_call_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Source Call Id"
+     },
+     "extractor": {
+      "type": "string",
+      "title": "Extractor"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "kind",
+     "fact",
+     "confidence",
+     "source_call_id",
+     "extractor",
+     "created_at"
+    ],
+    "title": "MemoryResponse"
+   },
+   "OutboundCallIn": {
+    "properties": {
+     "lead_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Lead Id"
+     },
+     "purpose": {
+      "$ref": "#/components/schemas/CallPurpose",
+      "default": "promotional"
+     },
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "lead_id"
+    ],
+    "title": "OutboundCallIn"
+   },
+   "OutboundCallResponse": {
+    "properties": {
+     "call_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Call Id"
+     },
+     "decision_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Decision Id"
+     },
+     "dial_status": {
+      "type": "string",
+      "title": "Dial Status"
+     }
+    },
+    "type": "object",
+    "required": [
+     "call_id",
+     "decision_id",
+     "dial_status"
+    ],
+    "title": "OutboundCallResponse"
+   },
+   "Permission": {
+    "type": "string",
+    "enum": [
+     "calls.place",
+     "leads.manage",
+     "leads.privacy",
+     "campaigns.manage",
+     "agents.manage",
+     "numbers.manage",
+     "compliance.manage",
+     "team.manage",
+     "audit.read",
+     "analytics.read"
+    ],
+    "title": "Permission"
+   },
+   "PhoneNumberIn": {
+    "properties": {
+     "e164": {
+      "type": "string",
+      "maxLength": 25,
+      "minLength": 6,
+      "title": "E164"
+     },
+     "carrier": {
+      "type": "string",
+      "const": "exotel",
+      "title": "Carrier",
+      "default": "exotel"
+     },
+     "purpose": {
+      "$ref": "#/components/schemas/CallPurpose"
+     },
+     "dlt_registered": {
+      "type": "boolean",
+      "title": "Dlt Registered",
+      "default": false
+     },
+     "inbound_enabled": {
+      "type": "boolean",
+      "title": "Inbound Enabled",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "e164",
+     "purpose"
+    ],
+    "title": "PhoneNumberIn"
+   },
+   "PhoneNumberResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "e164": {
+      "type": "string",
+      "title": "E164"
+     },
+     "carrier": {
+      "type": "string",
+      "title": "Carrier"
+     },
+     "purpose": {
+      "type": "string",
+      "title": "Purpose"
+     },
+     "dlt_registered": {
+      "type": "boolean",
+      "title": "Dlt Registered"
+     },
+     "inbound_enabled": {
+      "type": "boolean",
+      "title": "Inbound Enabled"
+     },
+     "active": {
+      "type": "boolean",
+      "title": "Active"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "e164",
+     "carrier",
+     "purpose",
+     "dlt_registered",
+     "inbound_enabled",
+     "active",
+     "created_at"
+    ],
+    "title": "PhoneNumberResponse"
+   },
+   "PhoneNumberUpdate": {
+    "properties": {
+     "active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Active"
+     },
+     "inbound_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Inbound Enabled"
+     },
+     "dlt_registered": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dlt Registered"
+     }
+    },
+    "type": "object",
+    "title": "PhoneNumberUpdate"
+   },
+   "PlanIn": {
+    "properties": {
+     "plan_name": {
+      "type": "string",
+      "maxLength": 50,
+      "minLength": 1,
+      "title": "Plan Name"
+     },
+     "monthly_call_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Monthly Call Limit"
+     },
+     "monthly_minute_limit": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Monthly Minute Limit"
+     },
+     "monthly_cost_limit": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Monthly Cost Limit"
+     },
+     "cost_currency": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^[A-Z]{3}$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cost Currency"
+     },
+     "max_concurrent_calls": {
+      "type": "integer",
+      "maximum": 100.0,
+      "minimum": 1.0,
+      "title": "Max Concurrent Calls",
+      "default": 2
+     }
+    },
+    "type": "object",
+    "required": [
+     "plan_name"
+    ],
+    "title": "PlanIn"
+   },
+   "PolicyOverrides": {
+    "properties": {
+     "window_start": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Window Start"
+     },
+     "window_end": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Window End"
+     },
+     "max_calls_per_number_per_day": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 20.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Calls Per Number Per Day"
+     },
+     "max_calls_per_number_per_week": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Calls Per Number Per Week"
+     },
+     "inquiry_consent_valid_days": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 365.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Inquiry Consent Valid Days"
+     },
+     "express_consent_overrides_dnd": {
+      "anyOf": [
+       {
+        "type": "boolean",
+        "const": false
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Express Consent Overrides Dnd"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "PolicyOverrides",
+    "description": "A tenant's own, stricter settings. ``None`` means \"use the policy version's value\"."
+   },
+   "PolicyVersionResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "pack": {
+      "type": "string",
+      "title": "Pack"
+     },
+     "version": {
+      "type": "string",
+      "title": "Version"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "rules": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Rules"
+     },
+     "notes": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Notes"
+     },
+     "reviewed_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reviewed At"
+     },
+     "reviewed_by": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reviewed By"
+     },
+     "review_reference": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Review Reference"
+     },
+     "retired_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Retired At"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "pack",
+     "version",
+     "status",
+     "rules",
+     "notes",
+     "reviewed_at",
+     "reviewed_by",
+     "review_reference",
+     "retired_at",
+     "created_at"
+    ],
+    "title": "PolicyVersionResponse"
+   },
+   "PriceIn": {
+    "properties": {
+     "provider": {
+      "type": "string",
+      "maxLength": 50,
+      "minLength": 1,
+      "title": "Provider"
+     },
+     "resource": {
+      "$ref": "#/components/schemas/PriceResource"
+     },
+     "model": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Model",
+      "default": "*"
+     },
+     "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "title": "Currency"
+     },
+     "amount": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+       }
+      ],
+      "title": "Amount"
+     },
+     "per_quantity": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Per Quantity"
+     },
+     "effective_from": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Effective From"
+     }
+    },
+    "type": "object",
+    "required": [
+     "provider",
+     "resource",
+     "currency",
+     "amount",
+     "per_quantity"
+    ],
+    "title": "PriceIn"
+   },
+   "PriceResource": {
+    "type": "string",
+    "enum": [
+     "llm_input_tokens",
+     "llm_output_tokens",
+     "stt_seconds",
+     "tts_characters",
+     "telephony_seconds"
+    ],
+    "title": "PriceResource"
+   },
+   "ReadinessResponse": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "ok",
+       "unavailable"
+      ],
+      "title": "Status"
+     },
+     "checks": {
+      "additionalProperties": {
+       "type": "string",
+       "enum": [
+        "ok",
+        "failed"
+       ]
+      },
+      "type": "object",
+      "title": "Checks"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status",
+     "checks"
+    ],
+    "title": "ReadinessResponse"
+   },
+   "RefreshRequest": {
+    "properties": {
+     "refresh_token": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 20,
+      "title": "Refresh Token"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "refresh_token"
+    ],
+    "title": "RefreshRequest"
+   },
+   "Role": {
+    "type": "string",
+    "enum": [
+     "owner",
+     "admin",
+     "member"
+    ],
+    "title": "Role"
+   },
+   "SignupRequest": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "format": "email",
+      "title": "Email"
+     },
+     "password": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 12,
+      "title": "Password"
+     },
+     "full_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Full Name"
+     },
+     "tenant_name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 2,
+      "title": "Tenant Name"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "email",
+     "password",
+     "tenant_name"
+    ],
+    "title": "SignupRequest"
+   },
+   "TenantResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "slug": {
+      "type": "string",
+      "title": "Slug"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "slug"
+    ],
+    "title": "TenantResponse"
+   },
+   "TestNumberIn": {
+    "properties": {
+     "e164": {
+      "type": "string",
+      "maxLength": 25,
+      "minLength": 6,
+      "title": "E164"
+     },
+     "label": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Label"
+     }
+    },
+    "type": "object",
+    "required": [
+     "e164",
+     "label"
+    ],
+    "title": "TestNumberIn"
+   },
+   "TestNumberResponse": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "e164": {
+      "type": "string",
+      "title": "E164"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "e164",
+     "label",
+     "created_at"
+    ],
+    "title": "TestNumberResponse"
+   },
+   "TokenResponse": {
+    "properties": {
+     "access_token": {
+      "type": "string",
+      "title": "Access Token"
+     },
+     "refresh_token": {
+      "type": "string",
+      "title": "Refresh Token"
+     },
+     "token_type": {
+      "type": "string",
+      "const": "bearer",
+      "title": "Token Type",
+      "default": "bearer"
+     },
+     "expires_in": {
+      "type": "integer",
+      "title": "Expires In"
+     }
+    },
+    "type": "object",
+    "required": [
+     "access_token",
+     "refresh_token",
+     "expires_in"
+    ],
+    "title": "TokenResponse"
+   },
+   "TranscriptIn": {
+    "properties": {
+     "lines": {
+      "items": {
+       "$ref": "#/components/schemas/TranscriptLine"
+      },
+      "type": "array",
+      "maxItems": 2000,
+      "minItems": 1,
+      "title": "Lines"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "lines"
+    ],
+    "title": "TranscriptIn"
+   },
+   "TranscriptLine": {
+    "properties": {
+     "seq": {
+      "type": "integer",
+      "maximum": 100000.0,
+      "minimum": 0.0,
+      "title": "Seq"
+     },
+     "speaker": {
+      "type": "string",
+      "enum": [
+       "prospect",
+       "agent"
+      ],
+      "title": "Speaker"
+     },
+     "text": {
+      "type": "string",
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Text"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "seq",
+     "speaker",
+     "text"
+    ],
+    "title": "TranscriptLine"
+   },
+   "TranscriptResponse": {
+    "properties": {
+     "call_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Call Id"
+     },
+     "lines": {
+      "items": {
+       "$ref": "#/components/schemas/TranscriptLine"
+      },
+      "type": "array",
+      "title": "Lines"
+     }
+    },
+    "type": "object",
+    "required": [
+     "call_id",
+     "lines"
+    ],
+    "title": "TranscriptResponse"
+   },
+   "TurnMetricIn": {
+    "properties": {
+     "seq": {
+      "type": "integer",
+      "maximum": 100000.0,
+      "minimum": 0.0,
+      "title": "Seq"
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "prospect",
+       "agent"
+      ],
+      "title": "Role"
+     },
+     "interrupted": {
+      "type": "boolean",
+      "title": "Interrupted",
+      "default": false
+     },
+     "transcription_delay_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 600000.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Transcription Delay Ms"
+     },
+     "end_of_turn_delay_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 600000.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Of Turn Delay Ms"
+     },
+     "e2e_latency_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 600000.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "E2E Latency Ms"
+     },
+     "llm_ttft_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 600000.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Llm Ttft Ms"
+     },
+     "tts_ttfb_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 600000.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Ttfb Ms"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "seq",
+     "role"
+    ],
+    "title": "TurnMetricIn"
+   },
+   "TurnMetricsReport": {
+    "properties": {
+     "turns": {
+      "items": {
+       "$ref": "#/components/schemas/TurnMetricIn"
+      },
+      "type": "array",
+      "maxItems": 1000,
+      "minItems": 1,
+      "title": "Turns"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "turns"
+    ],
+    "title": "TurnMetricsReport"
+   },
+   "TurnRequest": {
+    "properties": {
+     "history": {
+      "items": {
+       "$ref": "#/components/schemas/UtteranceIn"
+      },
+      "type": "array",
+      "maxItems": 200,
+      "minItems": 1,
+      "title": "History"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "history"
+    ],
+    "title": "TurnRequest"
+   },
+   "UsageReport": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "stt",
+       "tts"
+      ],
+      "title": "Kind"
+     },
+     "provider": {
+      "type": "string",
+      "maxLength": 50,
+      "minLength": 1,
+      "title": "Provider"
+     },
+     "model": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Model"
+     },
+     "audio_seconds": {
+      "type": "number",
+      "maximum": 21600.0,
+      "minimum": 0.0,
+      "title": "Audio Seconds",
+      "default": 0.0
+     },
+     "characters": {
+      "type": "integer",
+      "maximum": 5000000.0,
+      "minimum": 0.0,
+      "title": "Characters",
+      "default": 0
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "kind",
+     "provider",
+     "model"
+    ],
+    "title": "UsageReport"
+   },
+   "UtteranceIn": {
+    "properties": {
+     "role": {
+      "type": "string",
+      "enum": [
+       "prospect",
+       "agent"
+      ],
+      "title": "Role"
+     },
+     "text": {
+      "type": "string",
+      "maxLength": 4000,
+      "title": "Text"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "role",
+     "text"
+    ],
+    "title": "UtteranceIn"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "VoiceSessionRequest": {
+    "properties": {
+     "lead_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lead Id"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "VoiceSessionRequest"
+   },
+   "VoiceSessionResponse": {
+    "properties": {
+     "call_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Call Id"
+     },
+     "room": {
+      "type": "string",
+      "title": "Room"
+     },
+     "livekit_url": {
+      "type": "string",
+      "title": "Livekit Url"
+     },
+     "token": {
+      "type": "string",
+      "title": "Token"
+     }
+    },
+    "type": "object",
+    "required": [
+     "call_id",
+     "room",
+     "livekit_url",
+     "token"
+    ],
+    "title": "VoiceSessionResponse"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  }
+ }
+}

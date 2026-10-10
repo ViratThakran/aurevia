@@ -483,3 +483,66 @@ def test_phase8_tables_are_isolated(env: Env, db: PgEnv) -> None:
         list(tables),
     )
     assert [(r[0], r[1], r[2]) for r in rows] == [(t, True, True) for t in tables]
+
+
+# --- Dashboard lists (Phase 8b) ----------------------------------------------------------
+
+
+def test_dashboard_lists_and_task_actions(env: Env, db: PgEnv) -> None:
+    _setup_lines(env)
+    lead_id = _lead(env, name="Own")
+    call_id = _post(env, "/calls/outbound", {"lead_id": lead_id}).json()["call_id"]
+    tenant_id = me(env.client, env.owner)["tenant"]["id"]
+    admin_execute(
+        db,
+        "INSERT INTO appointments (id, tenant_id, lead_id, call_id, starts_at, ends_at, status) "
+        f"VALUES (gen_random_uuid(), '{tenant_id}', '{lead_id}', '{call_id}', "
+        "now() + interval '1 day', now() + interval '1 day 30 minutes', 'booked')",
+        "INSERT INTO followups (id, tenant_id, lead_id, call_id, due_at, channel, note, status) "
+        f"VALUES (gen_random_uuid(), '{tenant_id}', '{lead_id}', '{call_id}', "
+        "now() + interval '2 days', 'call', 'send the quote', 'scheduled')",
+        "INSERT INTO handoffs (id, tenant_id, lead_id, call_id, reason, urgency, status) "
+        f"VALUES (gen_random_uuid(), '{tenant_id}', '{lead_id}', '{call_id}', "
+        "'wants a person', 'high', 'open')",
+    )
+    headers = bearer(env.owner)
+    calls = env.client.get("/api/v1/voice/calls", headers=headers).json()
+    assert [(c["id"], c["lead_name"], c["direction"]) for c in calls] == [
+        (call_id, "Own", "outbound")
+    ]
+    assert (
+        env.client.get("/api/v1/voice/calls", params={"lead_id": lead_id}, headers=headers).json()[
+            0
+        ]["id"]
+        == call_id
+    )
+    meetings = env.client.get("/api/v1/meetings", headers=headers).json()
+    assert [m["lead_name"] for m in meetings] == ["Own"]
+
+    followup = env.client.get("/api/v1/followups", headers=headers).json()[0]
+    done = env.client.patch(
+        f"/api/v1/followups/{followup['id']}", json={"status": "done"}, headers=headers
+    )
+    assert done.status_code == 200
+    again = env.client.patch(
+        f"/api/v1/followups/{followup['id']}", json={"status": "cancelled"}, headers=headers
+    )
+    assert again.status_code == 409
+    assert env.client.get("/api/v1/followups", headers=headers).json() == []
+
+    handoff = env.client.get("/api/v1/handoffs", headers=headers).json()[0]
+    assert handoff["urgency"] == "high"
+    resolved = env.client.post(f"/api/v1/handoffs/{handoff['id']}/resolve", headers=headers)
+    assert resolved.json()["status"] == "resolved"
+    assert env.client.get("/api/v1/handoffs", headers=headers).json() == []
+
+    # Another tenant sees none of it.
+    other = do_signup(env.client, "other@example.com", "Other Co")
+    for path in ("/api/v1/voice/calls", "/api/v1/meetings", "/api/v1/handoffs"):
+        assert env.client.get(path, headers=bearer(other)).json() == []
+
+
+def test_lead_response_shows_interest_and_erasure(env: Env) -> None:
+    lead_id = _lead(env)
+    lead = env.client.get(f"/api/v1/leads/{lead_id}", headers=bearer(env.owner)).json()
+    assert (lead["interest"], lead["qualification"], lead["erased_at"]) == ("unknown", {}, None)

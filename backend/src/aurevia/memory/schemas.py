@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -28,6 +28,10 @@ class LeadResponse(BaseModel):
     company: str | None
     status: str
     created_at: datetime
+    interest: str = "unknown"
+    interest_reason: str | None = None
+    qualification: dict[str, Any] = Field(default_factory=dict)
+    erased_at: datetime | None = None
 
 
 class MemoryResponse(BaseModel):

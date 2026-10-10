@@ -25,7 +25,9 @@ Source of truth: `00-foundation/master-brief.md`, including its approved amendme
 - Never claim a failed tool action succeeded.
 
 ## Current milestone
-Phase 8a (SaaS platform backend) built on top of Phase 7; next is 8b, the Next.js dashboard.
+Phase 8 (SaaS platform) built: 8a backend, and 8b the Next.js dashboard in `web/dashboard`
+(see its README). Next: Phase 9 (pilot). The dashboard never invents endpoints: it uses types
+generated from the API's OpenAPI schema, regenerated whenever the API changes.
 Authorization is by permission (`identity/permissions.py`, `require_permission`), never by
 role name in routers. Every outbound call, from any source, goes through
 `telephony/outbound.py` `place_outbound` (plan limits, then the gate). Platform admins are
