@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 import {
   Alert,
@@ -147,10 +148,21 @@ function ImportLeads({ onImported }: { onImported: () => void }) {
   );
 }
 
-export default function LeadsPage() {
+export default function LeadsPageWithSearch() {
+  // useSearchParams needs a Suspense boundary for static rendering.
+  return (
+    <Suspense>
+      <LeadsPage />
+    </Suspense>
+  );
+}
+
+function LeadsPage() {
   const { can } = useSession();
   const [archived, setArchived] = useState(false);
-  const [search, setSearch] = useState("");
+  const query = useSearchParams().get("q") ?? "";
+  const [search, setSearch] = useState(query);
+  useEffect(() => setSearch(query), [query]); // the top bar search links here with ?q=
   const leads = useApi<Lead[]>("/leads", { include_archived: archived, limit: 500 });
   const [panel, setPanel] = useState<"add" | "import" | null>(null);
 

@@ -18,7 +18,7 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-accent text-accent-foreground shadow-sm hover:-translate-y-px hover:opacity-95",
+  primary: "bg-accent-strong text-white shadow-sm hover:-translate-y-px hover:brightness-110",
   secondary: "border border-border bg-surface hover:-translate-y-px hover:border-accent/40",
   danger: "bg-danger text-white hover:opacity-90",
   ghost: "text-muted hover:bg-background hover:text-foreground",
@@ -36,7 +36,7 @@ export function Button({
       type="button"
       {...props}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0",
+        "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0",
         VARIANTS[variant],
         className,
       )}
@@ -61,7 +61,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cx(
-        "inline-flex items-center rounded-lg px-3.5 py-2 text-sm font-medium transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+        "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
         VARIANTS[variant],
       )}
     >

@@ -1,18 +1,52 @@
 @import "tailwindcss";
 
-/* Aurevia dashboard theme: crisp white cards on a soft canvas, one forest-green accent,
-   single-pixel borders instead of heavy shadows. Readable in light and dark. */
+/* Aurevia dashboard theme: the app sits in a rounded frame on a dark, accent-tinted canvas;
+   crisp white cards inside, single-pixel borders, one accent. The accent is chosen in
+   Settings → Appearance (html[data-accent]) and remembered on this device. */
+
+/* Accent palettes: brand (main), strong (deep, highlighted cards), mid (light bars),
+   soft (tints). Forest is the default. */
+:root,
+:root[data-accent="forest"] {
+  --brand: #15803d;
+  --brand-strong: #14532d;
+  --brand-mid: #4ade80;
+  --brand-soft: #f0fdf4;
+}
+:root[data-accent="ocean"] {
+  --brand: #1d4ed8;
+  --brand-strong: #1e3a8a;
+  --brand-mid: #60a5fa;
+  --brand-soft: #eff6ff;
+}
+:root[data-accent="plum"] {
+  --brand: #7e22ce;
+  --brand-strong: #581c87;
+  --brand-mid: #c084fc;
+  --brand-soft: #faf5ff;
+}
+:root[data-accent="ember"] {
+  --brand: #c2410c;
+  --brand-strong: #7c2d12;
+  --brand-mid: #fb923c;
+  --brand-soft: #fff7ed;
+}
+
 :root {
-  --background: #f9fafb;
+  --frame: color-mix(in srgb, var(--brand-strong) 72%, #020403);
+  --background: #f6f7f6;
+  --panel: #fbfbfa;
   --surface: #ffffff;
   --border: #e5e7eb;
   --foreground: #111827;
   --muted: #6b7280;
-  --accent: #15803d;
-  --accent-soft: #f0fdf4;
+  --accent: var(--brand);
+  --accent-strong: var(--brand-strong);
+  --accent-mid: var(--brand-mid);
+  --accent-soft: var(--brand-soft);
   --accent-foreground: #ffffff;
-  --ink: #0f1a14; /* dark ticker surface */
-  --ink-foreground: #ecfdf3;
+  --ink: color-mix(in srgb, var(--brand-strong) 55%, #050806);
+  --ink-foreground: #f4f7f5;
   --danger: #dc2626;
   --success: #15803d;
   --warning: #d97706;
@@ -23,16 +57,18 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0f0c;
-    --surface: #111813;
-    --border: #1f2a23;
-    --foreground: #ecf3ee;
-    --muted: #93a39a;
-    --accent: #4ade80;
-    --accent-soft: #10251a;
-    --accent-foreground: #052e16;
+    --frame: #020403;
+    --background: #0b100d;
+    --panel: #0e1410;
+    --surface: #131a15;
+    --border: #212b24;
+    --foreground: #edf2ee;
+    --muted: #94a39a;
+    --accent: var(--brand-mid);
+    --accent-strong: color-mix(in srgb, var(--brand-strong) 70%, #000);
+    --accent-soft: color-mix(in srgb, var(--brand-mid) 12%, #0b100d);
+    --accent-foreground: #07110a;
     --ink: #050806;
-    --ink-foreground: #d1fae5;
     --danger: #f87171;
     --success: #4ade80;
     --warning: #fbbf24;
@@ -42,12 +78,16 @@
 }
 
 @theme inline {
+  --color-frame: var(--frame);
   --color-background: var(--background);
+  --color-panel: var(--panel);
   --color-surface: var(--surface);
   --color-border: var(--border);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-mid: var(--accent-mid);
   --color-accent-soft: var(--accent-soft);
   --color-accent-foreground: var(--accent-foreground);
   --color-ink: var(--ink);
@@ -80,6 +120,32 @@ body {
   box-shadow: var(--shadow-lift);
 }
 
+/* Highlighted card: deep accent gradient. */
+.card-hero {
+  background: linear-gradient(140deg, var(--accent-strong), var(--brand));
+  border-color: transparent;
+  color: #fff;
+}
+
+/* Diagonal hatching for empty or pending values (chart bars, gauge remainder). */
+.hatch {
+  background-color: var(--surface);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--muted) 35%, transparent) 0 1.5px,
+    transparent 1.5px 7px
+  );
+  border: 1px solid var(--border);
+}
+
+/* Fine contour lines for the dark promo card. */
+.contour {
+  background-color: var(--ink);
+  background-image:
+    radial-gradient(circle at 110% 120%, transparent 0 38%, rgba(255, 255, 255, 0.07) 38% 38.6%, transparent 38.6% 46%, rgba(255, 255, 255, 0.06) 46% 46.6%, transparent 46.6% 54%, rgba(255, 255, 255, 0.05) 54% 54.6%, transparent 54.6% 62%, rgba(255, 255, 255, 0.04) 62% 62.6%, transparent 62.6%),
+    radial-gradient(circle at -10% -20%, color-mix(in srgb, var(--brand) 45%, transparent), transparent 60%);
+}
+
 /* Elements slide into view instead of snapping; --i staggers siblings. */
 @keyframes rise-in {
   from {
@@ -94,6 +160,22 @@ body {
 .rise-in {
   animation: rise-in 700ms var(--ease-spring) both;
   animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@keyframes grow-up {
+  from {
+    transform: scaleY(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.grow-up {
+  transform-origin: bottom;
+  animation: grow-up 900ms var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 
 /* Floating notification pill: glides in, then bobs softly. */
@@ -122,7 +204,6 @@ body {
     pill-float 4s ease-in-out 900ms infinite;
 }
 
-/* Dark ticker items fade in and out. */
 .ticker-item {
   transition:
     opacity 600ms var(--ease-spring),
@@ -135,6 +216,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .rise-in,
+  .grow-up,
   .floating-pill {
     animation: none;
   }
