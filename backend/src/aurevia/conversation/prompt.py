@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from aurevia.sales.state import STATE_GOALS, SalesState
 
-PROMPT_VERSION = "voice-2026-10-10.3"
+PROMPT_VERSION = "voice-2026-10-10.4"
 
 
 @dataclass(frozen=True)
@@ -72,8 +72,9 @@ def _actions(company: str, tools_enabled: bool) -> str:
         "alternative, such as another time or a colleague following up.\n"
         "- Before offering meeting times, look them up with get_available_slots; never guess.\n"
         "- Stage, qualification, interest and objections are recorded for you after you speak. "
-        "Just talk to the prospect; use tools only when the reply depends on them (meeting "
-        "times, booking, do-not-call, handing over to a colleague).\n"
+        "Just talk to the prospect; use tools when the reply depends on them (meeting times, "
+        "booking, do-not-call, handing over to a colleague) and, in the same response as your "
+        "reply, mark_not_interested when the prospect clearly declines.\n"
         f"- You cannot send emails or messages yourself; a colleague at {company} does that."
     )
 

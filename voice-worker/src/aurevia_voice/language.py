@@ -18,7 +18,7 @@ Language = Literal["en", "hi"]
 _DEVANAGARI = re.compile("[" + chr(0x0900) + "-" + chr(0x097F) + "]")
 _LATIN_WORD = re.compile(r"[a-zA-Z]+")
 # Common Hindi words written in Latin script (Hinglish). Words that are also everyday English
-# ("me", "to", "the", "main", "log", "so", "hi") are left out on purpose.
+# ("me", "to", "the", "main", "log", "par", "din", "so", "hi") are left out on purpose.
 _HINDI_WORDS = frozenset(
     [
         "aap",
@@ -93,7 +93,6 @@ _HINDI_WORDS = frozenset(
         "samajh",
         "aur",
         "lekin",
-        "par",
         "phir",
         "abhi",
         "agar",
@@ -120,13 +119,55 @@ _HINDI_WORDS = frozenset(
         "mahina",
         "mahine",
         "saal",
-        "din",
         "kal",
         "aaj",
         "logon",
         "kuch",
         "koi",
         "baat",
+        # Particles, days and times, so Hinglish dates ("Somvaar ko 10 baje") read as Hindi.
+        "ka",
+        "ke",
+        "ki",
+        "ko",
+        "se",
+        "ne",
+        "baje",
+        "subah",
+        "shaam",
+        "dopahar",
+        "raat",
+        "parso",
+        "hafte",
+        "hafta",
+        "somvaar",
+        "mangalvaar",
+        "budhvaar",
+        "guruvaar",
+        "shukravaar",
+        "shanivaar",
+        "ravivaar",
+        "pehle",
+        "baad",
+        "waala",
+        "jaankari",
+        "madad",
+        "samay",
+        "sahi",
+        "zyada",
+        "kam",
+        "milte",
+        "milenge",
+        "chaliye",
+        "dekhiye",
+        "suniye",
+        "boliye",
+        "haanji",
+        "rahega",
+        "karenge",
+        "karunga",
+        "karungi",
+        "kyunki",
     ]
 )
 MIN_WORDS = 3  # below this the reply is too short to judge; keep the current language

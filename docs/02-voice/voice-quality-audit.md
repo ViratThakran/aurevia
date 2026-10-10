@@ -116,9 +116,12 @@ Cost implications:
 
 ## 8. Voice decision (2026-10-10)
 
-Chosen by listening to the samples: **Meera** (female, default for new agents) and **Dev**
-(male), both from Cartesia's Indian catalogue. Both are approved voices: an agent may use
-either, picked on the dashboard (**Agent → Voice**; `GET /api/v1/voices`).
+The user chose **Meera** (female, default for new agents) and **Dev** (male) from the samples,
+in chat on 2026-10-10. Both come from Cartesia's Indian catalogue. They are the two selectable
+voices: an agent may use either, picked on the dashboard (**Agent → Voice**; `GET /api/v1/voices`).
+**Status: chosen, not yet accepted.** Acceptance needs the microphone test in
+[../06-testing/voice-manual-acceptance.md](../06-testing/voice-manual-acceptance.md), which has
+not been run.
 `AUREVIA_TTS_VOICE` defaults to Meera for agents with no voice set. Siya and the old default
 (Katie) are no longer used.
 
@@ -135,12 +138,13 @@ either, picked on the dashboard (**Agent → Voice**; `GET /api/v1/voices`).
 - **Speech pass:** only tools the reply may depend on are offered: slots, booking,
   cancellation, follow-up, do-not-call and handoff (`DEFERRED_TOOLS` in `conversation/engine.py`
   lists the ones held back).
-- **Bookkeeping pass:** after the reply streams, a second model call may use only the six
-  bookkeeping tools (stage, qualification, interest, not interested, objection, note), through
-  the same validated `ToolExecutor`. It sees the reply as spoken and its text is ignored. It runs
-  off the prospect's clock, and a failure is logged without affecting the call. It cannot book or
-  change anything the prospect was told.
-- `PROMPT_VERSION voice-2026-10-10.3`: the agent is told that bookkeeping is recorded after it speaks.
+- **Bookkeeping pass:** after the reply streams, a second model call may use only the five
+  bookkeeping tools (stage, qualification, interest, objection, note), through the same
+  validated `ToolExecutor`. It sees the reply as spoken and its text is ignored. It runs off the
+  prospect's clock and cannot book or change anything the prospect was told. *(Corrected
+  2026-10-10, section 10: "not interested" moved back into the spoken turn, a failed pass is
+  retried once, and the next turn waits for it.)*
+- `PROMPT_VERSION voice-2026-10-10.3` (now `.4`): the agent is told that bookkeeping is recorded after it speaks.
 - **Hindi voice switch** (`voice-worker/src/aurevia_voice/language.py`): before each reply is
   synthesized, its first words are checked (Devanagari, or Hinglish words in Latin script). The
   Cartesia language is set to `hi` or `en` before the TTS stream is created. A reply too short
@@ -151,10 +155,88 @@ either, picked on the dashboard (**Agent → Voice**; `GET /api/v1/voices`).
 | Turn type | Before | After |
 |---|---|---|
 | No tool needed (most turns) | 2 calls, first word ~2.0–2.5 s | 1 call, **0.9–1.3 s** when the model is not throttled |
-| Not interested | 2 calls, ~1.9 s | 1 call, 1.2–1.3 s |
+| Not interested | 2 calls, ~1.9 s | 1 call, 1.2–1.3 s *(superseded: it is in the spoken turn again, see section 10)* |
 | Slot lookup and booking | 2–3 calls, 2.6–3.6 s | 2–3 calls, unchanged (it needs the lookup) |
 | Handoff and do-not-call | 2 calls | 2 calls, unchanged on purpose (the agent talks about the result) |
 
 - **Cost:** one extra small model call per turn, about 2.2k input tokens and few output tokens.
 - **Free-tier limits:** this doubles requests per minute on a free-tier key. Rate limits then
   stall turns (20–40 s retries) and drop bookkeeping passes. **A paid key is needed for real calls.**
+
+## 10. Validation of the voice changes (2026-10-10)
+
+### Bugs found and fixed
+
+| # | Bug | Fix | Test |
+|---|---|---|---|
+| 1 | "Not interested" was recorded only by the bookkeeping pass. If that pass failed (for example on a rate limit), the lead stayed callable | `mark_not_interested` is back in the spoken turn. Deferred now: stage, qualify, interested, objection, note | `test_speech_first_then_bookkeeping_after_the_reply` |
+| 2 | A failed bookkeeping pass was only logged as a warning | One retry for rate limit, timeout or outage. A pass still lost is logged as an **error** ("Bookkeeping pass lost") | `test_bookkeeping_retries_once_after_a_transient_failure`, `test_bookkeeping_failure_never_breaks_the_spoken_reply` |
+| 3 | Turn N+1 could start while turn N's bookkeeping was still writing: a stale stage in the prompt, and two concurrent writers | A turn waits (≤ 2 s) for its call's pending pass | `test_next_turn_waits_for_the_previous_bookkeeping` (fails without the wait; checked) |
+| 4 | The bookkeeping pass was sent text from earlier tool rounds twice | It gets only the last round's words; earlier rounds are already in the history | covered by the tests above |
+| 5 | Hinglish dates and times ("Somvaar ko 10 baje") were detected as English and read with English pronunciation | Added particles, days and times; removed the English-colliding "par" and "din" | `test_hinglish_dates_times_and_numbers` |
+| 6 | The API accepted any voice id; the docs said only Meera and Dev | `AgentUpdate.voice` must be an approved voice (or empty, meaning Meera) | `test_approved_voices_and_the_default` |
+| 7 | The docs said the voice was "approved" | Corrected: **chosen by the user, not yet accepted**. Acceptance is the manual test | n/a |
+
+Still true:
+- Tools stay validated, tenant-scoped and audited in both passes (same `ToolExecutor`; `test_bookkeeping_tools_are_validated_scoped_and_audited`).
+- Booking, slots, handoff, do-not-call and "not interested" run before the turn ends (`test_required_actions_happen_in_the_spoken_turn`).
+- A bookkeeping failure never changes the spoken reply.
+
+### Measurements (`backend/scripts/voice_benchmark.py`; raw reports in `benchmarks/`)
+
+**Conditions:** real Gemini, **free-tier key**, text path only (backend and model: request sent →
+first text delta). **No STT, TTS or audio.**
+- Flash: daily quota (20 requests) used up all day, so every turn fell back to Flash-Lite.
+- Flash-Lite answered a trivial prompt in 0.8 s in the morning and 4.5–11 s in the evening.
+- Flash-Lite's daily quota (500 requests) ran out during the comparison.
+
+**Run A**: new code, the configured settings (Flash, falling back to Flash-Lite; 2.5 s
+first-token timeout), 1 run of 6 scenarios.
+**Run B-old**: the code before the speak-first change (`1fb897d`), Flash-Lite only, 2 runs.
+**Run B-new** (same settings as B-old): **blocked**. Flash-Lite's daily quota ran out after
+4 turns; 2 turns measured 1 544 and 1 028 ms.
+
+| Scenario | A new: p50 / p95 ms | B old: p50 / p95 ms | A new: model requests per turn | B old: model requests per turn | A new: cost / scenario | B old: cost / scenario |
+|---|---|---|---|---|---|---|
+| Ordinary (3 turns) | 2 101 / 2 109 | 2 089 / 3 740 | 2.33 | 2.33 | $0.0039 | $0.0053 |
+| Objection (2) | 951 / 1 014 | 2 337 / 4 104 | 2.0 | 2.0 | $0.0023 | $0.0030 |
+| Slot lookup (1) | 2 183 | 1 956 / 2 737 | 3.0 | 2.0 | $0.0018 | $0.0016 |
+| Booking (3) | 3 196 / 3 866 | 2 349 / 4 323 | 4.33 | 3.0 | $0.0067 | $0.0067 |
+| Handoff (1) | 3 170 | 2 054 / 2 282 | 4.0 | 2.0 | $0.0017 | $0.0015 |
+| Do-not-call (1) | 1 991 | 2 008 / 2 068 | 3.0 | 2.0 | $0.0016 | $0.0014 |
+| **All turns** | **2 101 / 3 866** (11 turns) | **2 282 / 4 104** (22 turns) | **3.09** | **2.36** | **$0.0179** for the 6 | **$0.0196** for the 6 |
+
+- **Cost:** at Gemini 3.5 Flash-Lite paid-tier rates, $0.30 per 1M input tokens and $2.50 per 1M
+  output tokens (ai.google.dev pricing, read 2026-10-10). The platform price table is empty, so
+  the platform itself reports usage as "not priced".
+- **Model requests per turn** include the bookkeeping pass and, in run A, three requests the
+  provider refused (Flash quota).
+- **Rate limits:** run A had 3 refused requests and 1 harness retry (a 20 s wait). Run B-old had
+  1 refused request and 1 retry. No turn failed in A or B-old.
+
+**What this does and doesn't show:**
+- The samples are small, and the provider's speed changed several-fold during the day.
+- The latency difference between A and B-old is **within noise**, so it is not evidence either way.
+- Speak-first saves the extra model call only on turns where the old flow made a bookkeeping-only
+  call before speaking. On the same day, under faster provider conditions (section 9), turns
+  without a needed tool went from about 2.0–2.5 s to 0.9–1.3 s.
+- **Cost:** speak-first adds about one bookkeeping request per turn (+0.7 requests per turn here).
+  Cost per scenario stayed about the same ($0.018 against $0.020), because each call carries
+  fewer tool definitions. On a free-tier key, the extra requests use up the daily quota sooner,
+  which is what stopped run B-new.
+- **No other latency options were turned on** (preemptive TTS, dynamic endpointing): there is no
+  measured evidence for them yet.
+
+**Not measured (blocked):**
+- **End of speech → first audio** with synthetic speech (`aurevia_voice.simulate`, now with a
+  `hinglish` scenario): blocked, because the model quota ran out. The last measurement (before
+  speak-first) was p50 2 582 ms / p95 2 759 ms.
+- **Human microphone test:** needs a person; see
+  [../06-testing/voice-manual-acceptance.md](../06-testing/voice-manual-acceptance.md).
+- **Phone audio:** needs hosting and Exotel.
+- **The Hindi switch with real audio:** the TTS side was checked with Cartesia (a Hinglish reply
+  switched to `hi` and produced audio). A full call is blocked for the same reasons as above.
+
+**To repeat** (inside the API container, ideally with a paid key):
+`python scripts/voice_benchmark.py --runs 3 --out /tmp/new.json --label new`. For the old
+version, put its `src` first on `PYTHONPATH`.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import itertools
 import json
 from collections.abc import AsyncIterator
@@ -10,10 +11,12 @@ from datetime import datetime
 
 from aurevia.providers.dnd import DndLookup, DndStatus
 from aurevia.providers.model import (
+    ModelProviderError,
     ModelRequest,
     ModelResponse,
     ModelStreamEvent,
     ModelUsage,
+    ProviderErrorKind,
     ToolCall,
 )
 from aurevia.providers.speech import AudioChunk, STTConfig, TranscriptEvent, TTSConfig
@@ -40,10 +43,16 @@ class FakeModelProvider:
     # request log so it never consumes replies meant for the spoken turn. Unscripted: no tools.
     bookkeeping_replies: list[str | FakeTurn] = field(default_factory=list)
     bookkeeping_requests: list[ModelRequest] = field(default_factory=list)
+    # Failure kinds the next bookkeeping calls raise, in order (e.g. "rate_limited").
+    bookkeeping_errors: list[ProviderErrorKind] = field(default_factory=list)
+    # Seconds each bookkeeping call takes (to test turns that overlap a slow pass).
+    bookkeeping_delay: float = 0.0
 
     def _next(self, request: ModelRequest) -> ModelResponse:
         if "# Bookkeeping pass" in request.system:
             self.bookkeeping_requests.append(request)
+            if self.bookkeeping_errors:
+                raise ModelProviderError(self.name, self.bookkeeping_errors.pop(0))
             reply: str | FakeTurn = (
                 self.bookkeeping_replies.pop(0) if self.bookkeeping_replies else ""
             )
@@ -69,6 +78,8 @@ class FakeModelProvider:
         return self._next(request)
 
     async def stream(self, request: ModelRequest) -> AsyncIterator[ModelStreamEvent]:
+        if self.bookkeeping_delay and "# Bookkeeping pass" in request.system:
+            await asyncio.sleep(self.bookkeeping_delay)
         response = self._next(request)
         yield ModelStreamEvent(
             usage=ModelUsage(input_tokens=response.usage.input_tokens, output_tokens=0)
