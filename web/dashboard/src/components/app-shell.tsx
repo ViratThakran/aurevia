@@ -2,32 +2,73 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
+import { Icon, type IconName } from "@/components/icons";
 import { Button, Loading, cx } from "@/components/ui";
+import type { Schemas } from "@/lib/api";
+import { useApi } from "@/lib/hooks";
 import { useSession, type Permission } from "@/lib/session";
 
 interface NavItem {
   href: string;
   label: string;
+  icon: IconName;
   permission?: Permission;
   platformAdmin?: boolean;
+  badge?: "handoffs";
 }
 
-const NAV: NavItem[] = [
-  { href: "/", label: "Overview" },
-  { href: "/agent", label: "Agent" },
-  { href: "/test-call", label: "Test call", permission: "calls.place" },
-  { href: "/leads", label: "Leads" },
-  { href: "/campaigns", label: "Campaigns" },
-  { href: "/calls", label: "Calls" },
-  { href: "/activity", label: "Meetings & tasks" },
-  { href: "/usage", label: "Usage", permission: "analytics.read" },
-  { href: "/compliance", label: "Compliance" },
-  { href: "/team", label: "Team" },
-  { href: "/audit", label: "Audit log", permission: "audit.read" },
-  { href: "/admin", label: "Platform admin", platformAdmin: true },
+const MENU: NavItem[] = [
+  { href: "/", label: "Overview", icon: "grid" },
+  { href: "/agent", label: "Agent", icon: "bot" },
+  {
+    href: "/test-call",
+    label: "Test call",
+    icon: "mic",
+    permission: "calls.place",
+  },
+  { href: "/leads", label: "Leads", icon: "users" },
+  { href: "/campaigns", label: "Campaigns", icon: "megaphone" },
+  { href: "/calls", label: "Calls", icon: "list" },
+  {
+    href: "/activity",
+    label: "Meetings & tasks",
+    icon: "calendar",
+    badge: "handoffs",
+  },
+  {
+    href: "/usage",
+    label: "Usage",
+    icon: "chart",
+    permission: "analytics.read",
+  },
 ];
+
+const GENERAL: NavItem[] = [
+  { href: "/compliance", label: "Compliance", icon: "shield" },
+  { href: "/team", label: "Team", icon: "team" },
+  {
+    href: "/audit",
+    label: "Audit log",
+    icon: "file",
+    permission: "audit.read",
+  },
+  {
+    href: "/admin",
+    label: "Platform admin",
+    icon: "star",
+    platformAdmin: true,
+  },
+];
+
+function initials(name: string): string {
+  const parts = name
+    .replace(/@.*/, "")
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
 
 /** Signed-in layout. UI permissions only tidy the menu; the API enforces every rule. */
 export function AppShell({ children }: { children: ReactNode }) {
@@ -35,6 +76,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const handoffs = useApi<Schemas["HandoffItem"][]>(
+    status === "ready" ? "/handoffs" : null,
+    {
+      status: "open",
+      limit: 50,
+    },
+  );
 
   useEffect(() => {
     if (status === "anonymous") router.replace("/login");
@@ -49,69 +98,154 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const items = NAV.filter(
-    (item) =>
-      (!item.permission || can(item.permission)) && (!item.platformAdmin || me.is_platform_admin),
-  );
-  const active = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const visible = (item: NavItem) =>
+    (!item.permission || can(item.permission)) &&
+    (!item.platformAdmin || me.is_platform_admin);
+  const active = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const openHandoffs = handoffs.data?.length ?? 0;
+  const displayName = me.full_name || me.email;
 
-  const nav = (
-    <nav className="space-y-0.5">
-      {items.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className={cx(
-            "block rounded-md px-3 py-2 text-sm",
-            active(item.href)
-              ? "bg-accent/10 font-medium text-accent"
-              : "text-muted hover:bg-background hover:text-foreground",
-          )}
+  const onSearch = (event: FormEvent) => {
+    event.preventDefault();
+    const q = search.trim();
+    router.push(q ? `/leads?q=${encodeURIComponent(q)}` : "/leads");
+  };
+
+  const navGroup = (title: string, items: NavItem[]) => (
+    <div>
+      <div className="px-3 pb-2 text-[11px] font-medium tracking-wider text-muted uppercase">
+        {title}
+      </div>
+      <nav className="space-y-0.5">
+        {items.filter(visible).map((item) => {
+          const on = active(item.href);
+          const count = item.badge === "handoffs" ? openHandoffs : 0;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cx(
+                "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                on
+                  ? "font-medium text-foreground"
+                  : "text-muted hover:translate-x-0.5 hover:text-foreground",
+              )}
+            >
+              {on ? (
+                <span className="absolute top-1/2 -left-3 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent" />
+              ) : null}
+              <Icon
+                name={item.icon}
+                className={on ? "text-accent" : undefined}
+              />
+              <span className="flex-1">{item.label}</span>
+              {count > 0 ? (
+                <span className="rounded-md bg-accent-strong px-1.5 py-0.5 text-[10px] font-semibold text-white tabular-nums">
+                  {count}
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+
+  const sidebarBody = (
+    <>
+      <div className="flex-1 space-y-6 overflow-y-auto px-3 py-2">
+        {navGroup("Menu", MENU)}
+        {navGroup("General", GENERAL)}
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:translate-x-0.5 hover:text-foreground"
         >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
+          <Icon name="logout" />
+          Sign out
+        </button>
+      </div>
+    </>
   );
 
   return (
-    <div className="min-h-screen md:flex">
-      <aside className="hidden w-60 shrink-0 border-r border-border bg-surface md:flex md:flex-col">
-        <div className="px-5 py-5">
-          <div className="text-base font-semibold tracking-tight">Aurevia</div>
-          <div className="mt-0.5 truncate text-xs text-muted">{me.tenant.name}</div>
-        </div>
-        <div className="flex-1 overflow-y-auto px-3">{nav}</div>
-        <div className="border-t border-border px-5 py-4">
-          <div className="truncate text-sm">{me.full_name || me.email}</div>
-          <div className="mb-2 text-xs text-muted capitalize">{me.role}</div>
-          <Button variant="secondary" className="w-full" onClick={() => void logout()}>
-            Sign out
-          </Button>
-        </div>
-      </aside>
+    <div className="min-h-screen bg-background md:p-3">
+      <div className="mx-auto flex min-h-screen max-w-[1600px] gap-3 md:min-h-[calc(100vh-1.5rem)]">
+        <aside className="hidden w-60 shrink-0 flex-col rounded-2xl bg-panel md:flex">
+          <Link href="/" className="flex items-center gap-2.5 px-5 pt-5 pb-4">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent-strong text-white">
+              <Icon name="leaf" size={16} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-base font-semibold tracking-tight">
+                Aurevia
+              </span>
+              <span className="block truncate text-[11px] text-muted">
+                {me.tenant.name}
+              </span>
+            </span>
+          </Link>
+          {sidebarBody}
+        </aside>
 
-      <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-3 md:hidden">
-        <div>
-          <div className="font-semibold">Aurevia</div>
-          <div className="text-xs text-muted">{me.tenant.name}</div>
-        </div>
-        <Button variant="secondary" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen}>
-          Menu
-        </Button>
-      </header>
-      {menuOpen ? (
-        <div className="border-b border-border bg-surface px-3 py-3 md:hidden">
-          {nav}
-          <Button variant="secondary" className="mt-3 w-full" onClick={() => void logout()}>
-            Sign out
-          </Button>
-        </div>
-      ) : null}
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <header className="flex items-center gap-3 px-4 pt-3 md:rounded-2xl md:bg-panel md:px-4 md:py-2.5">
+            <Button
+              variant="secondary"
+              className="md:hidden"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-expanded={menuOpen}
+            >
+              Menu
+            </Button>
+            <form onSubmit={onSearch} className="relative max-w-sm flex-1">
+              <Icon
+                name="search"
+                size={16}
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted"
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search leads"
+                aria-label="Search leads"
+                className="w-full rounded-xl border border-border bg-surface py-2 pr-3 pl-9 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+              />
+            </form>
+            <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-2.5 pl-1">
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
+                  {initials(displayName)}
+                </span>
+                <span className="hidden min-w-0 sm:block">
+                  <span className="block max-w-40 truncate text-sm font-medium">
+                    {displayName}
+                  </span>
+                  <span
+                    className={cx(
+                      "block max-w-40 truncate text-[11px] text-muted",
+                      !me.full_name && "capitalize",
+                    )}
+                  >
+                    {me.full_name ? me.email : me.role}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </header>
 
-      <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
-        <div className="mx-auto max-w-6xl">{children}</div>
-      </main>
+          {menuOpen ? (
+            <div className="mx-4 flex flex-col rounded-2xl border border-border bg-panel md:hidden">
+              {sidebarBody}
+            </div>
+          ) : null}
+
+          <main className="min-w-0 flex-1 px-4 pb-8 md:rounded-2xl md:bg-panel md:px-7 md:py-6">
+            <div className="mx-auto max-w-7xl">{children}</div>
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

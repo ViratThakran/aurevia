@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type {
   ButtonHTMLAttributes,
+  CSSProperties,
   InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
@@ -16,8 +17,10 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-accent text-accent-foreground hover:opacity-90",
-  secondary: "border border-border bg-surface hover:bg-background",
+  primary:
+    "bg-accent-strong text-white shadow-sm hover:-translate-y-px hover:brightness-110",
+  secondary:
+    "border border-border bg-surface hover:-translate-y-px hover:border-accent/40",
   danger: "bg-danger text-white hover:opacity-90",
   ghost: "text-muted hover:bg-background hover:text-foreground",
 };
@@ -28,13 +31,16 @@ export function Button({
   className,
   children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; pending?: boolean }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  pending?: boolean;
+}) {
   return (
     <button
       type="button"
       {...props}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0",
         VARIANTS[variant],
         className,
       )}
@@ -59,7 +65,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cx(
-        "inline-flex items-center rounded-md px-3 py-2 text-sm font-medium",
+        "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
         VARIANTS[variant],
       )}
     >
@@ -69,14 +75,16 @@ export function LinkButton({
 }
 
 const FIELD =
-  "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20";
+  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cx(FIELD, props.className)} />;
 }
 
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea rows={4} {...props} className={cx(FIELD, props.className)} />;
+  return (
+    <textarea rows={4} {...props} className={cx(FIELD, props.className)} />
+  );
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
@@ -106,21 +114,27 @@ export function Card({
   actions,
   children,
   className,
+  index = 0,
 }: {
   title?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Position among siblings: staggers the slide-in. */
+  index?: number;
 }) {
   return (
-    <section className={cx("rounded-lg border border-border bg-surface", className)}>
+    <section
+      className={cx("surface-card lift rise-in", className)}
+      style={{ "--i": index } as CSSProperties}
+    >
       {title || actions ? (
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold">{title}</h2>
+        <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4 pb-3">
+          <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
           <div className="flex flex-wrap gap-2">{actions}</div>
         </header>
       ) : null}
-      <div className="p-4">{children}</div>
+      <div className={title || actions ? "px-5 pb-5" : "p-5"}>{children}</div>
     </section>
   );
 }
@@ -135,10 +149,12 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="rise-in mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        {description ? (
+          <p className="mt-1 text-sm text-muted">{description}</p>
+        ) : null}
       </div>
       <div className="flex flex-wrap gap-2">{actions}</div>
     </div>
@@ -147,10 +163,10 @@ export function PageHeader({
 
 const TONES = {
   neutral: "bg-background text-muted border-border",
-  good: "bg-success/10 text-success border-success/30",
+  good: "bg-accent-soft text-success border-success/20",
   bad: "bg-danger/10 text-danger border-danger/30",
   warn: "bg-warning/10 text-warning border-warning/30",
-  accent: "bg-accent/10 text-accent border-accent/30",
+  accent: "bg-accent-soft text-accent border-accent/20",
 } as const;
 
 export function Badge({
@@ -203,7 +219,11 @@ const STATUS_TONES: Record<string, keyof typeof TONES> = {
 
 export function StatusBadge({ value }: { value: string | null | undefined }) {
   if (!value) return <span className="text-muted">—</span>;
-  return <Badge tone={STATUS_TONES[value] ?? "neutral"}>{value.replaceAll("_", " ")}</Badge>;
+  return (
+    <Badge tone={STATUS_TONES[value] ?? "neutral"}>
+      {value.replaceAll("_", " ")}
+    </Badge>
+  );
 }
 
 export function Alert({
@@ -215,7 +235,10 @@ export function Alert({
 }) {
   if (!children) return null;
   return (
-    <div role="alert" className={cx("rounded-md border px-3 py-2 text-sm", TONES[tone])}>
+    <div
+      role="alert"
+      className={cx("rise-in rounded-xl border px-4 py-3 text-sm", TONES[tone])}
+    >
       {children}
     </div>
   );
@@ -242,11 +265,28 @@ export function Empty({ children }: { children: ReactNode }) {
   return <p className="py-6 text-center text-sm text-muted">{children}</p>;
 }
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
+export function Stat({
+  label,
+  value,
+  hint,
+  index = 0,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  index?: number;
+}) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <div className="text-xs font-medium tracking-wide text-muted uppercase">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
+    <div
+      className="surface-card lift rise-in p-5"
+      style={{ "--i": index } as CSSProperties}
+    >
+      <div className="text-xs font-medium tracking-wide text-muted uppercase">
+        {label}
+      </div>
+      <div className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">
+        {value}
+      </div>
       {hint ? <div className="mt-1 text-xs text-muted">{hint}</div> : null}
     </div>
   );
@@ -264,7 +304,7 @@ export function Table({
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead className="border-b border-border text-xs tracking-wide text-muted uppercase">
+        <thead className="border-b border-border text-[11px] tracking-wide text-muted uppercase">
           <tr>
             {head.map((h, i) => (
               <th key={i} className="px-3 py-2 font-medium whitespace-nowrap">
@@ -275,7 +315,7 @@ export function Table({
         </thead>
         <tbody className="divide-y divide-border">
           {rows.map((cells, r) => (
-            <tr key={r}>
+            <tr key={r} className="transition-colors hover:bg-accent-soft/60">
               {cells.map((cell, c) => (
                 <td key={c} className="px-3 py-2 align-top">
                   {cell}
@@ -290,11 +330,17 @@ export function Table({
   );
 }
 
-export function formatDate(value: string | null | undefined, withTime = true): string {
+export function formatDate(
+  value: string | null | undefined,
+  withTime = true,
+): string {
   if (!value) return "—";
   const date = new Date(value);
   return withTime
-    ? date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+    ? date.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
     : date.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
@@ -307,7 +353,9 @@ export function formatDuration(
     0,
     Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000),
   );
-  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  return seconds < 60
+    ? `${seconds}s`
+    : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
 export function label(value: string): string {
