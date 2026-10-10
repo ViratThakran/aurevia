@@ -237,17 +237,26 @@ class GetAvailableSlots(Tool[SlotsArgs]):
 
     async def run(self, ctx: ToolContext, args: SlotsArgs) -> ToolOutcome:
         hours = await hours_for(ctx.session, ctx.tenant_id)
-        first = args.from_date or ctx.now.date()
+        today = ctx.now.date()
+        # Models often guess a past date (even the wrong year). Searching the past finds
+        # nothing and invites retries, each a full model round of silence on the call: look
+        # from today instead, and say so.
+        moved = args.from_date is not None and args.from_date < today
+        first = today if args.from_date is None or moved else args.from_date
         slots = await free_slots(
             ctx.session, ctx.tenant_id, hours, now=ctx.now, first_day=first, days=args.days
         )
         offered = slots[:6]
+        note = {"today": today.isoformat()}
+        if moved:
+            note["note"] = f"{args.from_date} is in the past; searched from today instead."
         if not offered:
-            return ToolOutcome.ok("No free times in that range.", slots=[])
+            return ToolOutcome.ok("No free times in that range.", slots=[], **note)
         return ToolOutcome.ok(
             "Free times found. Offer one or two, in words.",
             slots=[{"start": s.isoformat(), "spoken": spoken(s, hours)} for s in offered],
             time_zone=hours.timezone,
+            **note,
         )
 
 

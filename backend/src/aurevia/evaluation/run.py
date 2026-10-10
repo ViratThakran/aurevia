@@ -20,7 +20,9 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 from aurevia.config import Settings
+from aurevia.conversation.prompt import PROMPT_VERSION
 from aurevia.evaluation.scenarios import SCENARIOS, Scenario, ScenarioResult, judge
+from aurevia.evaluation.style import measure
 from aurevia.main import create_app
 from aurevia.providers.fakes import FakeVoiceTransport
 
@@ -158,9 +160,25 @@ def main(argv: list[str] | None = None) -> int:
 
     passed = sum(r.passed for r in results)
     print(f"\n{passed}/{len(results)} scenarios passed")
+    style = measure([r.replies for r in results])
+    timings = sorted(ms for r in results for ms in r.reply_ms if ms >= 0)
+    p50 = timings[len(timings) // 2] if timings else -1
+    p95 = timings[min(len(timings) - 1, int(len(timings) * 0.95))] if timings else -1
+    print(f"first word over text: p50 {p50} ms, p95 {p95} ms")
+    print("style: " + ", ".join(f"{k}={v}" for k, v in style.as_dict().items()))
     if args.report:
         with open(args.report, "w", encoding="utf-8") as handle:
-            json.dump([r.__dict__ for r in results], handle, indent=2, default=str)
+            json.dump(
+                {
+                    "prompt_version": PROMPT_VERSION,
+                    "style": style.as_dict(),
+                    "first_word_ms": {"p50": p50, "p95": p95},
+                    "scenarios": [r.__dict__ for r in results],
+                },
+                handle,
+                indent=2,
+                default=str,
+            )
     return 0 if passed == len(results) else 1
 
 

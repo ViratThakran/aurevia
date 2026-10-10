@@ -30,9 +30,11 @@ import aiohttp
 from livekit import rtc
 
 from aurevia_voice.speech_providers import SpeechOptions, build_tts
+from aurevia_voice.wer import word_error_rate
 
 SAMPLE_RATE = 24000
 TRANSCRIPTION_TOPIC = "lk.transcription"
+BARGE_IN_LINE = "Sorry, hold on, let me stop you there."
 
 SCENARIOS: dict[str, list[str]] = {
     "skeptical": [
@@ -148,8 +150,8 @@ async def run(args: argparse.Namespace) -> int:
                 await asyncio.wait_for(turns.started.wait(), timeout=20)
                 await asyncio.sleep(1.0)  # let the agent get a few words out, then cut in
                 turns.finished.clear()
-                print("  prospect (interrupting): Sorry, hold on, let me stop you there.")
-                await _speak(source, tts, "Sorry, hold on, let me stop you there.")
+                print(f"  prospect (interrupting): {BARGE_IN_LINE}")
+                await _speak(source, tts, BARGE_IN_LINE)
             await asyncio.wait_for(turns.finished.wait(), timeout=30)
 
     await asyncio.sleep(1.0)
@@ -158,7 +160,13 @@ async def run(args: argparse.Namespace) -> int:
 
     call = _api(base, "GET", f"/api/v1/voice/calls/{call_id}", token=access)
     latency = call["latency"]
-    print(json.dumps({"status": call["status"], "latency": latency}, indent=2))
+    said = list(SCENARIOS[args.scenario])
+    if args.barge_in:
+        said.insert(2, BARGE_IN_LINE)
+    transcript = _api(base, "GET", f"/api/v1/voice/calls/{call_id}/transcript", token=access)
+    heard = " ".join(ln["text"] for ln in transcript["lines"] if ln["speaker"] == "prospect")
+    wer = round(word_error_rate(" ".join(said), heard), 3) if heard else None
+    print(json.dumps({"status": call["status"], "latency": latency, "prospect_wer": wer}, indent=2))
     if args.barge_in and latency["interrupted_turns"] < 1:
         print("FAIL: the interruption was not registered")
         return 1
