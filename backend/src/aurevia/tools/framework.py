@@ -182,6 +182,12 @@ def _payload(outcome: ToolOutcome) -> dict[str, Any]:
     }
     if outcome.error_code:
         payload["error"] = outcome.error_code
+    if outcome.status != ToolStatus.OK:
+        # Said to the model in so many words: evaluations showed it may otherwise claim success.
+        payload["instruction"] = (
+            "This did NOT happen. Do not tell the prospect it was done; say plainly that it "
+            "could not be done right now."
+        )
     payload.update(json.loads(json.dumps(dict(outcome.data), default=str)))
     return payload
 

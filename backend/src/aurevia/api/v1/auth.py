@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy import select
 
 from aurevia.identity.dependencies import PrincipalDep, SessionDep, SettingsDep
@@ -18,8 +18,10 @@ from aurevia.identity.schemas import (
 )
 from aurevia.identity.service import IdentityService, TokenPair
 from aurevia.identity.tenancy import TenancyService
+from aurevia.ratelimit import limit_auth, limit_login_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+AuthLimit = Depends(limit_auth)
 
 
 def _tokens(pair: TokenPair) -> TokenResponse:
@@ -30,7 +32,12 @@ def _tokens(pair: TokenPair) -> TokenResponse:
     )
 
 
-@router.post("/signup", status_code=status.HTTP_201_CREATED, summary="Create a tenant and owner")
+@router.post(
+    "/signup",
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a tenant and owner",
+    dependencies=[AuthLimit],
+)
 async def signup(body: SignupRequest, session: SessionDep, settings: SettingsDep) -> TokenResponse:
     pair = await IdentityService(session, settings).signup(
         email=body.email,
@@ -41,7 +48,16 @@ async def signup(body: SignupRequest, session: SessionDep, settings: SettingsDep
     return _tokens(pair)
 
 
-@router.post("/login", summary="Sign in to one tenant")
+def _login_limit(body: LoginRequest, request: Request) -> None:
+    # Before any database work: per email, wherever the attempts come from.
+    limit_login_email(request, str(body.email))
+
+
+@router.post(
+    "/login",
+    summary="Sign in to one tenant",
+    dependencies=[AuthLimit, Depends(_login_limit)],
+)
 async def login(body: LoginRequest, session: SessionDep, settings: SettingsDep) -> TokenResponse:
     pair = await IdentityService(session, settings).login(
         email=body.email, password=body.password, tenant_id=body.tenant_id
@@ -49,7 +65,11 @@ async def login(body: LoginRequest, session: SessionDep, settings: SettingsDep) 
     return _tokens(pair)
 
 
-@router.post("/invitations/accept", summary="Join a tenant with an invitation token")
+@router.post(
+    "/invitations/accept",
+    summary="Join a tenant with an invitation token",
+    dependencies=[AuthLimit],
+)
 async def accept_invitation(
     body: AcceptInvitationRequest, session: SessionDep, settings: SettingsDep
 ) -> TokenResponse:
@@ -59,7 +79,7 @@ async def accept_invitation(
     return _tokens(pair)
 
 
-@router.post("/refresh", summary="Rotate a refresh token")
+@router.post("/refresh", summary="Rotate a refresh token", dependencies=[AuthLimit])
 async def refresh(
     body: RefreshRequest, session: SessionDep, settings: SettingsDep
 ) -> TokenResponse:

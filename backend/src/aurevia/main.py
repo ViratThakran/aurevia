@@ -35,6 +35,7 @@ from aurevia.providers.registry import (
     missing_key_variable,
 )
 from aurevia.providers.voice_transport import LiveKitTransport
+from aurevia.ratelimit import RateLimitMiddleware, RateLimits, SlidingWindowLimiter
 from aurevia.telephony.outbound import outbound_deps
 
 API_V1_PREFIX = "/api/v1"
@@ -209,7 +210,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # The time compliance decisions are taken at; tests pin it (calling windows).
     app.state.clock = lambda: datetime.now(UTC)
 
-    app.add_middleware(RequestContextMiddleware)
+    if settings.rate_limit_enabled:
+        limits = RateLimits(
+            api_per_ip=SlidingWindowLimiter(settings.rate_limit_api_per_ip_per_minute, 60),
+            auth_per_ip=SlidingWindowLimiter(settings.rate_limit_auth_per_ip_per_minute, 60),
+            login_per_email=SlidingWindowLimiter(
+                settings.rate_limit_login_per_email_per_15_minutes, 15 * 60
+            ),
+        )
+        app.state.rate_limits = limits
+        app.add_middleware(
+            RateLimitMiddleware, limits=limits, trust_forwarded=settings.trust_proxy_headers
+        )
+    else:
+        app.state.rate_limits = None
+    app.add_middleware(RequestContextMiddleware)  # outermost: request ids for everything
     if settings.cors_origins:
         app.add_middleware(
             CORSMiddleware,

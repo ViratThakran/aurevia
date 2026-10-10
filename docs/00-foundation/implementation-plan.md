@@ -144,3 +144,12 @@ none, so a person confirms it in a real browser.
 Acceptance tests, controlled pilots with 2–3 friendly customers, voice-quality and
 sales-outcome evaluation, cost review, incident process.
 Gate: pilot acceptance tests pass; go/no-go decision.
+Status (2026-10-10): the software side is ready.
+- Acceptance matrix: docs/06-testing/pilot-acceptance-matrix.md.
+- Repeatable sales scenarios against the real model: 8/8, after fixing a false-claim bug the
+  first run found.
+- Rate limiting.
+- Backup and restore scripts, with the restore verified (34 tables).
+- Pilot runbook: onboarding, daily and weekly checks, incident process, go / no-go criteria.
+Still open, and not code: hosting with Exotel, a faster model or key, counsel review, key
+rotation. Then the pilot itself and the go / no-go decision.
