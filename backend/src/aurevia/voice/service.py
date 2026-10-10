@@ -18,6 +18,7 @@ from aurevia.sales.state import SalesState, transition
 from aurevia.telephony.models import PhoneNumber
 from aurevia.usage.models import UsageEvent, UsageKind
 from aurevia.voice.models import Agent, Call, CallChannel, CallStatus
+from aurevia.voice.voices import DEFAULT_VOICE
 
 DEFAULT_AGENT_NAME = "Aria"
 
@@ -89,7 +90,7 @@ class AgentService:
                 "Is now a good time for a quick chat?"
             ),
             language="en-IN",
-            voice=None,
+            voice=DEFAULT_VOICE.id,
         )
         self._session.add(agent)
         await self._session.flush()

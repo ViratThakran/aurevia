@@ -418,6 +418,36 @@
     }
    }
   },
+  "/api/v1/voices": {
+   "get": {
+    "tags": [
+     "voice"
+    ],
+    "summary": "Approved agent voices (female and male)",
+    "operationId": "list_voices_api_v1_voices_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/VoiceOption"
+         },
+         "type": "array",
+         "title": "Response List Voices Api V1 Voices Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
   "/api/v1/agents/default": {
    "get": {
     "tags": [
@@ -7517,6 +7547,43 @@
      "type"
     ],
     "title": "ValidationError"
+   },
+   "VoiceOption": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "gender": {
+      "type": "string",
+      "enum": [
+       "female",
+       "male"
+      ],
+      "title": "Gender"
+     },
+     "default": {
+      "type": "boolean",
+      "title": "Default"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "key",
+     "name",
+     "gender",
+     "default"
+    ],
+    "title": "VoiceOption"
    },
    "VoiceSessionRequest": {
     "properties": {

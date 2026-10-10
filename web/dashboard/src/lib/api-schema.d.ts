@@ -195,6 +195,23 @@ export interface paths {
         patch: operations["change_role_api_v1_tenant_members__membership_id__patch"];
         trace?: never;
     };
+    "/api/v1/voices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Approved agent voices (female and male) */
+        get: operations["list_voices_api_v1_voices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/default": {
         parameters: {
             query?: never;
@@ -2447,6 +2464,22 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** VoiceOption */
+        VoiceOption: {
+            /** Id */
+            id: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /**
+             * Gender
+             * @enum {string}
+             */
+            gender: "female" | "male";
+            /** Default */
+            default: boolean;
+        };
         /** VoiceSessionRequest */
         VoiceSessionRequest: {
             /** Lead Id */
@@ -2796,6 +2829,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_voices_api_v1_voices_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceOption"][];
                 };
             };
         };

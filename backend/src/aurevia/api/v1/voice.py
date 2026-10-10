@@ -29,10 +29,12 @@ from aurevia.voice.schemas import (
     CallResponse,
     CallUsage,
     LatencyResponse,
+    VoiceOption,
     VoiceSessionRequest,
     VoiceSessionResponse,
 )
 from aurevia.voice.service import AgentService, AgentSettings, CallService
+from aurevia.voice.voices import APPROVED_VOICES, DEFAULT_VOICE
 
 router = APIRouter(tags=["voice"])
 
@@ -65,6 +67,14 @@ def _latency(summary: LatencySummary) -> LatencyResponse:
 
 def _agent_response(agent: object) -> AgentResponse:
     return AgentResponse.model_validate(agent, from_attributes=True)
+
+
+@router.get("/voices", summary="Approved agent voices (female and male)")
+async def list_voices(principal: PrincipalDep) -> list[VoiceOption]:
+    return [
+        VoiceOption(id=v.id, key=v.key, name=v.name, gender=v.gender, default=v == DEFAULT_VOICE)
+        for v in APPROVED_VOICES
+    ]
 
 
 @router.get("/agents/default", summary="The tenant's default AI agent")

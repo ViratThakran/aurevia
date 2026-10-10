@@ -281,3 +281,16 @@ def test_results_the_model_must_see_get_a_follow_up_round(env: Env, db: PgEnv) -
     ]
     _turn(env, call_id, token)
     assert len(env.model.requests) == 4
+
+
+def test_a_past_start_date_searches_from_today(env: Env, db: PgEnv) -> None:
+    """Models guess past dates (even the wrong year); that must not return 'nothing free'."""
+    call_id, token = _call(env, _lead(env))
+    env.model.replies += [
+        FakeTurn(tool_calls=(_tool("get_available_slots", from_date="2025-10-13", days=3),)),
+        "Monday works?",
+    ]
+    _turn(env, call_id, token)
+    result = _tool_results_seen_by_model(env)[0]
+    assert result["ok"] is True and result["slots"]
+    assert "in the past" in result["note"] and result["today"]
