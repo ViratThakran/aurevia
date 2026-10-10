@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import type {
   ButtonHTMLAttributes,
   CSSProperties,
@@ -18,8 +17,10 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-accent-strong text-white shadow-sm hover:-translate-y-px hover:brightness-110",
-  secondary: "border border-border bg-surface hover:-translate-y-px hover:border-accent/40",
+  primary:
+    "bg-accent-strong text-white shadow-sm hover:-translate-y-px hover:brightness-110",
+  secondary:
+    "border border-border bg-surface hover:-translate-y-px hover:border-accent/40",
   danger: "bg-danger text-white hover:opacity-90",
   ghost: "text-muted hover:bg-background hover:text-foreground",
 };
@@ -30,7 +31,10 @@ export function Button({
   className,
   children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; pending?: boolean }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  pending?: boolean;
+}) {
   return (
     <button
       type="button"
@@ -78,7 +82,9 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
 }
 
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea rows={4} {...props} className={cx(FIELD, props.className)} />;
+  return (
+    <textarea rows={4} {...props} className={cx(FIELD, props.className)} />
+  );
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
@@ -146,7 +152,9 @@ export function PageHeader({
     <div className="rise-in mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+        {description ? (
+          <p className="mt-1 text-sm text-muted">{description}</p>
+        ) : null}
       </div>
       <div className="flex flex-wrap gap-2">{actions}</div>
     </div>
@@ -211,7 +219,11 @@ const STATUS_TONES: Record<string, keyof typeof TONES> = {
 
 export function StatusBadge({ value }: { value: string | null | undefined }) {
   if (!value) return <span className="text-muted">—</span>;
-  return <Badge tone={STATUS_TONES[value] ?? "neutral"}>{value.replaceAll("_", " ")}</Badge>;
+  return (
+    <Badge tone={STATUS_TONES[value] ?? "neutral"}>
+      {value.replaceAll("_", " ")}
+    </Badge>
+  );
 }
 
 export function Alert({
@@ -223,7 +235,10 @@ export function Alert({
 }) {
   if (!children) return null;
   return (
-    <div role="alert" className={cx("rise-in rounded-xl border px-4 py-3 text-sm", TONES[tone])}>
+    <div
+      role="alert"
+      className={cx("rise-in rounded-xl border px-4 py-3 text-sm", TONES[tone])}
+    >
       {children}
     </div>
   );
@@ -262,9 +277,16 @@ export function Stat({
   index?: number;
 }) {
   return (
-    <div className="surface-card lift rise-in p-5" style={{ "--i": index } as CSSProperties}>
-      <div className="text-xs font-medium tracking-wide text-muted uppercase">{label}</div>
-      <div className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">{value}</div>
+    <div
+      className="surface-card lift rise-in p-5"
+      style={{ "--i": index } as CSSProperties}
+    >
+      <div className="text-xs font-medium tracking-wide text-muted uppercase">
+        {label}
+      </div>
+      <div className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">
+        {value}
+      </div>
       {hint ? <div className="mt-1 text-xs text-muted">{hint}</div> : null}
     </div>
   );
@@ -308,11 +330,17 @@ export function Table({
   );
 }
 
-export function formatDate(value: string | null | undefined, withTime = true): string {
+export function formatDate(
+  value: string | null | undefined,
+  withTime = true,
+): string {
   if (!value) return "—";
   const date = new Date(value);
   return withTime
-    ? date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+    ? date.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
     : date.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
@@ -325,100 +353,11 @@ export function formatDuration(
     0,
     Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000),
   );
-  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  return seconds < 60
+    ? `${seconds}s`
+    : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
 export function label(value: string): string {
   return value.replaceAll("_", " ").replaceAll(".", " · ");
-}
-
-/** Circular progress; the stroke animates to its value. ``value`` is 0..1 or null. */
-export function ProgressRing({
-  value,
-  size = 88,
-  stroke = 8,
-  children,
-}: {
-  value: number | null | undefined;
-  size?: number;
-  stroke?: number;
-  children?: ReactNode;
-}) {
-  const [shown, setShown] = useState(0);
-  const target = Math.max(0, Math.min(1, value ?? 0));
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setShown(target));
-    return () => cancelAnimationFrame(frame);
-  }, [target]);
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  return (
-    <div className="relative inline-grid place-items-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90" aria-hidden>
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          strokeWidth={stroke}
-          className="stroke-accent-soft"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          opacity={shown > 0 ? 1 : 0}
-          className="ring-progress stroke-accent"
-          strokeDasharray={`${circumference * shown} ${circumference}`}
-        />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center text-center">{children}</div>
-    </div>
-  );
-}
-
-/** Dark ticker: shows one item at a time, cross-fading every few seconds. */
-export function Ticker({ items, interval = 3500 }: { items: ReactNode[]; interval?: number }) {
-  const [current, setCurrent] = useState(0);
-  useEffect(() => {
-    if (items.length < 2) return;
-    const timer = setInterval(() => setCurrent((i) => (i + 1) % items.length), interval);
-    return () => clearInterval(timer);
-  }, [items.length, interval]);
-  if (items.length === 0) return null;
-  return (
-    <div className="relative h-6 overflow-hidden" aria-live="polite">
-      {items.map((item, i) => (
-        <div
-          key={i}
-          aria-hidden={i !== current}
-          className={cx(
-            "ticker-item absolute inset-0 truncate",
-            i === current ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
-          )}
-        >
-          {item}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** Notification pill that glides onto the page and floats softly. */
-export function FloatingPill({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="floating-pill fixed right-4 bottom-4 z-30 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-surface px-4 py-2 text-sm font-medium shadow-[var(--shadow-lift)] md:right-8 md:bottom-8"
-    >
-      <span className="relative flex h-2 w-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-      </span>
-      {children}
-    </Link>
-  );
 }

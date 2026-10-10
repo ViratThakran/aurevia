@@ -54,7 +54,6 @@ const GENERAL: NavItem[] = [
     icon: "file",
     permission: "audit.read",
   },
-  { href: "/settings", label: "Settings", icon: "settings" },
   {
     href: "/admin",
     label: "Platform admin",
@@ -167,31 +166,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           Sign out
         </button>
       </div>
-      {can("calls.place") ? (
-        <div className="contour m-3 rounded-2xl p-4 text-ink-foreground">
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-white/10">
-            <Icon name="mic" size={14} />
-          </span>
-          <div className="mt-3 text-base leading-tight font-semibold">
-            Talk to your agent
-          </div>
-          <div className="mt-1 text-xs opacity-60">
-            Hear how it sounds before it calls anyone.
-          </div>
-          <Link
-            href="/test-call"
-            className="mt-4 block rounded-lg bg-accent-strong py-2 text-center text-sm font-medium text-white transition hover:-translate-y-px hover:brightness-110"
-          >
-            Start a test call
-          </Link>
-        </div>
-      ) : null}
     </>
   );
 
   return (
-    <div className="min-h-screen bg-frame p-0 md:p-4">
-      <div className="mx-auto flex min-h-screen max-w-[1600px] gap-3 bg-background md:min-h-[calc(100vh-2rem)] md:rounded-[22px] md:p-3">
+    <div className="min-h-screen bg-background md:p-3">
+      <div className="mx-auto flex min-h-screen max-w-[1600px] gap-3 md:min-h-[calc(100vh-1.5rem)]">
         <aside className="hidden w-60 shrink-0 flex-col rounded-2xl bg-panel md:flex">
           <Link href="/" className="flex items-center gap-2.5 px-5 pt-5 pb-4">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent-strong text-white">
@@ -234,16 +214,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               />
             </form>
             <div className="ml-auto flex items-center gap-2">
-              <Link
-                href="/activity"
-                aria-label={`${openHandoffs} leads need a person`}
-                className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-surface text-muted transition hover:-translate-y-px hover:text-foreground"
-              >
-                <Icon name="bell" size={16} />
-                {openHandoffs > 0 ? (
-                  <span className="absolute top-1.5 right-2 h-2 w-2 rounded-full bg-danger ring-2 ring-surface" />
-                ) : null}
-              </Link>
               <div className="flex items-center gap-2.5 pl-1">
                 <span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
                   {initials(displayName)}
@@ -252,7 +222,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <span className="block max-w-40 truncate text-sm font-medium">
                     {displayName}
                   </span>
-                  <span className="block max-w-40 truncate text-[11px] text-muted capitalize">
+                  <span
+                    className={cx(
+                      "block max-w-40 truncate text-[11px] text-muted",
+                      !me.full_name && "capitalize",
+                    )}
+                  >
                     {me.full_name ? me.email : me.role}
                   </span>
                 </span>

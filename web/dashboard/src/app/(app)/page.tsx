@@ -7,7 +7,6 @@ import { Icon } from "@/components/icons";
 import {
   Alert,
   Empty,
-  FloatingPill,
   LinkButton,
   Loading,
   PageHeader,
@@ -20,20 +19,6 @@ import { useSession } from "@/lib/session";
 import { type AnalyticsSummary, money, percent } from "@/lib/types";
 
 const LATENCY_TARGET_MS = 1000;
-const AVATAR_TONES = [
-  "bg-rose-100 text-rose-700",
-  "bg-emerald-100 text-emerald-700",
-  "bg-sky-100 text-sky-700",
-  "bg-amber-100 text-amber-700",
-  "bg-violet-100 text-violet-700",
-];
-const LEAD_TONES = [
-  "bg-accent-strong",
-  "bg-sky-600",
-  "bg-rose-500",
-  "bg-amber-500",
-  "bg-violet-600",
-];
 
 function vars(index: number, extra?: CSSProperties): CSSProperties {
   return { "--i": index, ...extra } as CSSProperties;
@@ -439,15 +424,10 @@ export default function OverviewPage() {
           >
             {newestLeads.length ? (
               <ul className="space-y-3.5">
-                {newestLeads.map((lead, i) => (
+                {newestLeads.map((lead) => (
                   <li key={lead.id} className="flex items-center gap-3">
-                    <span
-                      className={cx(
-                        "grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white",
-                        LEAD_TONES[i % LEAD_TONES.length],
-                      )}
-                    >
-                      <Icon name="users" size={14} />
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-soft text-[11px] font-semibold text-accent">
+                      {initials(lead.name)}
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium">
@@ -474,18 +454,13 @@ export default function OverviewPage() {
           >
             {callList.length ? (
               <ul className="space-y-3">
-                {callList.slice(0, 5).map((c, i) => (
+                {callList.slice(0, 5).map((c) => (
                   <li key={c.id}>
                     <Link
                       href={`/calls/${c.id}`}
                       className="flex items-center gap-3 rounded-xl px-1 py-0.5 transition hover:bg-accent-soft/60"
                     >
-                      <span
-                        className={cx(
-                          "grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold",
-                          AVATAR_TONES[i % AVATAR_TONES.length],
-                        )}
-                      >
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
                         {initials(c.lead_name)}
                       </span>
                       <span className="min-w-0 flex-1">
@@ -539,7 +514,7 @@ export default function OverviewPage() {
           </Panel>
 
           <section
-            className="contour rise-in flex flex-col rounded-2xl p-5 text-ink-foreground"
+            className="rise-in flex flex-col rounded-2xl bg-ink p-5 text-ink-foreground"
             style={vars(9)}
           >
             <div className="flex items-center justify-between">
@@ -561,32 +536,9 @@ export default function OverviewPage() {
                   : ""}
               </div>
             </div>
-            <div className="flex justify-center gap-3">
-              <Link
-                href="/test-call"
-                aria-label="Start a test call"
-                className="grid h-11 w-11 place-items-center rounded-full bg-white text-ink transition hover:scale-105"
-              >
-                <Icon name="play" size={16} />
-              </Link>
-              <Link
-                href="/usage"
-                aria-label="Usage and quality"
-                className="grid h-11 w-11 place-items-center rounded-full bg-danger text-white transition hover:scale-105"
-              >
-                <Icon name="chart" size={16} />
-              </Link>
-            </div>
           </section>
         </div>
       )}
-
-      {openHandoffs > 0 ? (
-        <FloatingPill href="/activity">
-          {openHandoffs} {openHandoffs === 1 ? "lead needs" : "leads need"} a
-          person
-        </FloatingPill>
-      ) : null}
     </>
   );
 }
