@@ -25,6 +25,8 @@ Source of truth: `00-foundation/master-brief.md`, including its approved amendme
 - Never claim a failed tool action succeeded.
 
 ## Current milestone
+Phase 9 (pilot readiness) built: acceptance matrix, sales scenario evaluation (`python -m aurevia.evaluation.run`), rate limits, backups, pilot runbook. Remaining work is operational (see docs/05-operations/pilot-runbook.md §0). Add a scenario for every pilot incident.
+
 Phase 8 (SaaS platform) built: 8a backend, and 8b the Next.js dashboard in `web/dashboard`
 (see its README). Next: Phase 9 (pilot). The dashboard never invents endpoints: it uses types
 generated from the API's OpenAPI schema, regenerated whenever the API changes.

@@ -397,16 +397,21 @@ class RequestDoNotCall(Tool[DoNotCallArgs]):
         phone = call.to_number if call.direction == "outbound" else call.from_number
         if phone is None and ctx.lead is not None:
             phone = normalize_e164(ctx.lead.phone)
-        if phone is None:
+        if phone is None and ctx.lead is None:
             return ToolOutcome.rejected(
                 "no_phone_number",
-                "There is no phone number for this conversation; a colleague will make sure "
-                "they are not contacted.",
+                "There is no phone number or lead for this conversation, so nothing could be "
+                "recorded.",
             )
-        await DoNotCallService(ctx.session, ctx.tenant_id).add(
-            phone, DoNotCallReason.PROSPECT_REQUEST, note=args.note, source_call_id=call.id
-        )
-        return ToolOutcome.ok("Their number will not be called again.")
+        if phone is not None:
+            await DoNotCallService(ctx.session, ctx.tenant_id).add(
+                phone, DoNotCallReason.PROSPECT_REQUEST, note=args.note, source_call_id=call.id
+            )
+        if ctx.lead is not None:
+            # The gate never calls a lead marked not interested, with or without a number.
+            ctx.lead.interest = LeadInterest.NOT_INTERESTED
+            ctx.lead.interest_reason = "Asked not to be called again"
+        return ToolOutcome.ok("They will not be called again.")
 
 
 def default_registry() -> ToolRegistry:

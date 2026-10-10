@@ -128,6 +128,14 @@ class Settings(BaseSettings):
     campaign_scheduler_enabled: bool = False
     campaign_scheduler_interval_seconds: float = Field(default=30.0, ge=5.0, le=3600.0)
 
+    # --- Rate limits (Phase 9) ---
+    rate_limit_enabled: bool = True
+    rate_limit_api_per_ip_per_minute: int = Field(default=600, ge=1)
+    rate_limit_auth_per_ip_per_minute: int = Field(default=30, ge=1)
+    rate_limit_login_per_email_per_15_minutes: int = Field(default=10, ge=1)
+    # Only behind a reverse proxy you control: then the client IP comes from X-Forwarded-For.
+    trust_proxy_headers: bool = False
+
     @field_validator("log_level", mode="before")
     @classmethod
     def _normalize_log_level(cls, value: Any) -> Any:

@@ -140,6 +140,16 @@ dispatch; a user token, or a token for another call, is rejected.
 - Off until `AUREVIA_TELEPHONY_PROVIDER=livekit_sip` and the trunk id are set. See
   docs/02-voice/telephony.md.
 
+## Pilot readiness (Phase 9)
+
+- **Rate limits:** `/api` per client IP (600/min); sign-in, sign-up, refresh and invitation
+  acceptance per IP (30/min); sign-in per email (10 per 15 min). Settings are
+  `AUREVIA_RATE_LIMIT_*`; set `AUREVIA_TRUST_PROXY_HEADERS=true` only behind your own proxy.
+- **Sales scenarios** against the real model:
+  `docker compose exec api python -m aurevia.evaluation.run`.
+- **Backups:** `scripts/backup.sh`; prove a restore with `scripts/restore_check.sh`.
+- Operations: docs/05-operations/pilot-runbook.md.
+
 ## SaaS platform (Phase 8a)
 
 - **Permissions:** `calls.place`, `leads.manage`, `leads.privacy`, `campaigns.manage`,

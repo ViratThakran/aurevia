@@ -272,7 +272,11 @@ def test_a_do_not_call_request_on_the_phone_blocks_every_later_call(env: Env, db
 
     response = _call_out(env, lead_id)
     assert response.status_code == 403
-    assert response.json()["error"]["details"]["reasons"] == ["on_do_not_call_list"]
+    # Both the number (do-not-call list) and the lead (not interested) are now blocked.
+    assert response.json()["error"]["details"]["reasons"] == [
+        "lead_not_interested",
+        "on_do_not_call_list",
+    ]
     assert len(env.telephony.placed) == 1
 
 
