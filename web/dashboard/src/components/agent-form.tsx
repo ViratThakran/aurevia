@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Alert, Button, Field, Input, Loading, Textarea } from "@/components/ui";
+import { Alert, Button, Field, Input, Loading, Select, Textarea } from "@/components/ui";
 import { api, type Schemas } from "@/lib/api";
 import { useAction, useApi } from "@/lib/hooks";
 
@@ -39,6 +39,7 @@ export function AgentForm({
   submitLabel?: string;
 }) {
   const { data, error: loadError, loading } = useApi<Agent>("/agents/default");
+  const voices = useApi<Schemas["VoiceOption"][]>("/voices");
   const [form, setForm] = useState<ReturnType<typeof toForm> | null>(null);
   const [saved, setSaved] = useState(false);
   const { pending, error, run } = useAction();
@@ -110,6 +111,25 @@ export function AgentForm({
         <Field label="Goal of each call" hint="E.g. book a 20-minute meeting with a specialist.">
           <Textarea required rows={2} value={form.objective} onChange={set("objective")} />
         </Field>
+        <Field label="Voice" hint="Both voices speak Indian English, Hindi and Hinglish.">
+          <Select
+            value={form.voice ?? ""}
+            onChange={(e) => {
+              setSaved(false);
+              setForm({ ...form, voice: e.target.value || null });
+            }}
+          >
+            {!form.voice ? <option value="">Default voice</option> : null}
+            {(voices.data ?? []).map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name} ({v.gender})
+              </option>
+            ))}
+            {form.voice && !(voices.data ?? []).some((v) => v.id === form.voice) ? (
+              <option value={form.voice}>Custom voice</option>
+            ) : null}
+          </Select>
+        </Field>
         <Field
           label="Opening line"
           hint="Must say that it is an AI, the agent's name and your company's name (required for phone calls)."
@@ -122,9 +142,6 @@ export function AgentForm({
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Language" hint="E.g. en-IN, hi-IN.">
                 <Input required value={form.language} onChange={set("language")} />
-              </Field>
-              <Field label="Voice id (optional)" hint="Leave empty for the default voice.">
-                <Input value={form.voice ?? ""} onChange={set("voice")} />
               </Field>
             </div>
             <Field label="Personality" hint="Short, e.g. warm, concise, never pushy.">

@@ -34,6 +34,14 @@ class AgentUpdate(_Body):
     escalation_guidance: str = Field(default="", max_length=1000)
 
 
+class VoiceOption(BaseModel):
+    id: str
+    key: str
+    name: str
+    gender: Literal["female", "male"]
+    default: bool
+
+
 class AgentResponse(BaseModel):
     id: uuid.UUID
     name: str

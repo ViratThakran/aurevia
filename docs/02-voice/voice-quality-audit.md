@@ -113,3 +113,11 @@ Cost implications:
 2. Endpointing and preemptive-TTS benchmark with the simulator: 5 runs per setting, then change defaults only on evidence.
 3. Five human browser calls (en-IN and Hinglish) scored with the call-review rubric in the pilot runbook.
 4. Then start the sales-learning system ([../07-learning/sales-learning-design.md](../07-learning/sales-learning-design.md)), stage 1.
+
+## 8. Voice decision (2026-10-10)
+
+Chosen by listening to the samples: **Meera** (female, default for new agents) and **Dev**
+(male), both from Cartesia's Indian catalogue. Both are approved voices: an agent may use
+either, picked on the dashboard (**Agent → Voice**; `GET /api/v1/voices`).
+`AUREVIA_TTS_VOICE` defaults to Meera for agents with no voice set. Siya and the old default
+(Katie) are no longer used.

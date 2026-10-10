@@ -113,6 +113,8 @@ services:
       AUREVIA_BACKEND_URL: http://api:8000
       AUREVIA_STT_PROVIDER: ${AUREVIA_STT_PROVIDER:-deepgram}
       AUREVIA_TTS_PROVIDER: ${AUREVIA_TTS_PROVIDER:-cartesia}
+      # Used when an agent has no voice set: Meera (approved female voice). Dev is the male one.
+      AUREVIA_TTS_VOICE: ${AUREVIA_TTS_VOICE:-a81fccdc-5595-4dfc-ae76-4de6a515b8a2}
       LIVEKIT_URL: ws://127.0.0.1:7880
       LIVEKIT_API_KEY: devkey
       LIVEKIT_API_SECRET: secret

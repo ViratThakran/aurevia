@@ -546,3 +546,20 @@ def test_lead_response_shows_interest_and_erasure(env: Env) -> None:
     lead_id = _lead(env)
     lead = env.client.get(f"/api/v1/leads/{lead_id}", headers=bearer(env.owner)).json()
     assert (lead["interest"], lead["qualification"], lead["erased_at"]) == ("unknown", {}, None)
+
+
+def test_approved_voices_and_the_default(env: Env) -> None:
+    voices = env.client.get("/api/v1/voices", headers=bearer(env.owner)).json()
+    assert [(v["name"], v["gender"], v["default"]) for v in voices] == [
+        ("Meera", "female", True),
+        ("Dev", "male", False),
+    ]
+    agent = env.client.get("/api/v1/agents/default", headers=bearer(env.owner)).json()
+    assert agent["voice"] == voices[0]["id"]  # new agents start with the default voice
+    update = {
+        k: agent[k]
+        for k in ("name", "company_name", "company_description", "objective", "greeting")
+    }
+    update |= {"voice": voices[1]["id"], "language": "en-IN"}
+    saved = env.client.put("/api/v1/agents/default", json=update, headers=bearer(env.owner))
+    assert saved.status_code == 200 and saved.json()["voice"] == voices[1]["id"]
