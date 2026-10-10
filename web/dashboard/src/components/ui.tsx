@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type {
   ButtonHTMLAttributes,
+  CSSProperties,
   InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
@@ -16,8 +18,8 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-accent text-accent-foreground hover:opacity-90",
-  secondary: "border border-border bg-surface hover:bg-background",
+  primary: "bg-accent text-accent-foreground shadow-sm hover:-translate-y-px hover:opacity-95",
+  secondary: "border border-border bg-surface hover:-translate-y-px hover:border-accent/40",
   danger: "bg-danger text-white hover:opacity-90",
   ghost: "text-muted hover:bg-background hover:text-foreground",
 };
@@ -34,7 +36,7 @@ export function Button({
       type="button"
       {...props}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0",
         VARIANTS[variant],
         className,
       )}
@@ -59,7 +61,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cx(
-        "inline-flex items-center rounded-md px-3 py-2 text-sm font-medium",
+        "inline-flex items-center rounded-lg px-3.5 py-2 text-sm font-medium transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
         VARIANTS[variant],
       )}
     >
@@ -69,7 +71,7 @@ export function LinkButton({
 }
 
 const FIELD =
-  "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20";
+  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cx(FIELD, props.className)} />;
@@ -106,21 +108,27 @@ export function Card({
   actions,
   children,
   className,
+  index = 0,
 }: {
   title?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Position among siblings: staggers the slide-in. */
+  index?: number;
 }) {
   return (
-    <section className={cx("rounded-lg border border-border bg-surface", className)}>
+    <section
+      className={cx("surface-card lift rise-in", className)}
+      style={{ "--i": index } as CSSProperties}
+    >
       {title || actions ? (
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold">{title}</h2>
+        <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4 pb-3">
+          <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
           <div className="flex flex-wrap gap-2">{actions}</div>
         </header>
       ) : null}
-      <div className="p-4">{children}</div>
+      <div className={title || actions ? "px-5 pb-5" : "p-5"}>{children}</div>
     </section>
   );
 }
@@ -135,9 +143,9 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="rise-in mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
       </div>
       <div className="flex flex-wrap gap-2">{actions}</div>
@@ -147,10 +155,10 @@ export function PageHeader({
 
 const TONES = {
   neutral: "bg-background text-muted border-border",
-  good: "bg-success/10 text-success border-success/30",
+  good: "bg-accent-soft text-success border-success/20",
   bad: "bg-danger/10 text-danger border-danger/30",
   warn: "bg-warning/10 text-warning border-warning/30",
-  accent: "bg-accent/10 text-accent border-accent/30",
+  accent: "bg-accent-soft text-accent border-accent/20",
 } as const;
 
 export function Badge({
@@ -215,7 +223,7 @@ export function Alert({
 }) {
   if (!children) return null;
   return (
-    <div role="alert" className={cx("rounded-md border px-3 py-2 text-sm", TONES[tone])}>
+    <div role="alert" className={cx("rise-in rounded-xl border px-4 py-3 text-sm", TONES[tone])}>
       {children}
     </div>
   );
@@ -242,11 +250,21 @@ export function Empty({ children }: { children: ReactNode }) {
   return <p className="py-6 text-center text-sm text-muted">{children}</p>;
 }
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
+export function Stat({
+  label,
+  value,
+  hint,
+  index = 0,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  index?: number;
+}) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="surface-card lift rise-in p-5" style={{ "--i": index } as CSSProperties}>
       <div className="text-xs font-medium tracking-wide text-muted uppercase">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
+      <div className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">{value}</div>
       {hint ? <div className="mt-1 text-xs text-muted">{hint}</div> : null}
     </div>
   );
@@ -264,7 +282,7 @@ export function Table({
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead className="border-b border-border text-xs tracking-wide text-muted uppercase">
+        <thead className="border-b border-border text-[11px] tracking-wide text-muted uppercase">
           <tr>
             {head.map((h, i) => (
               <th key={i} className="px-3 py-2 font-medium whitespace-nowrap">
@@ -275,7 +293,7 @@ export function Table({
         </thead>
         <tbody className="divide-y divide-border">
           {rows.map((cells, r) => (
-            <tr key={r}>
+            <tr key={r} className="transition-colors hover:bg-accent-soft/60">
               {cells.map((cell, c) => (
                 <td key={c} className="px-3 py-2 align-top">
                   {cell}
@@ -312,4 +330,95 @@ export function formatDuration(
 
 export function label(value: string): string {
   return value.replaceAll("_", " ").replaceAll(".", " · ");
+}
+
+/** Circular progress; the stroke animates to its value. ``value`` is 0..1 or null. */
+export function ProgressRing({
+  value,
+  size = 88,
+  stroke = 8,
+  children,
+}: {
+  value: number | null | undefined;
+  size?: number;
+  stroke?: number;
+  children?: ReactNode;
+}) {
+  const [shown, setShown] = useState(0);
+  const target = Math.max(0, Math.min(1, value ?? 0));
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setShown(target));
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  return (
+    <div className="relative inline-grid place-items-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={stroke}
+          className="stroke-accent-soft"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          opacity={shown > 0 ? 1 : 0}
+          className="ring-progress stroke-accent"
+          strokeDasharray={`${circumference * shown} ${circumference}`}
+        />
+      </svg>
+      <div className="absolute inset-0 grid place-items-center text-center">{children}</div>
+    </div>
+  );
+}
+
+/** Dark ticker: shows one item at a time, cross-fading every few seconds. */
+export function Ticker({ items, interval = 3500 }: { items: ReactNode[]; interval?: number }) {
+  const [current, setCurrent] = useState(0);
+  useEffect(() => {
+    if (items.length < 2) return;
+    const timer = setInterval(() => setCurrent((i) => (i + 1) % items.length), interval);
+    return () => clearInterval(timer);
+  }, [items.length, interval]);
+  if (items.length === 0) return null;
+  return (
+    <div className="relative h-6 overflow-hidden" aria-live="polite">
+      {items.map((item, i) => (
+        <div
+          key={i}
+          aria-hidden={i !== current}
+          className={cx(
+            "ticker-item absolute inset-0 truncate",
+            i === current ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+          )}
+        >
+          {item}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Notification pill that glides onto the page and floats softly. */
+export function FloatingPill({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="floating-pill fixed right-4 bottom-4 z-30 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-surface px-4 py-2 text-sm font-medium shadow-[var(--shadow-lift)] md:right-8 md:bottom-8"
+    >
+      <span className="relative flex h-2 w-2">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+      </span>
+      {children}
+    </Link>
+  );
 }

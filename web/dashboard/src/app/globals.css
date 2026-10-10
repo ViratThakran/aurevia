@@ -1,31 +1,43 @@
 @import "tailwindcss";
 
-/* Aurevia dashboard theme: neutral surfaces, one accent, readable in light and dark. */
+/* Aurevia dashboard theme: crisp white cards on a soft canvas, one forest-green accent,
+   single-pixel borders instead of heavy shadows. Readable in light and dark. */
 :root {
-  --background: #f7f7f8;
+  --background: #f9fafb;
   --surface: #ffffff;
-  --border: #e4e4e7;
-  --foreground: #18181b;
-  --muted: #71717a;
-  --accent: #4f46e5;
+  --border: #e5e7eb;
+  --foreground: #111827;
+  --muted: #6b7280;
+  --accent: #15803d;
+  --accent-soft: #f0fdf4;
   --accent-foreground: #ffffff;
+  --ink: #0f1a14; /* dark ticker surface */
+  --ink-foreground: #ecfdf3;
   --danger: #dc2626;
-  --success: #16a34a;
+  --success: #15803d;
   --warning: #d97706;
+  --shadow-rest: 0 1px 3px rgba(0, 0, 0, 0.02);
+  --shadow-lift: 0 10px 24px -12px rgba(17, 24, 39, 0.14), 0 2px 6px rgba(17, 24, 39, 0.04);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0b0b0e;
-    --surface: #16161a;
-    --border: #2a2a31;
-    --foreground: #ececf1;
-    --muted: #a1a1aa;
-    --accent: #818cf8;
-    --accent-foreground: #0b0b0e;
+    --background: #0a0f0c;
+    --surface: #111813;
+    --border: #1f2a23;
+    --foreground: #ecf3ee;
+    --muted: #93a39a;
+    --accent: #4ade80;
+    --accent-soft: #10251a;
+    --accent-foreground: #052e16;
+    --ink: #050806;
+    --ink-foreground: #d1fae5;
     --danger: #f87171;
     --success: #4ade80;
     --warning: #fbbf24;
+    --shadow-rest: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-lift: 0 12px 28px -12px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -36,7 +48,10 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-accent-foreground: var(--accent-foreground);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -46,4 +61,89 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cards: feather-light at rest, lift gently on hover. */
+.surface-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-rest);
+  transition:
+    transform 450ms var(--ease-spring),
+    box-shadow 450ms var(--ease-spring),
+    border-color 450ms var(--ease-spring);
+}
+.surface-card.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+
+/* Elements slide into view instead of snapping; --i staggers siblings. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise-in {
+  animation: rise-in 700ms var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* Floating notification pill: glides in, then bobs softly. */
+@keyframes pill-in {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pill-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.floating-pill {
+  animation:
+    pill-in 800ms var(--ease-spring) both,
+    pill-float 4s ease-in-out 900ms infinite;
+}
+
+/* Dark ticker items fade in and out. */
+.ticker-item {
+  transition:
+    opacity 600ms var(--ease-spring),
+    transform 600ms var(--ease-spring);
+}
+
+.ring-progress {
+  transition: stroke-dasharray 1100ms var(--ease-spring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in,
+  .floating-pill {
+    animation: none;
+  }
+  .surface-card,
+  .ticker-item,
+  .ring-progress {
+    transition: none;
+  }
+  .surface-card.lift:hover {
+    transform: none;
+  }
 }

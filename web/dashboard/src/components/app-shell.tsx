@@ -62,10 +62,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           key={item.href}
           href={item.href}
           className={cx(
-            "block rounded-md px-3 py-2 text-sm",
+            "block rounded-lg px-3 py-2 text-sm transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
             active(item.href)
-              ? "bg-accent/10 font-medium text-accent"
-              : "text-muted hover:bg-background hover:text-foreground",
+              ? "bg-accent-soft font-medium text-accent"
+              : "text-muted hover:translate-x-0.5 hover:bg-background hover:text-foreground",
           )}
         >
           {item.label}
@@ -78,7 +78,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen md:flex">
       <aside className="hidden w-60 shrink-0 border-r border-border bg-surface md:flex md:flex-col">
         <div className="px-5 py-5">
-          <div className="text-base font-semibold tracking-tight">Aurevia</div>
+          <div className="flex items-center gap-2 text-base font-semibold tracking-tight">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-accent text-sm text-accent-foreground">
+              A
+            </span>
+            Aurevia
+          </div>
           <div className="mt-0.5 truncate text-xs text-muted">{me.tenant.name}</div>
         </div>
         <div className="flex-1 overflow-y-auto px-3">{nav}</div>
@@ -110,7 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : null}
 
       <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
-        <div className="mx-auto max-w-6xl">{children}</div>
+        <div className="mx-auto max-w-7xl">{children}</div>
       </main>
     </div>
   );
