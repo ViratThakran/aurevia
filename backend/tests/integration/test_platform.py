@@ -563,3 +563,12 @@ def test_approved_voices_and_the_default(env: Env) -> None:
     update |= {"voice": voices[1]["id"], "language": "en-IN"}
     saved = env.client.put("/api/v1/agents/default", json=update, headers=bearer(env.owner))
     assert saved.status_code == 200 and saved.json()["voice"] == voices[1]["id"]
+    # Only approved voices: any other id is refused by the API, not just hidden by the UI.
+    update["voice"] = "f786b574-daa5-4673-aa0c-cbe3e8534c02"  # Katie, not approved
+    refused = env.client.put("/api/v1/agents/default", json=update, headers=bearer(env.owner))
+    assert refused.status_code == 422
+    update["voice"] = None  # no voice set: the worker default (Meera) speaks
+    assert (
+        env.client.put("/api/v1/agents/default", json=update, headers=bearer(env.owner)).status_code
+        == 200
+    )

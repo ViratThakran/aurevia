@@ -23,12 +23,13 @@ import os
 import sys
 import time
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import aiohttp
 from livekit import rtc
 
+from aurevia_voice.language import detect_language
 from aurevia_voice.speech_providers import SpeechOptions, build_tts
 from aurevia_voice.wer import word_error_rate
 
@@ -55,6 +56,13 @@ SCENARIOS: dict[str, list[str]] = {
         "Sure, a meeting with your specialist sounds good. What times do you have?",
         "The first time you mentioned works for me.",
         "Great, thanks. Bye.",
+    ],
+    # English -> Hindi -> Hinglish -> English: exercises the agent's TTS language switch.
+    "hinglish": [
+        "Hello, yes. Can you speak in Hindi?",
+        "नमस्ते, मुझे थोड़ा बताइए आपकी कंपनी क्या करती है?",
+        "Hamari team mein chaalees log hain aur renewal March mein hai.",
+        "Okay, let's continue in English. Please email me the details. Bye.",
     ],
 }
 
@@ -138,6 +146,8 @@ async def run(args: argparse.Namespace) -> int:
             tts_language="en",
         )
         tts = build_tts(options, http_session=http)
+        # Hindi and Hinglish lines are spoken with Hindi pronunciation, like a real prospect.
+        tts_hi = build_tts(replace(options, tts_language="hi"), http_session=http)
 
         await asyncio.wait_for(turns.finished.wait(), timeout=30)  # the greeting
         for index, line in enumerate(SCENARIOS[args.scenario]):
@@ -145,7 +155,7 @@ async def run(args: argparse.Namespace) -> int:
             turns.started.clear()
             turns.finished.clear()
             print(f"  prospect: {line}")
-            await _speak(source, tts, line)
+            await _speak(source, tts_hi if detect_language(line) == "hi" else tts, line)
             if args.barge_in and index == 1:
                 await asyncio.wait_for(turns.started.wait(), timeout=20)
                 await asyncio.sleep(1.0)  # let the agent get a few words out, then cut in

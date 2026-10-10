@@ -11,10 +11,12 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from aurevia.api.internal import calls as calls_api
 from aurevia.gateway import ModelGateway
 from aurevia.main import create_app
 from aurevia.providers.fakes import FakeModelProvider, FakeTurn, FakeVoiceTransport
 from aurevia.providers.model import ToolCall
+from aurevia.sales.state import STATE_GOALS, SalesState
 from tests.conftest import TEST_JWT_SECRET, SettingsFactory
 from tests.integration.conftest import PgEnv, admin_fetch, bearer, signup
 
@@ -284,7 +286,16 @@ def test_speech_first_then_bookkeeping_after_the_reply(env: Env, db: PgEnv) -> N
     speech = env.model.requests[-1]
     offered = {t.name for t in speech.tools}
     assert "qualify_lead" not in offered and "set_stage" not in offered
-    assert {"get_available_slots", "book_meeting", "request_do_not_call"} <= offered
+    # Actions the agent talks about, or that stop future calls, are never deferred.
+    assert {
+        "get_available_slots",
+        "book_meeting",
+        "cancel_meeting",
+        "schedule_followup",
+        "flag_for_handoff",
+        "request_do_not_call",
+        "mark_not_interested",
+    } <= offered
 
     _wait_for(lambda: env.model.bookkeeping_requests)
     _wait_for(
@@ -297,7 +308,6 @@ def test_speech_first_then_bookkeeping_after_the_reply(env: Env, db: PgEnv) -> N
         "set_stage",
         "qualify_lead",
         "mark_interested",
-        "mark_not_interested",
         "log_objection",
         "add_note",
     }
@@ -305,6 +315,96 @@ def test_speech_first_then_bookkeeping_after_the_reply(env: Env, db: PgEnv) -> N
     said = [m.content for m in bookkeeping.messages]
     assert "Forty people, renewal in March. Who handles claims today?" in said
     assert not admin_fetch(db, "SELECT 1 FROM tool_executions WHERE tool = 'book_meeting'")
+
+
+def test_bookkeeping_failure_never_breaks_the_spoken_reply(
+    env: Env, db: PgEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(calls_api, "BOOKKEEPING_RETRY_SECONDS", 0)
+    call_id, token = _call(env, _lead(env))
+    env.model.replies += ["We have forty people.", "Tuesday works?"]
+    env.model.bookkeeping_errors += ["rate_limited", "rate_limited"]  # first try and retry
+    env.model.bookkeeping_replies += [
+        FakeTurn(tool_calls=(_tool("qualify_lead", company_size=40),))
+    ]
+
+    lines = _turn(env, call_id, token, said="We are forty people.")
+    assert [line["type"] for line in lines] == ["delta"] * 4 + ["done"]
+    _wait_for(lambda: len(env.model.bookkeeping_requests) == 2)
+    # The next turn still works, and nothing was recorded from the lost pass.
+    assert _turn(env, call_id, token)[-1]["type"] == "done"
+    assert not admin_fetch(db, "SELECT 1 FROM tool_executions WHERE tool = 'qualify_lead'")
+
+
+def test_bookkeeping_retries_once_after_a_transient_failure(
+    env: Env, db: PgEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(calls_api, "BOOKKEEPING_RETRY_SECONDS", 0)
+    call_id, token = _call(env, _lead(env))
+    env.model.replies += ["Forty people, noted."]
+    env.model.bookkeeping_errors += ["rate_limited"]
+    env.model.bookkeeping_replies += [
+        FakeTurn(tool_calls=(_tool("qualify_lead", company_size=40),))
+    ]
+    _turn(env, call_id, token, said="We are forty people.")
+    _wait_for(
+        lambda: admin_fetch(
+            db, "SELECT 1 FROM tool_executions WHERE tool = 'qualify_lead' AND status = 'ok'"
+        )
+    )
+    assert len(env.model.bookkeeping_requests) == 2
+
+
+def test_next_turn_waits_for_the_previous_bookkeeping(env: Env, db: PgEnv) -> None:
+    """The stage recorded after reply 1 is in the prompt for reply 2, never one turn late."""
+    call_id, token = _call(env, _lead(env))
+    env.model.bookkeeping_delay = 0.5  # still running when the prospect answers
+    env.model.replies += ["Tell me about your team.", "And when is the renewal?"]
+    env.model.bookkeeping_replies += [
+        FakeTurn(tool_calls=(_tool("set_stage", stage="qualification"),))
+    ]
+    _turn(env, call_id, token, said="Sure, go ahead.")
+    _turn(env, call_id, token, said="We have forty people.")
+    assert STATE_GOALS[SalesState.QUALIFICATION] in env.model.requests[-1].system
+
+
+def test_required_actions_happen_in_the_spoken_turn(env: Env, db: PgEnv) -> None:
+    """Do-not-call is executed before the turn ends, not left to the bookkeeping pass."""
+    call_id, token = _call(env, _lead(env))
+    env.model.replies += [
+        FakeTurn(
+            text="Understood, we will not call you again.",
+            tool_calls=(_tool("request_do_not_call", note="prospect asked"),),
+        )
+    ]
+    lines = _turn(env, call_id, token, said="Please don't call me again.")
+    tool_lines = [line for line in lines if line["type"] == "tool"]
+    assert tool_lines == [{"type": "tool", "name": "request_do_not_call", "ok": True}]
+    assert lines.index(tool_lines[0]) < len(lines) - 1  # before "done"
+
+
+def test_bookkeeping_tools_are_validated_scoped_and_audited(env: Env, db: PgEnv) -> None:
+    call_id, token = _call(env, _lead(env))
+    env.model.replies += ["Got it."]
+    env.model.bookkeeping_replies += [
+        FakeTurn(
+            tool_calls=(
+                _tool("qualify_lead", "q", company_size=40),
+                _tool("set_stage", "s", stage="no_such_stage"),
+            )
+        )
+    ]
+    _turn(env, call_id, token, said="Forty people.")
+    _wait_for(lambda: len(admin_fetch(db, "SELECT 1 FROM tool_executions")) == 2)
+    rows = admin_fetch(
+        db,
+        "SELECT t.tool, t.status, t.tenant_id = c.tenant_id AS same_tenant "
+        "FROM tool_executions t JOIN calls c ON c.id = t.call_id ORDER BY t.created_at",
+    )
+    assert [(r["tool"], r["status"], r["same_tenant"]) for r in rows] == [
+        ("qualify_lead", "ok", True),
+        ("set_stage", "rejected", True),  # invalid arguments are rejected, still audited
+    ]
 
 
 def test_results_the_model_must_see_get_a_follow_up_round(env: Env, db: PgEnv) -> None:

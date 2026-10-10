@@ -18,15 +18,15 @@ CALL_CONNECTED = "(The call has connected.)"
 # Model -> tools -> model rounds per turn. The last round offers no tools, so the turn
 # always ends with words for the prospect.
 MAX_TOOL_ROUNDS = 3
-# Pure bookkeeping tools: they change nothing the prospect is told about, so they never delay
-# the reply. They run in a second model call after the agent has started speaking. Tools that
-# the agent would talk about (booking, slots, do-not-call, handoff) are not in this set.
+# Pure bookkeeping tools: they change nothing the prospect is told about and nothing about who
+# is called again, so they never delay the reply. They run in a second model call after the
+# agent has started speaking. Tools the agent talks about, or that stop future calls (booking,
+# slots, do-not-call, not interested, handoff), stay in the spoken turn.
 DEFERRED_TOOLS = frozenset(
     {
         "set_stage",
         "qualify_lead",
         "mark_interested",
-        "mark_not_interested",
         "log_objection",
         "add_note",
     }
@@ -75,7 +75,9 @@ class TurnRecords:
     """One GenerationRecord per model round, for usage accounting."""
 
     records: list[GenerationRecord] = field(default_factory=list)
-    # What the bookkeeping pass needs once the reply is out (see ConversationEngine.record_turn).
+    # What the bookkeeping pass needs once the reply is out (see ConversationEngine.record_turn):
+    # the prompt, the history including earlier tool rounds, and the last round's words (earlier
+    # rounds' words are already in ``messages``).
     system: str = ""
     messages: tuple[ModelMessage, ...] = ()
     spoken: str = ""
@@ -109,6 +111,7 @@ class ConversationEngine:
             )
             record = new_record()
             records.records.append(record)
+            records.spoken = ""
             final = None
             async for event in self._gateway.stream(
                 system=system, messages=messages, record=record, tools=offer
