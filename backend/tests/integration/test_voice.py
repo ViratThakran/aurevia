@@ -134,12 +134,15 @@ def test_full_browser_call(voice: VoiceEnv, db: PgEnv) -> None:
     )
     assert summary["end_reason"] == "participant_left"
     usage = summary["usage"]
-    assert usage["llm_turns"] == 1 and usage["llm_interrupted_turns"] == 0
+    # Two model calls: the spoken reply, then the bookkeeping pass after it.
+    assert usage["llm_turns"] == 2 and usage["llm_interrupted_turns"] == 0
     assert usage["llm_output_tokens"] == 8
     assert (usage["stt_seconds"], usage["tts_characters"]) == (12.5, 180)
 
     llm = admin_fetch(
-        db, "SELECT model, served_model, first_token_ms FROM usage_events WHERE kind = 'llm'"
+        db,
+        "SELECT model, served_model, first_token_ms FROM usage_events WHERE kind = 'llm' "
+        "ORDER BY created_at",
     )
     assert (llm[0]["model"], llm[0]["served_model"]) == ("test-model", "test-model")
     assert llm[0]["first_token_ms"] is not None

@@ -121,3 +121,40 @@ Chosen by listening to the samples: **Meera** (female, default for new agents) a
 either, picked on the dashboard (**Agent → Voice**; `GET /api/v1/voices`).
 `AUREVIA_TTS_VOICE` defaults to Meera for agents with no voice set. Siya and the old default
 (Katie) are no longer used.
+
+## 9. Speak first, then record; Hindi voice switch (2026-10-10)
+
+**Cause found** (per-turn timing log, `Turn first word`: `prepare_ms`, `first_word_ms`, `rounds`):
+- backend preparation is 13–50 ms
+- one model call takes about 0.8–1.0 s to its first word (Flash-Lite, real prompt and tools)
+- most turns made **2–3 model calls before the first word**: the model called a bookkeeping
+  tool (`set_stage`, `qualify_lead`, `log_objection` …) with no text, and spoke only in the next call
+- telling the model to speak first in the prompt did not change this, and broke a booking scenario (reverted)
+
+**Change (approved 2026-10-10):**
+- **Speech pass:** only tools the reply may depend on are offered: slots, booking,
+  cancellation, follow-up, do-not-call and handoff (`DEFERRED_TOOLS` in `conversation/engine.py`
+  lists the ones held back).
+- **Bookkeeping pass:** after the reply streams, a second model call may use only the six
+  bookkeeping tools (stage, qualification, interest, not interested, objection, note), through
+  the same validated `ToolExecutor`. It sees the reply as spoken and its text is ignored. It runs
+  off the prospect's clock, and a failure is logged without affecting the call. It cannot book or
+  change anything the prospect was told.
+- `PROMPT_VERSION voice-2026-10-10.3`: the agent is told that bookkeeping is recorded after it speaks.
+- **Hindi voice switch** (`voice-worker/src/aurevia_voice/language.py`): before each reply is
+  synthesized, its first words are checked (Devanagari, or Hinglish words in Latin script). The
+  Cartesia language is set to `hi` or `en` before the TTS stream is created. A reply too short
+  to tell ("Okay.") keeps the current language.
+
+**Measured** (evaluation, real Gemini, free-tier key with rate limits and an exhausted Flash quota):
+
+| Turn type | Before | After |
+|---|---|---|
+| No tool needed (most turns) | 2 calls, first word ~2.0–2.5 s | 1 call, **0.9–1.3 s** when the model is not throttled |
+| Not interested | 2 calls, ~1.9 s | 1 call, 1.2–1.3 s |
+| Slot lookup and booking | 2–3 calls, 2.6–3.6 s | 2–3 calls, unchanged (it needs the lookup) |
+| Handoff and do-not-call | 2 calls | 2 calls, unchanged on purpose (the agent talks about the result) |
+
+- **Cost:** one extra small model call per turn, about 2.2k input tokens and few output tokens.
+- **Free-tier limits:** this doubles requests per minute on a free-tier key. Rate limits then
+  stall turns (20–40 s retries) and drop bookkeeping passes. **A paid key is needed for real calls.**

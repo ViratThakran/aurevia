@@ -8,6 +8,7 @@ it simply closes the stream; generation stops and the usage is still recorded.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -72,6 +73,54 @@ async def start_call(
     )
 
 
+PENDING_BOOKKEEPING: set[asyncio.Task[None]] = set()
+
+
+async def _bookkeep(
+    *,
+    gateway: ModelGateway,
+    database: Database,
+    tenant_id: uuid.UUID,
+    call_id: uuid.UUID,
+    lead_id: uuid.UUID | None,
+    records: TurnRecords,
+    metadata: dict[str, str],
+    now: datetime,
+) -> None:
+    """Second model call of a turn: record stage, qualification and objections.
+
+    Failure here never affects the call: the reply was already spoken.
+    """
+    registry = default_registry()
+    already = len(records.records)
+    try:
+        async with database.sessionmaker() as session:
+            await set_tenant_context(session, tenant_id)
+            call = await session.get(Call, call_id)
+            if call is None:
+                return
+            lead = await session.get(Lead, lead_id) if lead_id else None
+            executor = ToolExecutor(
+                registry,
+                ToolContext(session=session, tenant_id=tenant_id, call=call, lead=lead, now=now),
+            )
+            await ConversationEngine(gateway).record_turn(
+                records=records,
+                new_record=lambda: gateway.new_record(metadata),
+                tools=registry.specs(),
+                executor=executor,
+            )
+    except GatewayError as exc:
+        logger.warning(
+            "Bookkeeping pass failed",
+            extra={"fields": {"call_id": str(call_id), "code": exc.code}},
+        )
+    except Exception:
+        logger.exception("Bookkeeping pass failed", extra={"fields": {"call_id": str(call_id)}})
+    for record in records.records[already:]:
+        await record_llm_usage(database, tenant_id=tenant_id, call_id=call_id, record=record)
+
+
 @router.post("/turns", summary="Stream the agent's reply to the prospect's latest words")
 async def take_turn(
     call_id: uuid.UUID,
@@ -128,6 +177,7 @@ async def take_turn(
     async def stream() -> AsyncIterator[bytes]:
         final_state = state.value
         spoke = False
+        failed = False
         try:
             # Tools write through their own session, scoped to this tenant and committed per
             # tool together with its audit row.
@@ -180,6 +230,7 @@ async def take_turn(
                 final_state = tool_call.sales_state
             yield _line({"type": "done", "sales_state": final_state})
         except GatewayError as exc:
+            failed = True
             logger.warning(
                 "Model request failed",
                 extra={"fields": {"call_id": str(call_id), "code": exc.code}},
@@ -190,6 +241,23 @@ async def take_turn(
                 await record_llm_usage(
                     database, tenant_id=principal.tenant_id, call_id=call_id, record=record
                 )
+            if not failed:
+                # The reply is out (or the prospect cut it off): record the turn off the
+                # prospect's clock. A reference is kept so the task is not garbage collected.
+                task = asyncio.create_task(
+                    _bookkeep(
+                        gateway=gateway,
+                        database=database,
+                        tenant_id=principal.tenant_id,
+                        call_id=call_id,
+                        lead_id=lead.id if lead else None,
+                        records=records,
+                        metadata=metadata,
+                        now=now,
+                    )
+                )
+                PENDING_BOOKKEEPING.add(task)
+                task.add_done_callback(PENDING_BOOKKEEPING.discard)
 
     return StreamingResponse(stream(), media_type="application/x-ndjson")
 

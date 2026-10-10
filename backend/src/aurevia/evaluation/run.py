@@ -11,20 +11,27 @@ scenario fails.
 from __future__ import annotations
 
 import argparse
+import asyncio
+import base64
 import json
 import secrets
 import sys
 import time
+import uuid
 from typing import Any
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
+from aurevia.api.internal.calls import PENDING_BOOKKEEPING
 from aurevia.config import Settings
 from aurevia.conversation.prompt import PROMPT_VERSION
+from aurevia.db.session import set_tenant_context
 from aurevia.evaluation.scenarios import SCENARIOS, Scenario, ScenarioResult, judge
 from aurevia.evaluation.style import measure
 from aurevia.main import create_app
 from aurevia.providers.fakes import FakeVoiceTransport
+from aurevia.sales.models import ToolExecution
 
 AGENT = {
     "name": "Aria",
@@ -70,6 +77,25 @@ def _turn(
     return "".join(text).strip(), tools, first_ms
 
 
+async def _tools_run(client: TestClient, call_id: str) -> list[dict[str, Any]]:
+    """Every tool run on the call, including the bookkeeping pass after each reply (those are
+    not in the turn stream), once the pending passes have finished."""
+    for _ in range(300):  # up to 30 s for the passes still running
+        if not PENDING_BOOKKEEPING:
+            break
+        await asyncio.sleep(0.1)
+    database = client.app.state.database  # type: ignore[attr-defined]
+    tenant_id = uuid.UUID(client.app.state.eval_tenant_id)  # type: ignore[attr-defined]
+    async with database.sessionmaker() as session:
+        await set_tenant_context(session, tenant_id)
+        rows = await session.execute(
+            select(ToolExecution.tool, ToolExecution.status)
+            .where(ToolExecution.call_id == uuid.UUID(call_id))
+            .order_by(ToolExecution.created_at)
+        )
+        return [{"name": tool, "ok": status == "ok"} for tool, status in rows]
+
+
 RATE_LIMIT_WAITS = (20, 40, 60)  # seconds; model quotas are per minute
 
 
@@ -113,6 +139,9 @@ def run_scenario(
             result.replies.append(reply)
             result.tools.extend(tools)
             result.reply_ms.append(first_ms)
+        assert client.portal is not None  # noqa: S101 - the client runs inside "with"
+        # The database is the full record: tools before the reply and those run after it.
+        result.tools = client.portal.call(_tools_run, client, call_id)
         result.failures = judge(scenario, result.replies, result.tools)
     except RuntimeError as exc:
         result.failures = [str(exc)]
@@ -146,7 +175,10 @@ def main(argv: list[str] | None = None) -> int:
             },
         )
         tokens.raise_for_status()
-        owner = {"Authorization": f"Bearer {tokens.json()['access_token']}"}
+        access = tokens.json()["access_token"]
+        owner = {"Authorization": f"Bearer {access}"}
+        claims = json.loads(base64.urlsafe_b64decode(access.split(".")[1] + "=="))
+        app.state.eval_tenant_id = claims["tid"]
         client.put("/api/v1/agents/default", json=AGENT, headers=owner).raise_for_status()
         for scenario in scenarios:
             result = run_scenario(client, transport, owner, scenario)
