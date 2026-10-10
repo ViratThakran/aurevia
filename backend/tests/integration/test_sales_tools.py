@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -261,6 +262,49 @@ def test_spoken_reply_with_successful_record_only_tools_ends_the_turn(env: Env, 
     assert len(env.model.requests) == 1  # no extra model round of silence
     assert [line["ok"] for line in lines if line["type"] == "tool"] == [True, True]
     assert lines[-1]["type"] == "done"
+
+
+def _wait_for(condition: Any, seconds: float = 5.0) -> None:
+    deadline = time.monotonic() + seconds
+    while not condition():
+        assert time.monotonic() < deadline, "timed out waiting for the bookkeeping pass"
+        time.sleep(0.05)
+
+
+def test_speech_first_then_bookkeeping_after_the_reply(env: Env, db: PgEnv) -> None:
+    """The reply never waits for bookkeeping tools; they run in a second call afterwards."""
+    call_id, token = _call(env, _lead(env))
+    env.model.replies += ["Forty people, renewal in March. Who handles claims today?"]
+    env.model.bookkeeping_replies += [
+        FakeTurn(tool_calls=(_tool("qualify_lead", company_size=40), _tool("book_meeting", "b"))),
+    ]
+    lines = _turn(env, call_id, token, said="We are forty people, renewal in March.")
+
+    assert [line["type"] for line in lines][-1] == "done"
+    speech = env.model.requests[-1]
+    offered = {t.name for t in speech.tools}
+    assert "qualify_lead" not in offered and "set_stage" not in offered
+    assert {"get_available_slots", "book_meeting", "request_do_not_call"} <= offered
+
+    _wait_for(lambda: env.model.bookkeeping_requests)
+    _wait_for(
+        lambda: admin_fetch(
+            db, "SELECT 1 FROM tool_executions WHERE tool = 'qualify_lead' AND status = 'ok'"
+        )
+    )
+    bookkeeping = env.model.bookkeeping_requests[-1]
+    assert {t.name for t in bookkeeping.tools} == {
+        "set_stage",
+        "qualify_lead",
+        "mark_interested",
+        "mark_not_interested",
+        "log_objection",
+        "add_note",
+    }
+    # It sees what was actually said, and cannot slip in a side effect such as a booking.
+    said = [m.content for m in bookkeeping.messages]
+    assert "Forty people, renewal in March. Who handles claims today?" in said
+    assert not admin_fetch(db, "SELECT 1 FROM tool_executions WHERE tool = 'book_meeting'")
 
 
 def test_results_the_model_must_see_get_a_follow_up_round(env: Env, db: PgEnv) -> None:

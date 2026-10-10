@@ -36,12 +36,22 @@ class FakeModelProvider:
     replies: list[str | FakeTurn]
     name: str = "fake-model"
     requests: list[ModelRequest] = field(default_factory=list)
+    # The bookkeeping pass (a second call per turn, after the reply) has its own script and
+    # request log so it never consumes replies meant for the spoken turn. Unscripted: no tools.
+    bookkeeping_replies: list[str | FakeTurn] = field(default_factory=list)
+    bookkeeping_requests: list[ModelRequest] = field(default_factory=list)
 
     def _next(self, request: ModelRequest) -> ModelResponse:
-        self.requests.append(request)
-        if not self.replies:
-            raise RuntimeError("FakeModelProvider has no scripted reply left")
-        reply = self.replies.pop(0)
+        if "# Bookkeeping pass" in request.system:
+            self.bookkeeping_requests.append(request)
+            reply: str | FakeTurn = (
+                self.bookkeeping_replies.pop(0) if self.bookkeeping_replies else ""
+            )
+        else:
+            self.requests.append(request)
+            if not self.replies:
+                raise RuntimeError("FakeModelProvider has no scripted reply left")
+            reply = self.replies.pop(0)
         text = reply.text if isinstance(reply, FakeTurn) else reply
         calls = reply.tool_calls if isinstance(reply, FakeTurn) else ()
         return ModelResponse(

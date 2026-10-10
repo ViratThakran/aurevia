@@ -18,6 +18,26 @@ CALL_CONNECTED = "(The call has connected.)"
 # Model -> tools -> model rounds per turn. The last round offers no tools, so the turn
 # always ends with words for the prospect.
 MAX_TOOL_ROUNDS = 3
+# Pure bookkeeping tools: they change nothing the prospect is told about, so they never delay
+# the reply. They run in a second model call after the agent has started speaking. Tools that
+# the agent would talk about (booking, slots, do-not-call, handoff) are not in this set.
+DEFERRED_TOOLS = frozenset(
+    {
+        "set_stage",
+        "qualify_lead",
+        "mark_interested",
+        "mark_not_interested",
+        "log_objection",
+        "add_note",
+    }
+)
+RECORD_THIS_TURN = "(Record this turn now.)"
+BOOKKEEPING_INSTRUCTIONS = """
+
+# Bookkeeping pass
+The reply to the prospect has already been spoken. Do not write any words. Use the tools only
+to record what the prospect said and what happened in this turn (stage, qualification, interest,
+objection, note). If nothing needs recording, call no tool."""
 
 
 @dataclass(frozen=True)
@@ -55,6 +75,10 @@ class TurnRecords:
     """One GenerationRecord per model round, for usage accounting."""
 
     records: list[GenerationRecord] = field(default_factory=list)
+    # What the bookkeeping pass needs once the reply is out (see ConversationEngine.record_turn).
+    system: str = ""
+    messages: tuple[ModelMessage, ...] = ()
+    spoken: str = ""
 
 
 class ConversationEngine:
@@ -75,8 +99,14 @@ class ConversationEngine:
     ) -> AsyncIterator[TurnEvent]:
         """``messages`` come from :func:`to_model_messages` (validated before streaming)."""
         system = build_system_prompt(agent, state, context, tools_enabled=bool(tools))
+        # Speech first: only tools the reply may depend on are offered before the agent talks.
+        speech_tools = tuple(t for t in tools if t.name not in DEFERRED_TOOLS)
+        records.system = system
+        records.messages = messages
         for round_number in range(MAX_TOOL_ROUNDS + 1):
-            offer = tools if (executor is not None and round_number < MAX_TOOL_ROUNDS) else ()
+            offer = (
+                speech_tools if (executor is not None and round_number < MAX_TOOL_ROUNDS) else ()
+            )
             record = new_record()
             records.records.append(record)
             final = None
@@ -84,6 +114,7 @@ class ConversationEngine:
                 system=system, messages=messages, record=record, tools=offer
             ):
                 if event.delta:
+                    records.spoken += event.delta
                     yield TurnEvent(delta=event.delta)
                 if event.final is not None:
                     final = event.final
@@ -93,7 +124,7 @@ class ConversationEngine:
             yield TurnEvent(tool_results=results)
             if final.text.strip() and not executor.needs_follow_up(results):
                 return  # already spoke; the calls only recorded things and all succeeded
-            messages = (
+            messages = records.messages = (
                 *messages,
                 ModelMessage(
                     role="assistant",
@@ -103,3 +134,42 @@ class ConversationEngine:
                 ),
                 ModelMessage(role="user", tool_results=results),
             )
+
+    async def record_turn(
+        self,
+        *,
+        records: TurnRecords,
+        new_record: Callable[[], GenerationRecord],
+        tools: tuple[ToolSpec, ...],
+        executor: ToolExecutor,
+    ) -> tuple[ToolResult, ...]:
+        """The bookkeeping pass: record what happened in a turn whose reply is already out.
+
+        One model call that may only use the deferred bookkeeping tools; its text is ignored.
+        Runs after the agent started speaking, so it never adds to the prospect's wait.
+        """
+        specs = tuple(t for t in tools if t.name in DEFERRED_TOOLS)
+        if not specs or not records.system:
+            return ()
+        messages = records.messages
+        if records.spoken.strip():
+            messages = (
+                *messages,
+                ModelMessage(role="assistant", content=records.spoken.strip()),
+                ModelMessage(role="user", content=RECORD_THIS_TURN),
+            )
+        record = new_record()
+        records.records.append(record)
+        final = None
+        async for event in self._gateway.stream(
+            system=records.system + BOOKKEEPING_INSTRUCTIONS,
+            messages=messages,
+            record=record,
+            tools=specs,
+        ):
+            if event.final is not None:
+                final = event.final
+        if final is None:
+            return ()
+        calls = [call for call in final.tool_calls if call.name in DEFERRED_TOOLS]
+        return tuple([await executor.execute(call) for call in calls])
