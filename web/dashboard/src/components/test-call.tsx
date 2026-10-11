@@ -5,18 +5,22 @@
  * the agent; the browser only gets a participant token for that one room.
  */
 import { Room, RoomEvent, Track } from "livekit-client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 
-import { Alert, Button, Select, StatusBadge, formatDuration } from "@/components/ui";
+import { Alert, Badge, Button, Select, StatusBadge, formatDuration } from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api";
+import {
+  RETRY_METHOD,
+  RETRY_TIMEOUT_MS,
+  STATUS_TOPIC,
+  callScreenReducer,
+  initialCallScreen,
+  parseStatusEvent,
+  retryableFailureId,
+} from "@/lib/voice-issues";
 
 type Phase = "idle" | "connecting" | "live" | "ended";
 type CallInfo = Schemas["CallResponse"];
-
-interface Line {
-  speaker: "you" | "agent";
-  text: string;
-}
 
 export function TestCall({
   leads,
@@ -27,18 +31,20 @@ export function TestCall({
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [leadId, setLeadId] = useState("");
-  const [lines, setLines] = useState<Line[]>([]);
+  const [screen, dispatch] = useReducer(callScreenReducer, initialCallScreen);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<CallInfo | null>(null);
   const room = useRef<Room | null>(null);
   const callId = useRef<string | null>(null);
+  const agentIdentity = useRef<string | null>(null);
   const audio = useRef<HTMLDivElement>(null);
 
   useEffect(() => () => void room.current?.disconnect(), []);
 
   async function start() {
     setError(null);
-    setLines([]);
+    dispatch({ type: "reset" });
+    agentIdentity.current = null;
     setSummary(null);
     setPhase("connecting");
     try {
@@ -57,7 +63,14 @@ export function TestCall({
         const text = (await reader.readAll()).trim();
         if (!text) return;
         const speaker = participant.identity === r.localParticipant.identity ? "you" : "agent";
-        setLines((current) => [...current, { speaker, text }]);
+        dispatch({ type: "transcript", speaker, text });
+      });
+      // Voice-service failures (out of credits, rate limit, outage) from the voice worker.
+      r.registerTextStreamHandler(STATUS_TOPIC, async (reader, participant) => {
+        const event = parseStatusEvent(await reader.readAll());
+        if (!event) return;
+        agentIdentity.current = participant.identity;
+        dispatch({ type: "status", event });
       });
       await r.connect(session.livekit_url, session.token);
       await r.localParticipant.setMicrophoneEnabled(true);
@@ -98,6 +111,32 @@ export function TestCall({
     }, 2500);
   }
 
+  /** Replay the audio of a reply that could not be spoken. Only the failure's id is sent: the
+   * agent speaks the words it stored, so no model call is made and no sales action reruns. */
+  async function retryAudio(failureId: string) {
+    const r = room.current;
+    const agent = agentIdentity.current;
+    if (!r || !agent) {
+      dispatch({ type: "retry_unreachable" });
+      return;
+    }
+    dispatch({ type: "retry_started" });
+    try {
+      const reply = await r.localParticipant.performRpc({
+        destinationIdentity: agent,
+        method: RETRY_METHOD,
+        payload: JSON.stringify({ id: failureId }),
+        responseTimeout: RETRY_TIMEOUT_MS,
+      });
+      const result = JSON.parse(reply) as { ok?: boolean; reason?: string };
+      dispatch({ type: "retry_result", ok: result.ok === true, reason: result.reason });
+    } catch {
+      dispatch({ type: "retry_unreachable" }); // timed out or the agent is gone: stop waiting
+    }
+  }
+
+  const retryId = retryableFailureId(screen);
+
   return (
     <div className="space-y-4">
       {leads && leads.length > 0 && phase !== "live" ? (
@@ -135,15 +174,36 @@ export function TestCall({
         </span>
       </div>
       <Alert>{error}</Alert>
+      {screen.notice ? (
+        <div className="space-y-2">
+          <Alert tone={screen.retry === "pending" ? "neutral" : "warn"}>{screen.notice}</Alert>
+          {retryId || screen.retry === "pending" ? (
+            <Button
+              variant="secondary"
+              pending={screen.retry === "pending"}
+              disabled={!retryId}
+              onClick={() => retryId && void retryAudio(retryId)}
+            >
+              Retry audio
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
-      {lines.length > 0 ? (
+      {screen.lines.length > 0 ? (
         <div className="max-h-80 space-y-2 overflow-y-auto rounded-md border border-border bg-background p-3 text-sm">
-          {lines.map((line, i) => (
+          {screen.lines.map((line, i) => (
             <p key={i}>
               <span className={line.speaker === "agent" ? "font-medium text-accent" : "font-medium"}>
                 {line.speaker === "agent" ? "Agent" : "You"}:
               </span>{" "}
               {line.text}
+              {line.audio === "not_spoken" ? (
+                <>
+                  {" "}
+                  <Badge tone="warn">Response generated, audio not played</Badge>
+                </>
+              ) : null}
             </p>
           ))}
         </div>
