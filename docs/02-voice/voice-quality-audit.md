@@ -240,3 +240,35 @@ first-token timeout), 1 run of 6 scenarios.
 **To repeat** (inside the API container, ideally with a paid key):
 `python scripts/voice_benchmark.py --runs 3 --out /tmp/new.json --label new`. For the old
 version, put its `src` first on `PYTHONPATH`.
+
+## 11. Second free-tier key: how much of the delay is the key (2026-10-11)
+
+Same text-path benchmark (`scripts/voice_benchmark.py`, 1 run, 6 scenarios, 11 turns), new
+free-tier key, speak-first code (`voice-validation` branch). No audio.
+
+**Raw provider time to first word** (no Aurevia code, 5 samples each):
+
+| Model | Tiny prompt | Aurevia's real prompt |
+|---|---|---|
+| Gemini 3.5 Flash | 1.3–2.4 s | 1.9 s, then **429 rate limit** on 4 of the next 4 calls |
+| Gemini 3.5 Flash-Lite | 1.0–1.4 s | 0.9–1.4 s |
+
+**Through the real pipeline** (request sent → first text; backend preparation is 13–50 ms):
+
+| Setup | p50 | p95 | Model requests per turn | Failed turns | Refused (429) |
+|---|---|---|---|---|---|
+| C: configured (Flash, falls back to Flash-Lite) | 3 071 ms | 5 174 ms | 2.82 | 0 | 1 |
+| D: Flash-Lite only | 2 636 ms | 3 879 ms | 2.82 | 0 | 1 |
+
+Cost for the 6 scenarios was about $0.018 in both (Flash-Lite paid-tier rates).
+
+**Reading:**
+- One model call costs about **1.0–1.4 s on this key**, which is the provider's own speed. A
+  paid key may be faster; it will not make a call 0.
+- Flash is **rate limited within a few calls** on the free tier, so it keeps falling back to
+  Flash-Lite. Setting Flash-Lite as primary on a free key is faster and quieter (D vs C).
+- Not the key: turns that need a lookup (slots, booking, do-not-call, handoff) take **2–3 model
+  calls before the first word**, so 2.6–3.7 s at this key's speed. The tool call has to finish
+  before the agent can speak about it. That is the design, and it scales with provider speed.
+- Not the key (real audio only, from earlier measurements): about 0.5 s of end-of-turn wait
+  and about 0.5 s of speech recognition delay, before the model starts.
