@@ -38,6 +38,7 @@ The detailed architecture and build plan, with diagrams, is kept as a shared doc
 
 ## 05 Operations
 - `05-operations/observability-and-operations.md`
+- `05-operations/cloud-setup.md` — cloud development, secrets, hosting requirements
 - `05-operations/deployment-and-environments.md`
 - `05-operations/disaster-recovery.md`
 
