@@ -6,7 +6,9 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from aurevia.voice.voices import APPROVED_VOICES
 
 
 class _Body(BaseModel):
@@ -32,6 +34,14 @@ class AgentUpdate(_Body):
     )
     objection_guidance: str = Field(default="", max_length=2000)
     escalation_guidance: str = Field(default="", max_length=1000)
+
+    @field_validator("voice")
+    @classmethod
+    def _approved_voice(cls, value: str | None) -> str | None:
+        # Only reviewed voices may speak for a tenant (GET /api/v1/voices lists them).
+        if value is not None and value not in {v.id for v in APPROVED_VOICES}:
+            raise ValueError("voice must be one of the approved voices (GET /api/v1/voices)")
+        return value
 
 
 class VoiceOption(BaseModel):

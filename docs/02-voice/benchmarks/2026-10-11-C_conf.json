@@ -1,0 +1,241 @@
+{
+  "label": "C-configured",
+  "prices_per_million": {
+    "input": 0.3,
+    "output": 2.5
+  },
+  "summary": {
+    "ordinary": {
+      "runs": 1,
+      "turns": 3,
+      "first_word_ms_p50": 2510,
+      "first_word_ms_p95": 4172,
+      "model_requests_per_turn": 2.33,
+      "rate_limited_requests": 0,
+      "harness_retries": 0,
+      "failed_turns": 0,
+      "input_tokens_per_turn": 3974,
+      "output_tokens_per_turn": 70,
+      "cost_usd_per_scenario": 0.004104,
+      "tools": [
+        "get_available_slots:ok"
+      ]
+    },
+    "objection": {
+      "runs": 1,
+      "turns": 2,
+      "first_word_ms_p50": 1550,
+      "first_word_ms_p95": 1911,
+      "model_requests_per_turn": 2.0,
+      "rate_limited_requests": 0,
+      "harness_retries": 0,
+      "failed_turns": 0,
+      "input_tokens_per_turn": 3181,
+      "output_tokens_per_turn": 84,
+      "cost_usd_per_scenario": 0.002326,
+      "tools": []
+    },
+    "slot_lookup": {
+      "runs": 1,
+      "turns": 1,
+      "first_word_ms_p50": 3667,
+      "first_word_ms_p95": 3667,
+      "model_requests_per_turn": 3.0,
+      "rate_limited_requests": 0,
+      "harness_retries": 0,
+      "failed_turns": 0,
+      "input_tokens_per_turn": 5577,
+      "output_tokens_per_turn": 73,
+      "cost_usd_per_scenario": 0.001856,
+      "tools": [
+        "get_available_slots:ok"
+      ]
+    },
+    "booking": {
+      "runs": 1,
+      "turns": 3,
+      "first_word_ms_p50": 3563,
+      "first_word_ms_p95": 5174,
+      "model_requests_per_turn": 3.33,
+      "rate_limited_requests": 0,
+      "harness_retries": 0,
+      "failed_turns": 0,
+      "input_tokens_per_turn": 6374,
+      "output_tokens_per_turn": 119,
+      "cost_usd_per_scenario": 0.006629,
+      "tools": [
+        "book_meeting:ok",
+        "get_available_slots:ok"
+      ]
+    },
+    "handoff": {
+      "runs": 1,
+      "turns": 1,
+      "first_word_ms_p50": 2151,
+      "first_word_ms_p95": 2151,
+      "model_requests_per_turn": 3.0,
+      "rate_limited_requests": 0,
+      "harness_retries": 0,
+      "failed_turns": 0,
+      "input_tokens_per_turn": 4897,
+      "output_tokens_per_turn": 89,
+      "cost_usd_per_scenario": 0.001692,
+      "tools": [
+        "flag_for_handoff:ok"
+      ]
+    },
+    "do_not_call": {
+      "runs": 1,
+      "turns": 1,
+      "first_word_ms_p50": 4064,
+      "first_word_ms_p95": 4064,
+      "model_requests_per_turn": 4.0,
+      "rate_limited_requests": 1,
+      "harness_retries": 1,
+      "failed_turns": 0,
+      "input_tokens_per_turn": 4858,
+      "output_tokens_per_turn": 125,
+      "cost_usd_per_scenario": 0.00177,
+      "tools": [
+        "request_do_not_call:ok"
+      ]
+    },
+    "_all": {
+      "turns": 11,
+      "first_word_ms_p50": 3071,
+      "first_word_ms_p95": 5174,
+      "model_requests_per_turn": 2.82,
+      "failed_turns": 0
+    }
+  },
+  "runs": [
+    {
+      "name": "ordinary",
+      "turns": [
+        {
+          "first_word_ms": 2510,
+          "error": null,
+          "retries": 0
+        },
+        {
+          "first_word_ms": 2023,
+          "error": null,
+          "retries": 0
+        },
+        {
+          "first_word_ms": 4172,
+          "error": null,
+          "retries": 0
+        }
+      ],
+      "requests": 7,
+      "rate_limited_requests": 0,
+      "input_tokens": 11922,
+      "output_tokens": 211,
+      "tools": [
+        "get_available_slots:ok"
+      ]
+    },
+    {
+      "name": "objection",
+      "turns": [
+        {
+          "first_word_ms": 1911,
+          "error": null,
+          "retries": 0
+        },
+        {
+          "first_word_ms": 1550,
+          "error": null,
+          "retries": 0
+        }
+      ],
+      "requests": 4,
+      "rate_limited_requests": 0,
+      "input_tokens": 6362,
+      "output_tokens": 167,
+      "tools": []
+    },
+    {
+      "name": "slot_lookup",
+      "turns": [
+        {
+          "first_word_ms": 3667,
+          "error": null,
+          "retries": 0
+        }
+      ],
+      "requests": 3,
+      "rate_limited_requests": 0,
+      "input_tokens": 5577,
+      "output_tokens": 73,
+      "tools": [
+        "get_available_slots:ok"
+      ]
+    },
+    {
+      "name": "booking",
+      "turns": [
+        {
+          "first_word_ms": 3563,
+          "error": null,
+          "retries": 0
+        },
+        {
+          "first_word_ms": 3071,
+          "error": null,
+          "retries": 0
+        },
+        {
+          "first_word_ms": 5174,
+          "error": null,
+          "retries": 0
+        }
+      ],
+      "requests": 10,
+      "rate_limited_requests": 0,
+      "input_tokens": 19121,
+      "output_tokens": 357,
+      "tools": [
+        "get_available_slots:ok",
+        "get_available_slots:ok",
+        "get_available_slots:ok",
+        "book_meeting:ok"
+      ]
+    },
+    {
+      "name": "handoff",
+      "turns": [
+        {
+          "first_word_ms": 2151,
+          "error": null,
+          "retries": 0
+        }
+      ],
+      "requests": 3,
+      "rate_limited_requests": 0,
+      "input_tokens": 4897,
+      "output_tokens": 89,
+      "tools": [
+        "flag_for_handoff:ok"
+      ]
+    },
+    {
+      "name": "do_not_call",
+      "turns": [
+        {
+          "first_word_ms": 4064,
+          "error": null,
+          "retries": 1
+        }
+      ],
+      "requests": 4,
+      "rate_limited_requests": 1,
+      "input_tokens": 4858,
+      "output_tokens": 125,
+      "tools": [
+        "request_do_not_call:ok"
+      ]
+    }
+  ]
+}

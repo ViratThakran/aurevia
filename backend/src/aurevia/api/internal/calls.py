@@ -38,7 +38,7 @@ from aurevia.memory.schemas import TranscriptIn
 from aurevia.memory.service import Line, MemoryService, TranscriptService
 from aurevia.sales.scheduling import hours_for, spoken
 from aurevia.sales.state import SalesState, after_prospect_turn
-from aurevia.tools.framework import ToolContext, ToolExecutor
+from aurevia.tools.framework import ToolContext, ToolExecutor, ToolRegistry
 from aurevia.tools.sales_tools import default_registry
 from aurevia.usage.models import UsageEvent
 from aurevia.usage.recorder import record_llm_usage
@@ -73,7 +73,66 @@ async def start_call(
     )
 
 
-PENDING_BOOKKEEPING: set[asyncio.Task[None]] = set()
+# Bookkeeping passes still running, one per call. A new turn waits briefly for its call's pass,
+# so the next prompt sees the stage it recorded and the two never write the call concurrently.
+PENDING_BOOKKEEPING: dict[uuid.UUID, asyncio.Task[None]] = {}
+BOOKKEEPING_WAIT_SECONDS = 2.0
+# One retry for transient model failures (quota, timeout, outage), after this pause.
+BOOKKEEPING_RETRY_SECONDS = 2.0
+_RETRYABLE = frozenset({"rate_limited", "timeout", "unavailable"})
+
+
+async def _wait_for_bookkeeping(call_id: uuid.UUID) -> None:
+    task = PENDING_BOOKKEEPING.get(call_id)
+    if task is None or task.done():
+        return
+    try:
+        await asyncio.wait_for(asyncio.shield(task), timeout=BOOKKEEPING_WAIT_SECONDS)
+    except TimeoutError:
+        logger.info(
+            "Turn started before the previous bookkeeping pass finished",
+            extra={"fields": {"call_id": str(call_id)}},
+        )
+
+
+def _track_bookkeeping(call_id: uuid.UUID, task: asyncio.Task[None]) -> None:
+    PENDING_BOOKKEEPING[call_id] = task
+
+    def forget(done: asyncio.Task[None]) -> None:
+        if PENDING_BOOKKEEPING.get(call_id) is done:
+            del PENDING_BOOKKEEPING[call_id]
+
+    task.add_done_callback(forget)
+
+
+async def _bookkeeping_pass(
+    *,
+    gateway: ModelGateway,
+    database: Database,
+    registry: ToolRegistry,
+    tenant_id: uuid.UUID,
+    call_id: uuid.UUID,
+    lead_id: uuid.UUID | None,
+    records: TurnRecords,
+    metadata: dict[str, str],
+    now: datetime,
+) -> None:
+    async with database.sessionmaker() as session:
+        await set_tenant_context(session, tenant_id)
+        call = await session.get(Call, call_id)
+        if call is None:
+            return
+        lead = await session.get(Lead, lead_id) if lead_id else None
+        executor = ToolExecutor(
+            registry,
+            ToolContext(session=session, tenant_id=tenant_id, call=call, lead=lead, now=now),
+        )
+        await ConversationEngine(gateway).record_turn(
+            records=records,
+            new_record=lambda: gateway.new_record(metadata),
+            tools=registry.specs(),
+            executor=executor,
+        )
 
 
 async def _bookkeep(
@@ -89,34 +148,39 @@ async def _bookkeep(
 ) -> None:
     """Second model call of a turn: record stage, qualification and objections.
 
-    Failure here never affects the call: the reply was already spoken.
+    Failure here never affects the call: the reply was already spoken. A transient model
+    failure is retried once; a pass that is still lost is logged as an error.
     """
     registry = default_registry()
     already = len(records.records)
-    try:
-        async with database.sessionmaker() as session:
-            await set_tenant_context(session, tenant_id)
-            call = await session.get(Call, call_id)
-            if call is None:
-                return
-            lead = await session.get(Lead, lead_id) if lead_id else None
-            executor = ToolExecutor(
-                registry,
-                ToolContext(session=session, tenant_id=tenant_id, call=call, lead=lead, now=now),
-            )
-            await ConversationEngine(gateway).record_turn(
+    for attempt in (1, 2):
+        try:
+            await _bookkeeping_pass(
+                gateway=gateway,
+                database=database,
+                registry=registry,
+                tenant_id=tenant_id,
+                call_id=call_id,
+                lead_id=lead_id,
                 records=records,
-                new_record=lambda: gateway.new_record(metadata),
-                tools=registry.specs(),
-                executor=executor,
+                metadata=metadata,
+                now=now,
             )
-    except GatewayError as exc:
-        logger.warning(
-            "Bookkeeping pass failed",
-            extra={"fields": {"call_id": str(call_id), "code": exc.code}},
-        )
-    except Exception:
-        logger.exception("Bookkeeping pass failed", extra={"fields": {"call_id": str(call_id)}})
+        except GatewayError as exc:
+            if attempt == 1 and exc.code in _RETRYABLE:
+                logger.warning(
+                    "Bookkeeping pass failed, retrying",
+                    extra={"fields": {"call_id": str(call_id), "code": exc.code}},
+                )
+                await asyncio.sleep(BOOKKEEPING_RETRY_SECONDS)
+                continue
+            logger.error(
+                "Bookkeeping pass lost",
+                extra={"fields": {"call_id": str(call_id), "code": exc.code}},
+            )
+        except Exception:
+            logger.exception("Bookkeeping pass lost", extra={"fields": {"call_id": str(call_id)}})
+        break
     for record in records.records[already:]:
         await record_llm_usage(database, tenant_id=tenant_id, call_id=call_id, record=record)
 
@@ -136,6 +200,7 @@ async def take_turn(
     if gateway is None:
         raise ServiceUnavailableError("The AI model is not configured")
 
+    await _wait_for_bookkeeping(call_id)
     calls = CallService(session, principal.tenant_id)
     call, agent = await calls.get_with_agent(call_id, for_update=True)
     require_in_progress(call)
@@ -256,8 +321,7 @@ async def take_turn(
                         now=now,
                     )
                 )
-                PENDING_BOOKKEEPING.add(task)
-                task.add_done_callback(PENDING_BOOKKEEPING.discard)
+                _track_bookkeeping(call_id, task)
 
     return StreamingResponse(stream(), media_type="application/x-ndjson")
 
