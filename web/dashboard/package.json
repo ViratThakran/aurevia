@@ -8,7 +8,8 @@
     "start": "next start -p 3002",
     "lint": "eslint",
     "gen:api": "openapi-typescript openapi.json -o src/lib/api-schema.d.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "livekit-client": "^2.22.4",
@@ -27,6 +28,7 @@
     "eslint-config-next": "15.5.27",
     "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }
