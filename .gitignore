@@ -21,3 +21,8 @@ build/
 
 # Generated listening samples (python -m aurevia_voice.voice_samples)
 voice-samples/
+
+# Production deploy state (server only)
+deploy/.env
+deploy/.releases
+deploy/backups/

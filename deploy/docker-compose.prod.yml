@@ -1,0 +1,316 @@
+# Aurevia production-style stack (staging and pilot): one server, Docker Compose, Caddy.
+# Plan: docs/05-operations/hosting-plan.md   Runbook: docs/05-operations/hosting-runbook.md
+#
+# Not the development file (backend/docker-compose.yml). Differences: no --reload, no source
+# mounts, restart policy, health checks, pinned image tags, only Caddy (80/443) and the media
+# ports (7881/tcp, 7882/udp) are published, Postgres and Redis are private, real LiveKit keys.
+#
+# Use it through deploy/deploy.sh. By hand:
+#   docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml config   (check)
+# Values come from deploy/.env (copy deploy/production.env.example; never commit it).
+
+name: aurevia
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16.15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      AUREVIA_APP_DB_PASSWORD: ${AUREVIA_APP_DB_PASSWORD:?set AUREVIA_APP_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../backend/docker/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [data]
+    logging: *logging
+    # No ports: only the API and the migration job can reach it, over the private `data` network.
+
+  redis:
+    image: redis:7.4.11-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]  # signalling only, no durable data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [default]
+    logging: *logging
+
+  # One-shot job: applies database migrations as the schema owner, then exits. deploy.sh runs
+  # it once per deploy (`compose run --rm migrate`). It is the only service that holds the
+  # owner password; the API runs as the restricted `aurevia_app` role. Also used for the
+  # operator commands (python -m aurevia.platform.operator ...), see the runbook.
+  migrate:
+    profiles: [tools]
+    image: aurevia/api:${AUREVIA_TAG:-dev}  # built by the `api` service; no second build
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      AUREVIA_ENVIRONMENT: ${AUREVIA_ENVIRONMENT:-staging}
+      AUREVIA_LOG_JSON: "true"
+      AUREVIA_MIGRATION_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      AUREVIA_DATABASE_URL: postgresql+asyncpg://aurevia_app:${AUREVIA_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      AUREVIA_JWT_SECRET: ${AUREVIA_JWT_SECRET:?set AUREVIA_JWT_SECRET}
+      AUREVIA_GEMINI_API_KEY: ${AUREVIA_GEMINI_API_KEY:-}
+      AUREVIA_ANTHROPIC_API_KEY: ${AUREVIA_ANTHROPIC_API_KEY:-}
+      AUREVIA_AI_PROVIDER: ${AUREVIA_AI_PROVIDER:-gemini}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [data]
+    logging: *logging
+
+  api:
+    image: aurevia/api:${AUREVIA_TAG:-dev}
+    build:
+      context: ../backend
+    restart: unless-stopped
+    # Migrations are NOT run here (deploy.sh does it once); the container only serves.
+    command:
+      - uvicorn
+      - aurevia.main:create_app
+      - --factory
+      - --host=0.0.0.0
+      - --port=8000
+      - --proxy-headers
+      - --forwarded-allow-ips=*
+    environment:
+      AUREVIA_ENVIRONMENT: ${AUREVIA_ENVIRONMENT:-staging}
+      AUREVIA_DEBUG: "false"
+      AUREVIA_LOG_LEVEL: ${AUREVIA_LOG_LEVEL:-INFO}
+      AUREVIA_LOG_JSON: "true"
+      AUREVIA_JWT_SECRET: ${AUREVIA_JWT_SECRET:?set AUREVIA_JWT_SECRET}
+      AUREVIA_DATABASE_URL: postgresql+asyncpg://aurevia_app:${AUREVIA_APP_DB_PASSWORD:?set AUREVIA_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB}
+      # Model (speech keys belong to the voice worker only).
+      AUREVIA_AI_PROVIDER: ${AUREVIA_AI_PROVIDER:-gemini}
+      AUREVIA_GEMINI_API_KEY: ${AUREVIA_GEMINI_API_KEY:-}
+      AUREVIA_ANTHROPIC_API_KEY: ${AUREVIA_ANTHROPIC_API_KEY:-}
+      AUREVIA_LLM_MODEL: ${AUREVIA_LLM_MODEL:-}
+      AUREVIA_LLM_FALLBACK_MODELS: ${AUREVIA_LLM_FALLBACK_MODELS:-[]}
+      # Browser origin allowed to call the API, and the proxy in front of it.
+      AUREVIA_CORS_ORIGINS: '["https://app.${AUREVIA_DOMAIN:?set AUREVIA_DOMAIN}"]'
+      AUREVIA_TRUST_PROXY_HEADERS: "true"
+      # Voice: internal URL for the API, public wss:// URL for browsers, same keys as LiveKit.
+      AUREVIA_LIVEKIT_URL: http://livekit:7880
+      AUREVIA_LIVEKIT_PUBLIC_URL: wss://rtc.${AUREVIA_DOMAIN}
+      AUREVIA_LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY}
+      AUREVIA_LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}
+      # Safeguards, fixed here on purpose (not read from the env file): phone calls reach only
+      # registered test numbers, and the automatic campaign dialer is off.
+      AUREVIA_TELEPHONY_MODE: test
+      AUREVIA_CAMPAIGN_SCHEDULER_ENABLED: "false"
+      # Stage 5 only (phone trunk); leave blank until then.
+      AUREVIA_TELEPHONY_PROVIDER: ${AUREVIA_TELEPHONY_PROVIDER:-}
+      AUREVIA_LIVEKIT_SIP_OUTBOUND_TRUNK_ID: ${AUREVIA_LIVEKIT_SIP_OUTBOUND_TRUNK_ID:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [default, data]
+    logging: *logging
+
+  livekit:
+    image: livekit/livekit-server:v1.13.9
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      # "key: secret". Kept out of the config file; the API and worker get the same pair.
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}"
+    configs:
+      - source: livekit_config
+        target: /etc/livekit.yaml
+    ports:
+      # Media. 7880 (signalling) is NOT published: Caddy proxies wss://rtc.<domain> to it.
+      - "7881:7881/tcp"
+      - "7882:7882/udp"
+    healthcheck:
+      # Fails while the server is crash-looping, e.g. when it cannot find its public IP (STUN).
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7880/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [default]
+    logging: *logging
+
+  # Shares LiveKit's network namespace (as in development) so "127.0.0.1" means the same thing
+  # to the worker and the media server. Speech keys live only here; it gets no model key.
+  voice-worker:
+    image: aurevia/voice-worker:${AUREVIA_TAG:-dev}
+    build:
+      context: ../voice-worker
+    restart: unless-stopped
+    network_mode: "service:livekit"
+    environment:
+      AUREVIA_BACKEND_URL: http://api:8000
+      AUREVIA_STT_PROVIDER: ${AUREVIA_STT_PROVIDER:-deepgram}
+      AUREVIA_TTS_PROVIDER: ${AUREVIA_TTS_PROVIDER:-cartesia}
+      AUREVIA_TTS_VOICE: ${AUREVIA_TTS_VOICE:-a81fccdc-5595-4dfc-ae76-4de6a515b8a2}
+      LIVEKIT_URL: ws://127.0.0.1:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      CARTESIA_API_KEY: ${CARTESIA_API_KEY:-}
+    healthcheck:
+      # The worker has no HTTP port we rely on: check that its process is alive.
+      test: ["CMD", "python", "-c", "import glob,sys; sys.exit(0 if any(b'aurevia_voice' in open(p,'rb').read() for p in glob.glob('/proc/[0-9]*/cmdline') if p != '/proc/self/cmdline') else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - livekit
+      - api
+    logging: *logging
+
+  dashboard:
+    image: aurevia/dashboard:${AUREVIA_TAG:-dev}
+    build:
+      context: ../web/dashboard
+      args:
+        # Inlined into the browser bundle at build time: changing the domain means a rebuild.
+        NEXT_PUBLIC_API_URL: https://api.${AUREVIA_DOMAIN:?set AUREVIA_DOMAIN}
+    restart: unless-stopped
+    environment:
+      # The dashboard's own server-side session routes reach the API inside the network.
+      AUREVIA_API_URL: http://api:8000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3002/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      - api
+    networks: [default]
+    logging: *logging
+
+  caddy:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - caddy_data:/data  # certificates: keep, or Let's Encrypt rate limits bite on re-issue
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - api
+      - dashboard
+      - livekit
+    networks: [default]
+    logging: *logging
+
+  # --- Phone calls (stage 5): add `--profile telephony`. Not started by default. ----------------
+  # Needs the SIP ports open in the firewall (ideally only to the carrier's addresses) and a
+  # trunk created in LiveKit. Telephony stays in test mode (fixed on the API above).
+  livekit-sip:
+    profiles: [telephony]
+    image: livekit/sip:v1.18.0
+    restart: unless-stopped
+    environment:
+      SIP_CONFIG_BODY: |
+        api_key: ${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY}
+        api_secret: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}
+        ws_url: ws://livekit:7880
+        redis:
+          address: redis:6379
+        sip_port: 5060
+        rtp_port: 10000-10100
+        use_external_ip: true
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "10000-10100:10000-10100/udp"
+    depends_on:
+      - livekit
+      - redis
+    networks: [default]
+    logging: *logging
+
+configs:
+  livekit_config:
+    content: |
+      port: 7880
+      rtc:
+        tcp_port: 7881
+        udp_port: 7882
+        use_external_ip: true
+      redis:
+        address: redis:6379
+      # TURN is deferred (hosting-plan.md section 5). Add it only if media is blocked on some networks.
+      webhook:
+        api_key: ${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY}
+        urls:
+          - http://api:8000/webhooks/livekit
+      logging:
+        level: info
+        json: true
+
+  caddyfile:
+    content: |
+      {
+        email ${ACME_EMAIL:?set ACME_EMAIL}
+      }
+
+      app.${AUREVIA_DOMAIN} {
+        encode zstd gzip
+        reverse_proxy dashboard:3002
+      }
+
+      api.${AUREVIA_DOMAIN} {
+        encode zstd gzip
+        # Server-to-server paths are never reachable from the internet; the worker and
+        # LiveKit use http://api:8000 inside the network.
+        @private path /internal/* /webhooks/*
+        respond @private 404
+        reverse_proxy api:8000
+      }
+
+      # LiveKit signalling (WebSocket): Caddy upgrades the connection automatically.
+      rtc.${AUREVIA_DOMAIN} {
+        reverse_proxy livekit:7880
+      }
+
+networks:
+  default: {}
+  # Postgres lives only here. `internal` means no route to or from the internet.
+  data:
+    internal: true
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
