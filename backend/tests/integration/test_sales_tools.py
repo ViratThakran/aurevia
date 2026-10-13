@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -329,10 +330,30 @@ def test_bookkeeping_failure_never_breaks_the_spoken_reply(
     ]
 
     lines = _turn(env, call_id, token, said="We are forty people.")
-    assert [line["type"] for line in lines] == ["delta"] * 4 + ["done"]
-    _wait_for(lambda: len(env.model.bookkeeping_requests) == 2)
-    # The next turn still works, and nothing was recorded from the lost pass.
+    assert [line["type"] for line in lines] == ["delta"] * 4 + ["done"]  # spoken in full
+
+    # Wait until the whole pass is over (both attempts failed), not just started.
+    pending = uuid.UUID(call_id)
+    _wait_for(
+        lambda: (
+            len(env.model.bookkeeping_requests) == 2
+            and pending not in calls_api.PENDING_BOOKKEEPING
+        )
+    )
+    # The lost pass recorded nothing: its scripted tool call was never even delivered.
+    assert len(env.model.bookkeeping_replies) == 1
+    assert not admin_fetch(db, "SELECT 1 FROM tool_executions WHERE tool = 'qualify_lead'")
+
+    # The next turn still works. Its own bookkeeping pass has nothing scripted, so it must
+    # not be handed the lost pass's tool call either.
+    env.model.bookkeeping_replies.clear()
     assert _turn(env, call_id, token)[-1]["type"] == "done"
+    _wait_for(
+        lambda: (
+            len(env.model.bookkeeping_requests) == 3
+            and pending not in calls_api.PENDING_BOOKKEEPING
+        )
+    )
     assert not admin_fetch(db, "SELECT 1 FROM tool_executions WHERE tool = 'qualify_lead'")
 
 
