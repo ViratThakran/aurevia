@@ -63,6 +63,8 @@ revoke the old ones at the provider.
 
 ## 4. Hosting Aurevia (not done yet)
 
+The chosen approach and the stage-by-stage plan are in `hosting-plan.md`.
+
 The repo has Dockerfiles and a compose file but **no deployment setup**: no staging, no
 domain, no TLS, no managed database. The simplest first step is one small virtual machine
 running the existing compose file behind HTTPS.
