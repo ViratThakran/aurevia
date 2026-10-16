@@ -460,3 +460,60 @@ def test_a_past_start_date_searches_from_today(env: Env, db: PgEnv) -> None:
     result = _tool_results_seen_by_model(env)[0]
     assert result["ok"] is True and result["slots"]
     assert "in the past" in result["note"] and result["today"]
+
+
+def _move_to(env: Env, call_id: str, token: str, *stages: str) -> None:
+    for i, stage in enumerate(stages):
+        env.model.replies += [
+            FakeTurn(tool_calls=(_tool("set_stage", f"st{i}", stage=stage),)),
+            ".",
+        ]
+        assert _turn(env, call_id, token)[-1]["sales_state"] == stage
+
+
+def test_free_times_are_prefetched_through_the_audited_tool_when_a_meeting_is_near(
+    env: Env, db: PgEnv
+) -> None:
+    call_id, token = _call(env, _lead(env))
+    _move_to(env, call_id, token, "pitch", "next_step")
+    # Earlier turns (discovery) looked nothing up; the pitch turn did, through the executor.
+    first_system = env.model.requests[0].system
+    assert "# Free meeting times" not in first_system
+    audit = admin_fetch(
+        db, "SELECT tool, status FROM tool_executions WHERE tool = 'get_available_slots'"
+    )
+    assert audit and all(row["status"] == "ok" for row in audit)
+
+    before = len(env.model.requests)
+    env.model.replies += ["Would Tuesday at eleven suit you?"]
+    lines = _turn(env, call_id, token, "When could we talk?")
+    request = env.model.requests[-1]
+    assert "# Free meeting times (looked up just now)" in request.system
+    # One model request on the spoken path: no slots round trip before the first word.
+    assert len(env.model.requests) - before == 1
+    assert not [line for line in lines if line["type"] == "tool"]
+
+
+def test_listed_time_books_in_one_tool_round_and_is_still_checked(env: Env, db: PgEnv) -> None:
+    call_id, token = _call(env, _lead(env))
+    _move_to(env, call_id, token, "pitch", "next_step")
+    system = env.model.requests[-1].system
+    start = system.split("(start: ")[1].split(")")[0]
+    before = len(env.model.requests)
+
+    env.model.replies += [
+        FakeTurn(tool_calls=(_tool("book_meeting", "b1", start=start),)),
+        "Booked.",
+    ]
+    lines = _turn(env, call_id, token, "The first one works.")
+    assert {"type": "tool", "name": "book_meeting", "ok": True} in lines
+    assert len(env.model.requests) - before == 2  # book, then speak (was slots, book, speak)
+    assert admin_fetch(db, "SELECT count(*) AS n FROM appointments")[0]["n"] == 1
+
+    # A time that is not free is still rejected by book_meeting itself, listed or not.
+    env.model.replies += [
+        FakeTurn(tool_calls=(_tool("book_meeting", "b2", start="2020-01-01T10:00:00+00:00"),)),
+        "Sorry.",
+    ]
+    _turn(env, call_id, token, "Or that old time?")
+    assert _tool_results_seen_by_model(env)[0]["error"] == "slot_unavailable"

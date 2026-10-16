@@ -229,8 +229,8 @@ class SlotsArgs(_Args):
 class GetAvailableSlots(Tool[SlotsArgs]):
     name = "get_available_slots"
     description = (
-        "List free meeting times. Always call this before offering or booking a time; never "
-        "guess availability."
+        "List free meeting times. Call this before offering or booking a time, unless free "
+        "times are already listed in your instructions; never guess availability."
     )
     args_model = SlotsArgs
     requires_lead = False
@@ -261,13 +261,16 @@ class GetAvailableSlots(Tool[SlotsArgs]):
 
 
 class BookArgs(_Args):
-    start: AwareDatetime = Field(description="A 'start' value returned by get_available_slots")
+    start: AwareDatetime = Field(
+        description="A 'start' value from get_available_slots or the listed free meeting times"
+    )
 
 
 class BookMeeting(Tool[BookArgs]):
     name = "book_meeting"
     description = (
-        "Book a meeting at a time from get_available_slots that the prospect accepted. "
+        "Book a meeting at a free time (listed or from get_available_slots) that the "
+        "prospect accepted. "
         "Only say it is booked if this returns ok."
     )
     args_model = BookArgs

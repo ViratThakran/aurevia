@@ -14,6 +14,7 @@ import logging
 import time
 import uuid
 from collections.abc import AsyncIterator
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Request, Response, status
@@ -27,7 +28,7 @@ from aurevia.conversation.engine import (
     Utterance,
     to_model_messages,
 )
-from aurevia.conversation.prompt import PromptContext, RememberedFact
+from aurevia.conversation.prompt import FreeSlot, PromptContext, RememberedFact
 from aurevia.db.session import Database, set_tenant_context
 from aurevia.errors import AureviaError, ConflictError, ServiceUnavailableError
 from aurevia.gateway import GatewayError, ModelGateway
@@ -36,6 +37,7 @@ from aurevia.memory.jobs import safe_remember_call
 from aurevia.memory.models import Lead, Speaker
 from aurevia.memory.schemas import TranscriptIn
 from aurevia.memory.service import Line, MemoryService, TranscriptService
+from aurevia.providers.model import ToolCall
 from aurevia.sales.scheduling import hours_for, spoken
 from aurevia.sales.state import SalesState, after_prospect_turn
 from aurevia.tools.framework import ToolContext, ToolExecutor, ToolRegistry
@@ -55,6 +57,31 @@ from aurevia.voice.schemas import (
 from aurevia.voice.service import CallService, profile_of, require_in_progress
 
 logger = logging.getLogger(__name__)
+
+# Stages where a meeting may be agreed. Free times are looked up before the model runs, through
+# the same audited slots tool, so offering a time needs no model -> tool -> model round trip.
+# Booking is still a tool call that re-checks the slot; nothing is skipped.
+SLOT_PREFETCH_STATES = frozenset({SalesState.PITCH, SalesState.NEXT_STEP})
+PREFETCH_SLOTS_CALL_ID = "prefetch-slots"
+PREFETCH_SLOTS_DAYS = 7  # a week, so a Friday-evening call still sees Monday's times
+
+
+async def _prefetch_slots(executor: ToolExecutor) -> tuple[FreeSlot, ...] | None:
+    """Free meeting times via the audited executor; None if the lookup did not succeed."""
+    result = await executor.execute(
+        ToolCall(
+            id=PREFETCH_SLOTS_CALL_ID,
+            name="get_available_slots",
+            arguments={"days": PREFETCH_SLOTS_DAYS},
+        )
+    )
+    if result.is_error:
+        return None
+    return tuple(
+        FreeSlot(start=str(slot["start"]), spoken=str(slot["spoken"]))
+        for slot in result.content.get("slots", [])
+    )
+
 
 router = APIRouter(prefix="/calls/{call_id}", tags=["internal: voice worker"])
 
@@ -261,13 +288,16 @@ async def take_turn(
                         now=now,
                     ),
                 )
+                turn_context = context
+                if state in SLOT_PREFETCH_STATES:
+                    turn_context = replace(context, free_slots=await _prefetch_slots(executor))
                 async for event in ConversationEngine(gateway).stream_reply(
                     agent=profile,
                     state=state,
                     messages=messages,
                     new_record=lambda: gateway.new_record(metadata),
                     records=records,
-                    context=context,
+                    context=turn_context,
                     tools=registry.specs(),
                     executor=executor,
                 ):

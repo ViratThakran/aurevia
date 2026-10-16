@@ -10,7 +10,12 @@ from aurevia.conversation.engine import (
     Utterance,
     to_model_messages,
 )
-from aurevia.conversation.prompt import AgentProfile, build_system_prompt
+from aurevia.conversation.prompt import (
+    AgentProfile,
+    FreeSlot,
+    PromptContext,
+    build_system_prompt,
+)
 from aurevia.errors import AuthenticationError
 from aurevia.identity.security import AccessClaims, create_access_token
 from aurevia.sales.state import (
@@ -139,3 +144,43 @@ def test_call_token_with_wrong_secret_is_rejected() -> None:
     )
     with pytest.raises(AuthenticationError):
         decode_call_token(token, secret=TEST_JWT_SECRET)
+
+
+def _agent() -> AgentProfile:
+    return AgentProfile(
+        name="Meera",
+        company_name="Acme",
+        company_description="We sell term insurance.",
+        objective="Book a call.",
+        language="English",
+    )
+
+
+def test_listed_free_times_replace_the_lookup_instruction() -> None:
+    slots = (FreeSlot(start="2026-10-20T05:30:00+00:00", spoken="Tuesday 20 October at 11 AM"),)
+    prompt = build_system_prompt(
+        _agent(), SalesState.NEXT_STEP, PromptContext(free_slots=slots), tools_enabled=True
+    )
+    assert "# Free meeting times (looked up just now)" in prompt
+    assert "- Tuesday 20 October at 11 AM (start: 2026-10-20T05:30:00+00:00)" in prompt
+    assert 'listed under "Free meeting times"' in prompt
+    # The honesty rule about tool results is unchanged.
+    assert "unless the tool result says ok is true" in prompt
+
+
+def test_no_free_times_and_no_lookup_keep_the_old_behaviour() -> None:
+    empty = build_system_prompt(
+        _agent(), SalesState.NEXT_STEP, PromptContext(free_slots=()), tools_enabled=True
+    )
+    assert "None in the coming week" in empty
+    plain = build_system_prompt(_agent(), SalesState.NEXT_STEP, tools_enabled=True)
+    assert "# Free meeting times" not in plain
+    # The rules part of the prompt does not depend on whether times were listed (cacheable).
+    assert plain.split("# About the company")[0] == empty.split("# About the company")[0]
+
+
+def test_free_times_are_not_listed_when_tools_are_off() -> None:
+    slots = (FreeSlot(start="2026-10-20T05:30:00+00:00", spoken="Tuesday at 11"),)
+    prompt = build_system_prompt(_agent(), SalesState.NEXT_STEP, PromptContext(free_slots=slots))
+    assert "# Free meeting times" not in prompt
+    assert "You cannot book meetings" in prompt
