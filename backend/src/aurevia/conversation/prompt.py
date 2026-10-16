@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from aurevia.sales.state import STATE_GOALS, SalesState
 
-PROMPT_VERSION = "voice-2026-10-16.1"
+PROMPT_VERSION = "voice-2026-10-16.2"
 
 
 @dataclass(frozen=True)
@@ -128,6 +128,20 @@ def _setup(agent: AgentProfile) -> str:
     return "".join(f"\n\n{part}" for part in parts)
 
 
+@dataclass(frozen=True)
+class SystemPrompt:
+    """The prompt in two parts. ``stable`` is byte-identical on every turn of a call (rules,
+    company, setup, who is called, earlier-call notes), so providers can cache it; ``turn``
+    holds what changes per turn (time, stage goal, free meeting times)."""
+
+    stable: str
+    turn: str
+
+    @property
+    def text(self) -> str:
+        return self.stable + self.turn
+
+
 def build_system_prompt(
     agent: AgentProfile,
     state: SalesState,
@@ -135,6 +149,16 @@ def build_system_prompt(
     *,
     tools_enabled: bool = False,
 ) -> str:
+    return build_system_prompt_parts(agent, state, context, tools_enabled=tools_enabled).text
+
+
+def build_system_prompt_parts(
+    agent: AgentProfile,
+    state: SalesState,
+    context: PromptContext | None = None,
+    *,
+    tools_enabled: bool = False,
+) -> SystemPrompt:
     ctx = context or PromptContext()
     prospect = ""
     if ctx.prospect_name:
@@ -143,8 +167,8 @@ def build_system_prompt(
             who += f" of {_flat(ctx.prospect_company, 100)}"
         prospect = f"\n\n# Who you are calling\n{who}"
     now = f"\n\n# Current time\n{ctx.now_spoken}" if ctx.now_spoken else ""
-    return f"""You are {agent.name}, calling on behalf of {agent.company_name}. You are on a live \
-voice call: everything you write is spoken aloud by a text-to-speech voice.
+    stable = f"""You are {agent.name}, calling on behalf of {agent.company_name}. You are on a \
+live voice call: everything you write is spoken aloud by a text-to-speech voice.
 
 # Honesty
 - You are an AI assistant. Never say or imply that you are human.
@@ -179,8 +203,9 @@ times the way a person would say them aloud.
 {agent.company_description}
 
 # Goal of this call
-{agent.objective}{_setup(agent)}{prospect}{now}
+{agent.objective}{_setup(agent)}{prospect}{_notes(ctx.memories)}"""
+    turn = f"""{now}
 
 # Right now
-{STATE_GOALS[state]}{_free_slots(ctx.free_slots if tools_enabled else None)}\
-{_notes(ctx.memories)}"""
+{STATE_GOALS[state]}{_free_slots(ctx.free_slots if tools_enabled else None)}"""
+    return SystemPrompt(stable=stable, turn=turn)

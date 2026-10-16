@@ -8,7 +8,7 @@ from typing import Literal
 
 import anthropic
 from anthropic import AsyncAnthropic, DefaultAsyncHttpxClient, omit
-from anthropic.types.beta import BetaMessageParam, BetaToolParam
+from anthropic.types.beta import BetaMessageParam, BetaTextBlockParam, BetaToolParam, BetaUsage
 
 from aurevia.providers.model import (
     ModelMessage,
@@ -73,7 +73,7 @@ class AnthropicModelProvider:
         async with self._client.beta.messages.stream(
             model=request.model,
             max_tokens=request.max_tokens,
-            system=request.system,
+            system=system_blocks(request.system, request.system_cache_prefix),
             messages=messages,
             # Thinking stays adaptive (the model default); effort bounds it for latency.
             output_config={"effort": self._effort},
@@ -84,11 +84,7 @@ class AnthropicModelProvider:
         ) as stream:
             async for event in stream:
                 if event.type == "message_start":
-                    yield ModelStreamEvent(
-                        usage=ModelUsage(
-                            input_tokens=event.message.usage.input_tokens, output_tokens=0
-                        )
-                    )
+                    yield ModelStreamEvent(usage=usage_of(event.message.usage, output=False))
                 elif event.type == "content_block_delta" and event.delta.type == "text_delta":
                     yield ModelStreamEvent(delta=event.delta.text)
                 elif event.type == "content_block_start" and event.content_block.type == "tool_use":
@@ -110,10 +106,7 @@ class AnthropicModelProvider:
             final=ModelResponse(
                 text=text,
                 model=message.model,  # differs from request.model if a fallback answered
-                usage=ModelUsage(
-                    input_tokens=message.usage.input_tokens,
-                    output_tokens=message.usage.output_tokens,
-                ),
+                usage=usage_of(message.usage),
                 stop_reason=message.stop_reason,
                 provider_request_id=request_id,
                 tool_calls=calls,
@@ -127,6 +120,32 @@ class AnthropicModelProvider:
 
     async def aclose(self) -> None:
         await self._client.close()
+
+
+def system_blocks(system: str, cache_prefix: int) -> str | list[BetaTextBlockParam]:
+    """The system prompt; with a cache prefix, as text blocks whose first one is cacheable.
+
+    Tools render before the system prompt, so the cache entry covers the tool definitions too.
+    """
+    if not 0 < cache_prefix <= len(system):
+        return system
+    blocks: list[BetaTextBlockParam] = [
+        {"type": "text", "text": system[:cache_prefix], "cache_control": {"type": "ephemeral"}}
+    ]
+    if rest := system[cache_prefix:]:
+        blocks.append({"type": "text", "text": rest})
+    return blocks
+
+
+def usage_of(usage: BetaUsage, *, output: bool = True) -> ModelUsage:
+    """Anthropic reports uncached, cache-written and cache-read input separately: sum them."""
+    read = usage.cache_read_input_tokens or 0
+    written = usage.cache_creation_input_tokens or 0
+    return ModelUsage(
+        input_tokens=usage.input_tokens + read + written,
+        output_tokens=usage.output_tokens if output else 0,
+        cached_input_tokens=read,
+    )
 
 
 def to_messages(messages: tuple[ModelMessage, ...]) -> list[BetaMessageParam]:
