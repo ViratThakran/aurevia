@@ -452,7 +452,8 @@ def test_a_past_start_date_searches_from_today(env: Env, db: PgEnv) -> None:
     """Models guess past dates (even the wrong year); that must not return 'nothing free'."""
     call_id, token = _call(env, _lead(env))
     env.model.replies += [
-        FakeTurn(tool_calls=(_tool("get_available_slots", from_date="2025-10-13", days=3),)),
+        # A week, so the test does not depend on the weekday it runs on.
+        FakeTurn(tool_calls=(_tool("get_available_slots", from_date="2025-10-13", days=7),)),
         "Monday works?",
     ]
     _turn(env, call_id, token)
