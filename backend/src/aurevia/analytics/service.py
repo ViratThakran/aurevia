@@ -164,6 +164,7 @@ class AnalyticsService:
             "economics": {
                 "cost": {cur: str(amt) for cur, amt in costs.totals.items()},
                 "fully_priced": costs.fully_priced,
+                "unpriced_usage": costs.unpriced_usage(),
                 "cost_per_call": per(costs.totals, total),
                 "cost_per_meeting": per(costs.totals, meetings),
             },

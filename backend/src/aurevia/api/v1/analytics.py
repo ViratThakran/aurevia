@@ -56,6 +56,10 @@ async def usage(
             ],
             "cost": {cur: str(amount) for cur, amount in costs.totals.items()},
             "fully_priced": costs.fully_priced,
+            # Usage with no price: left out of the cost, and counted as zero by the spend limit.
+            "unpriced_usage": costs.unpriced_usage(),
+            "spend_limit_understated": limits.monthly_cost_limit is not None
+            and not costs.fully_priced,
         }
     )
     return encoded

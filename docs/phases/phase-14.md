@@ -35,6 +35,14 @@ code left intact.
 
 **Live mode stays off until WP-14.5 and WP-14.7 are done.**
 
+**Spend limit must block on unpriced usage before the first pilot or paying tenant.** Today
+(option B2, decided 17 Oct 2026) usage with no price counts as zero toward the monthly spend
+limit: calls continue, and the gap is only shown on the usage page and in analytics, and logged
+("Spend limit checked with unpriced usage counted as zero"). Before the first pilot or paying
+tenant this must switch to option B1: with a spend limit set, unpriced usage stops new calls
+(`check_can_start_call` in `backend/src/aurevia/platform/limits.py`). Where this lands (WP-14.8
+call safety or WP-14.9 operations): **to confirm**.
+
 ## Decisions and open questions
 
 - Decided: hosting Option A (one server, Docker Compose and Caddy, India region).
@@ -74,5 +82,6 @@ None yet. (PR #17's local production-style run is not a Gate 14 measurement.)
 
 - [ ] WP-14.1 to 14.9 done (done-when to confirm for 14.6 and 14.9)
 - [ ] Live mode enabled only after WP-14.5 and WP-14.7, and only on Virat's instruction
+- [ ] Spend limit switched from warn (B2) to block (B1) on unpriced usage, before the first pilot or paying tenant
 - [ ] Gate 14 met
 - [ ] Definition of done for each WP; `CLAUDE.md` status and this file updated
