@@ -7025,6 +7025,7 @@
     "type": "string",
     "enum": [
      "llm_input_tokens",
+     "llm_cached_input_tokens",
      "llm_output_tokens",
      "stt_seconds",
      "tts_characters",

@@ -117,7 +117,11 @@ class GeminiModelProvider:
             if not usage_reported and usage is not None and usage.prompt_token_count:
                 usage_reported = True
                 yield ModelStreamEvent(
-                    usage=ModelUsage(input_tokens=usage.prompt_token_count, output_tokens=0)
+                    usage=ModelUsage(
+                        input_tokens=usage.prompt_token_count,
+                        output_tokens=0,
+                        cached_input_tokens=usage.cached_content_token_count or 0,
+                    )
                 )
             for part in _parts(chunk):
                 parts.append(part)
@@ -145,6 +149,8 @@ class GeminiModelProvider:
                 model=last.model_version or request.model,
                 usage=ModelUsage(
                     input_tokens=(usage.prompt_token_count or 0) if usage else 0,
+                    # Gemini caches stable prompt prefixes implicitly; this is the part reused.
+                    cached_input_tokens=(usage.cached_content_token_count or 0) if usage else 0,
                     # Thinking tokens are billed as output.
                     output_tokens=(
                         (usage.candidates_token_count or 0) + (usage.thoughts_token_count or 0)

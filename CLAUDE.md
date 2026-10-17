@@ -1,5 +1,8 @@
 # Aurevia: notes for Claude (read this first)
 
+**Every session: read `docs/STATUS.md` first, then the current phase file it points to
+(`docs/phases/phase-NN.md`). Update both at the end of the session.**
+
 Aurevia is a multi-tenant AI voice sales agent platform: FastAPI backend, a LiveKit voice worker,
 and a Next.js dashboard. These notes carry the project's context and working agreement into any
 session, local or cloud. The engineering rules are in `docs/AGENTS.md`; the source of truth is

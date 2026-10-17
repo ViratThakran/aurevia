@@ -46,6 +46,7 @@ class GenerationRecord:
     provider: str
     served_model: str | None = None
     input_tokens: int = 0
+    cached_input_tokens: int = 0
     output_tokens: int = 0
     first_token_ms: int | None = None
     stop_reason: str | None = None
@@ -148,6 +149,7 @@ class ModelGateway:
         messages: tuple[ModelMessage, ...],
         record: GenerationRecord,
         tools: tuple[ToolSpec, ...] = (),
+        system_cache_prefix: int = 0,
     ) -> AsyncIterator[GatewayEvent]:
         """Yield text deltas. Raises ``GatewayError`` on timeout or provider failure.
 
@@ -170,7 +172,14 @@ class ModelGateway:
             record.error = None
             try:
                 async for event in self._attempt(
-                    model, system, messages, tools, record, started=started, deadline=deadline
+                    model,
+                    system,
+                    messages,
+                    tools,
+                    record,
+                    started=started,
+                    deadline=deadline,
+                    system_cache_prefix=system_cache_prefix,
                 ):
                     yield event
             except GatewayError as exc:
@@ -194,10 +203,12 @@ class ModelGateway:
         *,
         started: float,
         deadline: float,
+        system_cache_prefix: int = 0,
     ) -> AsyncIterator[GatewayEvent]:
         request = ModelRequest(
             model=model,
             system=system,
+            system_cache_prefix=system_cache_prefix,
             messages=messages,
             tools=tools,
             max_tokens=self._max_tokens,
@@ -227,6 +238,7 @@ class ModelGateway:
 
                 if event.usage is not None:
                     record.input_tokens = event.usage.input_tokens
+                    record.cached_input_tokens = event.usage.cached_input_tokens
                     record.output_tokens = event.usage.output_tokens
                 if event.started:
                     record.output_started = True
@@ -239,6 +251,7 @@ class ModelGateway:
                     final = event.final
                     record.served_model = final.model
                     record.input_tokens = final.usage.input_tokens
+                    record.cached_input_tokens = final.usage.cached_input_tokens
                     record.output_tokens = final.usage.output_tokens
                     record.stop_reason = final.stop_reason
                     record.provider_request_id = final.provider_request_id

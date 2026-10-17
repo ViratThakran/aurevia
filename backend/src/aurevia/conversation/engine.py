@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
-from aurevia.conversation.prompt import AgentProfile, PromptContext, build_system_prompt
+from aurevia.conversation.prompt import AgentProfile, PromptContext, build_system_prompt_parts
 from aurevia.gateway import GenerationRecord, ModelGateway
 from aurevia.providers.model import ModelMessage, ToolResult, ToolSpec
 from aurevia.sales.state import SalesState
@@ -79,6 +79,8 @@ class TurnRecords:
     # the prompt, the history including earlier tool rounds, and the last round's words (earlier
     # rounds' words are already in ``messages``).
     system: str = ""
+    # Length of the part of ``system`` that is the same on every turn (cacheable).
+    system_cache_prefix: int = 0
     messages: tuple[ModelMessage, ...] = ()
     spoken: str = ""
 
@@ -100,10 +102,12 @@ class ConversationEngine:
         executor: ToolExecutor | None = None,
     ) -> AsyncIterator[TurnEvent]:
         """``messages`` come from :func:`to_model_messages` (validated before streaming)."""
-        system = build_system_prompt(agent, state, context, tools_enabled=bool(tools))
+        prompt = build_system_prompt_parts(agent, state, context, tools_enabled=bool(tools))
+        system = prompt.text
         # Speech first: only tools the reply may depend on are offered before the agent talks.
         speech_tools = tuple(t for t in tools if t.name not in DEFERRED_TOOLS)
         records.system = system
+        records.system_cache_prefix = len(prompt.stable)
         records.messages = messages
         for round_number in range(MAX_TOOL_ROUNDS + 1):
             offer = (
@@ -114,7 +118,11 @@ class ConversationEngine:
             records.spoken = ""
             final = None
             async for event in self._gateway.stream(
-                system=system, messages=messages, record=record, tools=offer
+                system=system,
+                messages=messages,
+                record=record,
+                tools=offer,
+                system_cache_prefix=records.system_cache_prefix,
             ):
                 if event.delta:
                     records.spoken += event.delta
@@ -166,6 +174,7 @@ class ConversationEngine:
         final = None
         async for event in self._gateway.stream(
             system=records.system + BOOKKEEPING_INSTRUCTIONS,
+            system_cache_prefix=records.system_cache_prefix,
             messages=messages,
             record=record,
             tools=specs,

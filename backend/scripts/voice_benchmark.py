@@ -99,6 +99,7 @@ class ScenarioRun:
     requests: int = 0
     rate_limited_requests: int = 0
     input_tokens: int = 0
+    cached_input_tokens: int = 0
     output_tokens: int = 0
     tools: list[str] = field(default_factory=list)
 
@@ -137,7 +138,10 @@ async def _usage(client: TestClient, tenant_id: uuid.UUID, call_id: str) -> list
         await set_tenant_context(session, tenant_id)
         rows = await session.execute(
             select(
-                UsageEvent.served_model, UsageEvent.input_tokens, UsageEvent.output_tokens
+                UsageEvent.served_model,
+                UsageEvent.input_tokens,
+                UsageEvent.output_tokens,
+                UsageEvent.cached_input_tokens,
             ).where(UsageEvent.call_id == uuid.UUID(call_id), UsageEvent.kind == "llm")
         )
         return list(rows)
@@ -200,6 +204,7 @@ def run_scenario(
     result.rate_limited_requests = sum(1 for r in rows if r[0] is None)
     result.input_tokens = sum(r[1] or 0 for r in rows)
     result.output_tokens = sum(r[2] or 0 for r in rows)
+    result.cached_input_tokens = sum(r[3] or 0 for r in rows)
     return result
 
 
@@ -232,6 +237,10 @@ def summarize(runs: list[ScenarioRun], price_in: float, price_out: float) -> dic
             "harness_retries": sum(t.retries for t in turns),
             "failed_turns": sum(1 for t in turns if t.error),
             "input_tokens_per_turn": round(tokens_in / n_turns),
+            # Served from the provider's prompt cache (cheaper and faster than fresh input).
+            "cached_input_tokens_per_turn": round(
+                sum(r.cached_input_tokens for r in group) / n_turns
+            ),
             "output_tokens_per_turn": round(tokens_out / n_turns),
             "cost_usd_per_scenario": round(cost / len(group), 6),
             "tools": sorted({tool for r in group for tool in r.tools}),

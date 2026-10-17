@@ -9,8 +9,14 @@ from typing import Any
 import httpx2
 import pytest
 from anthropic import DefaultAsyncHttpxClient
+from anthropic.types.beta import BetaUsage
 
-from aurevia.providers.anthropic_model import FALLBACK_BETA, AnthropicModelProvider
+from aurevia.providers.anthropic_model import (
+    FALLBACK_BETA,
+    AnthropicModelProvider,
+    system_blocks,
+    usage_of,
+)
 from aurevia.providers.model import ModelMessage, ModelProviderError, ModelRequest
 
 REQUEST = ModelRequest(
@@ -289,3 +295,24 @@ def test_tool_use_round_trip() -> None:
         "content": '{"ok": false}',
         "is_error": True,
     }
+
+
+def test_stable_prompt_part_is_marked_cacheable_and_cached_tokens_are_counted() -> None:
+    assert system_blocks("rules|turn", 0) == "rules|turn"
+    assert system_blocks("rules|turn", 6) == [
+        {"type": "text", "text": "rules|", "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": "turn"},
+    ]
+    assert system_blocks("rules", 5) == [
+        {"type": "text", "text": "rules", "cache_control": {"type": "ephemeral"}}
+    ]
+    usage = usage_of(
+        BetaUsage(
+            input_tokens=40,
+            output_tokens=9,
+            cache_read_input_tokens=1500,
+            cache_creation_input_tokens=0,
+        )
+    )
+    # input_tokens stays "all input", so cost accounting never undercounts.
+    assert (usage.input_tokens, usage.cached_input_tokens, usage.output_tokens) == (1540, 1500, 9)

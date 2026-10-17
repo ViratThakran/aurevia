@@ -36,6 +36,8 @@ class UsageEvent(UUIDPrimaryKey, Base):
     model: Mapped[str] = mapped_column(String(100))
     served_model: Mapped[str | None] = mapped_column(String(100))
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    # The part of input_tokens served from the provider's prompt cache.
+    cached_input_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     audio_seconds: Mapped[float] = mapped_column(Float, default=0.0)
     characters: Mapped[int] = mapped_column(Integer, default=0)
