@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (sixth session: CI stall diagnostics; Phase 11 next). **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (CI stall root cause fixed in #33; Phase 11 in progress). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -38,6 +38,8 @@ WP-10.1, 10.4, 10.5.
 
 ## 2. Open pull requests
 
+Open: [#30](https://github.com/ViratThakran/aurevia/pull/30) WP-11.1 backchannel design, **waiting for Virat's approval** (WP-11.2 starts only after it).
+
 Merged on 17 Oct, each with CI green:
 
 | PR | What |
@@ -48,12 +50,21 @@ Merged on 17 Oct, each with CI green:
 | [#24](https://github.com/ViratThakran/aurevia/pull/24) | Pricing (b): warn on unpriced usage (usage page, analytics, logs); fixes the #18 limit test |
 | [#26](https://github.com/ViratThakran/aurevia/pull/26) | Docs: the buildable-now table (section 6), approved by Virat |
 | [#27](https://github.com/ViratThakran/aurevia/pull/27) | Fix: the price loader command crashed when run on its own (as `deploy.sh` runs it). Found while setting up WP-10.4; nothing had been deployed. |
+| [#28](https://github.com/ViratThakran/aurevia/pull/28) | Docs: the build-early approval and its conditions |
+| [#29](https://github.com/ViratThakran/aurevia/pull/29) | WP-10.4, partial: turn benchmark settings A to D (canned model; ranks settings, not Gate 10). Key terms, preemptive TTS and the rest of D wait on Cartesia credits. |
+| [#31](https://github.com/ViratThakran/aurevia/pull/31) | Docs: STATUS after #29 (backend CI stalled once; cancelled and re-run, then green) |
+| [#32](https://github.com/ViratThakran/aurevia/pull/32) | WP-11.3: agent-side reactions, off by default (`AUREVIA_AGENT_REACTIONS`) |
+| [#34](https://github.com/ViratThakran/aurevia/pull/34) | WP-11.4: prospect mood and voice style, off by default (migration 0012) |
+| [#35](https://github.com/ViratThakran/aurevia/pull/35) | WP-11.5: natural speech for amounts, phone numbers and dates, off by default |
+| [#36](https://github.com/ViratThakran/aurevia/pull/36) | WP-11.6: turn-taking polish, off by default |
+| [#37](https://github.com/ViratThakran/aurevia/pull/37) | WP-11.7: human-feel scorecard metrics and listening-test template |
+| [#38](https://github.com/ViratThakran/aurevia/pull/38) | WP-12.2: redaction of personal data (library). Backend CI stalled once; cancelled and re-run, then green. |
 
 Follow-ups, not started:
 - Codex P2 from #17: `deploy.sh` only warns when speech keys are missing; it should fail.
 - PR #17's "not verified" list (real DNS and certificates, media ports, real audio, SIP, a real
   bucket, cron) waits for a server (WP-14.1).
-- Backend `pytest` stalled in CI on PRs #18, #24 and #31 (and once locally); a re-run passed
+- Backend `pytest` stalled in CI on PRs #18, #24, #31 and #38 (and once locally); a re-run passed
   each time. **Cause (found 17 Oct, reproduced on 2 CPUs, 1 run in 4):** every spoken turn
   starts a background "bookkeeping" pass that holds a database session. If the app shut down
   while one was still running, its connection was left open inside a transaction, holding locks
@@ -225,6 +236,13 @@ with fake providers.
 
 | Work package | PR | Switch (off by default) | Not proven yet |
 |---|---|---|---|
-| 10.4 tooling: canned model (`AUREVIA_AI_PROVIDER=canned`) | this PR | Only when chosen; refused in staging and production | Benchmark tool only, never a sales model |
-| 10.4: Deepgram key terms | this PR | `AUREVIA_STT_KEYTERMS` (empty) | Whether they fix "Aurevia" and "Meera" (run E, waiting on Cartesia credits) |
-| 10.4: preemptive text to speech | this PR | `AUREVIA_PREEMPTIVE_TTS` (false) | Any measurement (run F, waiting on Cartesia credits) |
+| 10.4 tooling: canned model (`AUREVIA_AI_PROVIDER=canned`) | [#29](https://github.com/ViratThakran/aurevia/pull/29) | Only when chosen; refused in staging and production | Benchmark tool only, never a sales model |
+| 10.4: Deepgram key terms | [#29](https://github.com/ViratThakran/aurevia/pull/29) | `AUREVIA_STT_KEYTERMS` (empty) | Whether they fix "Aurevia" and "Meera" (run E, waiting on Cartesia credits) |
+| 10.4: preemptive text to speech | [#29](https://github.com/ViratThakran/aurevia/pull/29) | `AUREVIA_PREEMPTIVE_TTS` (false) | Any measurement (run F, waiting on Cartesia credits) |
+| 11.3 agent-side reactions (prompt variant `voice-2026-10-17.reactions1`, style metrics `reaction_rate`, `repeated_reaction_rate`) | [#32](https://github.com/ViratThakran/aurevia/pull/32) | `AUREVIA_AGENT_REACTIONS` (false) | The 8 sales scenarios and word counts with a real model (paid Gemini key); how it sounds |
+| 11.4 prospect mood and voice style (`record_prospect_mood` tool, `calls.prospect_mood`, `turn_metrics.voice_style`, migration 0012) | [#34](https://github.com/ViratThakran/aurevia/pull/34) | Backend `AUREVIA_PROSPECT_MOOD` (false) and worker `AUREVIA_MOOD_VOICE` (false) | How it sounds; whether Cartesia's speed and emotion controls take effect on the current voice model (waiting on Cartesia credits, listening test) |
+| 11.5 natural speech (rupee amounts in lakh and crore, mobile numbers digit by digit, numeric dates, a pronunciation list); voice text only, the transcript keeps the original | this PR | `AUREVIA_NATURAL_SPEECH` (false), `AUREVIA_PRONUNCIATIONS` (empty) | How it sounds; per-turn Hinglish switching benchmark on mixed-language audio (waiting on Cartesia and Deepgram) |
+| 11.6 turn-taking polish: fixed instant replies for "hold on", "repeat that", "sorry, go ahead" after being cut off, a goodbye and "I'm driving" (the last two end the call); do-not-call and anything about calls or numbers always go to the model | [#36](https://github.com/ViratThakran/aurevia/pull/36) | `AUREVIA_TURN_TAKING` (false) | How it feels on a call (microphone test); the plan has no done-when (to confirm) |
+| 11.7 human-feel scorecard: read-only metric calculation (pause before replying p10/p50/p90, talk ratio, words and questions per turn, reactions per minute) and the listening-test template | [#37](https://github.com/ViratThakran/aurevia/pull/37) | None needed (read-only command) | Gate 11 itself: the listening test needs Virat and ten listeners; recordings wait on Cartesia credits; expert numbers wait on Phase 12 |
+| 12.2 redaction (`aurevia.learning.redaction`): patterns for email, phone, PAN, Aadhaar, GSTIN, labelled PIN codes; a detector interface for names and addresses (model through the Model Gateway); consistent placeholders; counts-only report; refuses to pass text on if the detector fails | [#38](https://github.com/ViratThakran/aurevia/pull/38) | Library only; used by the learning import (WP-12.3, off by default) | The model detector against real transcripts (needs a model key and real recordings) |
+| 12.3 learning tables (`learning_sources` with source type call or talk, `learning_transcripts`, `learning_labels`; migration 0013, forced RLS, no deletes), permissions `learning.import`, `learning.review`, `learning.publish`, JSON and CSV import through redaction | this PR | `AUREVIA_LEARNING_ENABLED` (false; the API answers 404) | Importing real recordings (needs Virat's inventory, caller permissions and counsel's view on prospect consent); the model detector on real transcripts |

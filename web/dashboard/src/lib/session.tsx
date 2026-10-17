@@ -27,7 +27,10 @@ export type Permission =
   | "compliance.manage"
   | "team.manage"
   | "audit.read"
-  | "analytics.read";
+  | "analytics.read"
+  | "learning.import"
+  | "learning.review"
+  | "learning.publish";
 
 interface SessionValue {
   status: "loading" | "anonymous" | "ready";

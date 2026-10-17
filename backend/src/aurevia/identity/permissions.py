@@ -26,6 +26,10 @@ class Permission(StrEnum):
     TEAM_MANAGE = "team.manage"  # invitations, roles, members
     AUDIT_READ = "audit.read"
     ANALYTICS_READ = "analytics.read"  # analytics and usage/cost
+    # Learning from expert recordings (Phase 12, built early; off by default).
+    LEARNING_IMPORT = "learning.import"  # import redacted transcripts
+    LEARNING_REVIEW = "learning.review"  # read sources and review labels and techniques
+    LEARNING_PUBLISH = "learning.publish"  # approve and publish playbook versions
 
 
 ALL_PERMISSIONS = frozenset(Permission)

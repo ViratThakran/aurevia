@@ -7,7 +7,7 @@ builds the prompt, applies the sales rules, calls the Model Gateway and records 
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -36,6 +36,7 @@ class CallOpening:
 class Utterance:
     role: Role
     text: str
+    interrupted: bool = False  # an agent line the prospect cut off (WP-11.6)
 
 
 class BackendClient:
@@ -46,7 +47,13 @@ class BackendClient:
         call_id: str,
         call_token: str,
         http: httpx.AsyncClient | None = None,
+        on_mood: Callable[[str], None] | None = None,
+        on_end_call: Callable[[str], None] | None = None,
     ) -> None:
+        # WP-11.4 (off by default): told the mood the backend sends at the start of a turn.
+        self.on_mood = on_mood
+        # WP-11.6 (off by default): the backend's fixed goodbye asks to end the call.
+        self.on_end_call = on_end_call
         self._call_path = f"/internal/v1/calls/{call_id}"
         self._http = http or httpx.AsyncClient(
             base_url=base_url,
@@ -72,7 +79,12 @@ class BackendClient:
         Stopping iteration early (the prospect interrupted) closes the HTTP stream, which
         tells the backend to stop generating.
         """
-        payload = {"history": [{"role": u.role, "text": u.text} for u in history]}
+        payload = {
+            "history": [
+                {"role": u.role, "text": u.text, **({"interrupted": True} if u.interrupted else {})}
+                for u in history
+            ]
+        }
         async with self._http.stream(
             "POST", f"{self._call_path}/turns", json=payload, headers=self._headers
         ) as response:
@@ -87,6 +99,12 @@ class BackendClient:
                     yield event["text"]
                 elif event["type"] == "error":
                     raise BackendError(event["code"], status=502, retryable=False)
+                elif event["type"] == "mood":
+                    if self.on_mood is not None and isinstance(event.get("mood"), str):
+                        self.on_mood(event["mood"])
+                elif event["type"] == "end_call":
+                    if self.on_end_call is not None:
+                        self.on_end_call(str(event.get("reason", "")))
                 elif event["type"] == "done":
                     return
         raise BackendError("stream_ended_early", status=502, retryable=False)

@@ -96,6 +96,20 @@ class Settings(BaseSettings):
     # by default. The usage record shows every model attempted and the one that answered.
     llm_fallback_models: list[str] = Field(default_factory=list, max_length=3)
 
+    # --- Human feel (Phase 11, built early; off by default, not proven on real calls) ---
+    # WP-11.3: let the agent start some replies with a short, varied reaction ("Hm, okay.").
+    agent_reactions: bool = False
+    # WP-11.4: record the prospect's mood in the bookkeeping pass and send it to the voice
+    # worker, which may adjust the voice (its own switch, AUREVIA_MOOD_VOICE).
+    prospect_mood: bool = False
+    # WP-11.6: fixed, instant replies for "hold on", "repeat that", a goodbye, driving, and
+    # "sorry, go ahead" after being cut off. A goodbye or driving ends the call.
+    turn_taking: bool = False
+
+    # --- Learning from expert recordings (Phase 12, built early; off by default) ---
+    # The learning API (import, review). Off: its endpoints answer 404.
+    learning_enabled: bool = False
+
     # --- Memory (Phase 4) ---
     # Full transcripts are deleted this many days after they are written (DPDP data
     # minimisation); extracted lead facts are kept separately until removed.

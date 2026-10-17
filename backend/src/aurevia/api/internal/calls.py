@@ -2,7 +2,11 @@
 
 The reply to a turn streams as NDJSON lines: ``{"type": "delta", "text": ...}`` while the
 model writes, then exactly one ``{"type": "done", "sales_state": ...}`` or
-``{"type": "error", "code": ...}``. When the worker cancels a reply (the prospect interrupted)
+``{"type": "error", "code": ...}``. With ``AUREVIA_PROSPECT_MOOD`` on (WP-11.4, off by
+default) the stream starts with ``{"type": "mood", "mood": ...}`` when a mood was recorded;
+older workers ignore it. With ``AUREVIA_TURN_TAKING`` on (WP-11.6, off by default) a few clear
+moments get a fixed reply without the model, and a goodbye adds ``{"type": "end_call"}``.
+When the worker cancels a reply (the prospect interrupted)
 it simply closes the stream; generation stops and the usage is still recorded.
 """
 
@@ -29,6 +33,7 @@ from aurevia.conversation.engine import (
     to_model_messages,
 )
 from aurevia.conversation.prompt import FreeSlot, PromptContext, RememberedFact
+from aurevia.conversation.turn_taking import classify
 from aurevia.db.session import Database, set_tenant_context
 from aurevia.errors import AureviaError, ConflictError, ServiceUnavailableError
 from aurevia.gateway import GatewayError, ModelGateway
@@ -207,13 +212,14 @@ async def _bookkeep(
     records: TurnRecords,
     metadata: dict[str, str],
     now: datetime,
+    prospect_mood: bool = False,
 ) -> None:
     """Second model call of a turn: record stage, qualification and objections.
 
     Failure here never affects the call: the reply was already spoken. A transient model
     failure is retried once; a pass that is still lost is logged as an error.
     """
-    registry = default_registry()
+    registry = default_registry(prospect_mood=prospect_mood)
     already = len(records.records)
     for attempt in (1, 2):
         try:
@@ -271,6 +277,26 @@ async def take_turn(
     except InvalidHistoryError as exc:
         raise AureviaError(str(exc), status_code=422, code="invalid_history") from exc
 
+    # WP-11.6 (off by default): a fixed, instant reply for a few clear moments. No model call,
+    # so no tool runs and nothing is claimed; the sales stage does not move.
+    fixed = classify(body.history) if settings.turn_taking else None
+    if fixed is not None:
+        call.turn_count += 1
+        state_now = call.sales_state
+        await session.commit()
+        logger.info(
+            "Turn answered without the model",
+            extra={"fields": {"call_id": str(call_id), "move": fixed.move.value}},
+        )
+
+        async def fixed_stream() -> AsyncIterator[bytes]:
+            yield _line({"type": "delta", "text": fixed.text})
+            if fixed.end_call:
+                yield _line({"type": "end_call", "reason": fixed.move.value})
+            yield _line({"type": "done", "sales_state": state_now})
+
+        return StreamingResponse(fixed_stream(), media_type="application/x-ndjson")
+
     lead = await session.get(Lead, call.lead_id) if call.lead_id else None
     memories: list[RememberedFact] = []
     if lead is not None:
@@ -289,6 +315,7 @@ async def take_turn(
         prospect_name=lead.name if lead else None,
         prospect_company=lead.company if lead else None,
         now_spoken=f"{spoken(now, hours)} ({hours.timezone})",
+        reactions=settings.agent_reactions,
     )
     state = after_prospect_turn(SalesState(call.sales_state))
     call.sales_state = state
@@ -297,8 +324,10 @@ async def take_turn(
     await session.commit()
     prepared_ms = round((time.monotonic() - turn_started) * 1000)
 
-    registry = default_registry()
+    registry = default_registry(prospect_mood=settings.prospect_mood)
     records = TurnRecords()
+    # WP-11.4 (off by default): the mood the previous turn's bookkeeping recorded.
+    mood = call.prospect_mood if settings.prospect_mood else None
     metadata = {"call_id": str(call_id), "tenant_id": str(principal.tenant_id)}
 
     async def stream() -> AsyncIterator[bytes]:
@@ -306,6 +335,8 @@ async def take_turn(
         spoke = False
         failed = False
         try:
+            if mood:
+                yield _line({"type": "mood", "mood": mood})
             # Tools write through their own session, scoped to this tenant and committed per
             # tool together with its audit row.
             async with database.sessionmaker() as tool_session:
@@ -384,6 +415,7 @@ async def take_turn(
                         records=records,
                         metadata=metadata,
                         now=now,
+                        prospect_mood=settings.prospect_mood,
                     )
                 )
                 _track_bookkeeping(call_id, task)

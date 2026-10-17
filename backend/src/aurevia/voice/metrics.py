@@ -57,6 +57,8 @@ class TurnMetric(UUIDPrimaryKey, Base):
     e2e_latency_ms: Mapped[int | None] = mapped_column(Integer)
     llm_ttft_ms: Mapped[int | None] = mapped_column(Integer)
     tts_ttfb_ms: Mapped[int | None] = mapped_column(Integer)
+    # Voice settings used for this agent turn, e.g. "slow/Calm" (WP-11.4; null when off).
+    voice_style: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

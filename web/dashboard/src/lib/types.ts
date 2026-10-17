@@ -105,6 +105,9 @@ export const PERMISSIONS = [
   ["team.manage", "Invite people, roles and members"],
   ["audit.read", "Read the audit log"],
   ["analytics.read", "Analytics, usage and cost"],
+  ["learning.import", "Import expert-call transcripts (learning, off by default)"],
+  ["learning.review", "Review learning sources, labels and techniques"],
+  ["learning.publish", "Approve and publish playbooks"],
 ] as const;
 
 export function money(amounts: Record<string, string> | null | undefined): string {

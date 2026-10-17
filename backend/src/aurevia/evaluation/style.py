@@ -7,6 +7,9 @@ Measured on the agent's replies in the sales scenarios, so prompt changes can be
 - share of replies opening with a stock acknowledgement ("I understand", "Great", ...)
 - share of replies whose first two words repeat an earlier reply's in the same call
 - filler phrases ("great question", "absolutely", "to be honest", ...)
+- short reactions at the start of a reply ("Hm, okay.", "Oh, nice."; WP-11.3): how often,
+  and how often the same reaction is reused in one call. Reactions are allowed (with
+  ``AUREVIA_AGENT_REACTIONS``); repeating one is what sounds scripted.
 """
 
 from __future__ import annotations
@@ -28,6 +31,46 @@ FILLERS = re.compile(
 )
 
 
+# A reaction: one to three words, then a sentence break, at the start of a reply.
+REACTION = re.compile(r"^\s*((?:[a-z']+[ ,]*){1,3}?)[.!]\s+\S", re.IGNORECASE)
+REACTION_WORDS = frozenset(
+    {
+        "oh",
+        "ah",
+        "hm",
+        "hmm",
+        "okay",
+        "ok",
+        "nice",
+        "i",
+        "see",
+        "fair",
+        "enough",
+        "right",
+        "sure",
+        "achha",
+        "haan",
+        "theek",
+        "hai",
+        "got",
+        "it",
+    }
+)
+
+
+def reaction_of(reply: str) -> str | None:
+    """The leading reaction ("hm, okay"), or None. Stock openers are not reactions."""
+    match = REACTION.match(reply)
+    if not match:
+        return None
+    words = _words(match.group(1))
+    if not words or len(words) > 3 or not set(words) <= REACTION_WORDS:
+        return None
+    if STOCK_OPENERS.match(reply.strip()):
+        return None
+    return " ".join(words)
+
+
 def _words(text: str) -> list[str]:
     return re.findall(r"[\w'-]+", text.lower())
 
@@ -42,6 +85,8 @@ class StyleMetrics:
     stock_opener_rate: float
     repeated_opener_rate: float
     fillers_per_reply: float
+    reaction_rate: float = 0.0
+    repeated_reaction_rate: float = 0.0
 
     def as_dict(self) -> dict[str, float]:
         return {k: round(v, 3) for k, v in self.__dict__.items()}
@@ -54,6 +99,18 @@ def measure(calls: Sequence[Sequence[str]]) -> StyleMetrics:
     words = [len(_words(r)) for r in replies]
     questions = [r.count("?") for r in replies]
     repeated = 0
+    reactions = 0
+    repeated_reactions = 0
+    for call in calls:
+        used: set[str] = set()
+        for reply in call:
+            reaction = reaction_of(reply)
+            if reaction is None:
+                continue
+            reactions += 1
+            if reaction in used:
+                repeated_reactions += 1
+            used.add(reaction)
     for call in calls:
         seen: set[tuple[str, ...]] = set()
         for reply in call:
@@ -70,4 +127,6 @@ def measure(calls: Sequence[Sequence[str]]) -> StyleMetrics:
         stock_opener_rate=sum(bool(STOCK_OPENERS.match(r.strip())) for r in replies) / n,
         repeated_opener_rate=repeated / n,
         fillers_per_reply=sum(len(FILLERS.findall(r)) for r in replies) / n,
+        reaction_rate=reactions / n,
+        repeated_reaction_rate=repeated_reactions / (reactions or 1),
     )

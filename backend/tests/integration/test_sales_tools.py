@@ -609,3 +609,116 @@ def test_shutdown_ends_running_bookkeeping_and_leaves_no_connection_open(
         db.app_role,
     )
     assert open_sessions == []
+
+
+def test_agent_reactions_switch_reaches_the_turn_prompt(env: Env) -> None:
+    """WP-11.3: off by default; switching it on changes only the openers rule."""
+    call_id, token = _call(env, _lead(env))
+    env.model.replies += ["We cover forty people.", "Hm, okay. Who decides?"]
+    _turn(env, call_id, token, "Hi.")
+    default_system = env.model.requests[-1].system
+    assert "short, natural reaction" not in default_system
+    app: Any = env.client.app
+    app.state.settings = app.state.settings.model_copy(update={"agent_reactions": True})
+    _turn(env, call_id, token, "We have forty staff.")
+    assert "short, natural reaction" in env.model.requests[-1].system
+
+
+def test_prospect_mood_is_recorded_and_sent_only_when_switched_on(env: Env, db: PgEnv) -> None:
+    """WP-11.4: off by default. On: bookkeeping records the mood through the audited
+    executor, and the next turn starts with it. The reply text is never changed."""
+    call_id, token = _call(env, _lead(env))
+    # Off: the mood tool is not offered, and no mood event is sent.
+    env.model.replies += ["We cover forty people."]
+    lines = _turn(env, call_id, token, said="Hi.")
+    assert all(line["type"] != "mood" for line in lines)
+    _wait_for(lambda: len(env.model.bookkeeping_requests) == 1)
+    offered = {t.name for t in env.model.bookkeeping_requests[-1].tools}
+    assert "record_prospect_mood" not in offered and "set_stage" in offered
+
+    app: Any = env.client.app
+    app.state.settings = app.state.settings.model_copy(update={"prospect_mood": True})
+    env.model.replies += ["Sorry about that. One question only.", "Thanks for your patience."]
+    env.model.bookkeeping_replies += [
+        FakeTurn(tool_calls=(_tool("record_prospect_mood", mood="annoyed"),))
+    ]
+    lines = _turn(env, call_id, token, said="This is the third call this week, honestly.")
+    assert all(line["type"] != "mood" for line in lines)  # nothing recorded before this turn
+    _wait_for(lambda: bool(admin_fetch(db, "SELECT 1 FROM calls WHERE prospect_mood = 'annoyed'")))
+    audited = admin_fetch(
+        db, "SELECT status FROM tool_executions WHERE tool = 'record_prospect_mood'"
+    )
+    assert [r["status"] for r in audited] == ["ok"]
+
+    lines = _turn(env, call_id, token, said="Fine, go on.")
+    assert lines[0] == {"type": "mood", "mood": "annoyed"}
+    assert "".join(line.get("text", "") for line in lines).strip() == "Thanks for your patience."
+
+
+def test_a_mood_outside_the_list_is_rejected(env: Env, db: PgEnv) -> None:
+    call_id, token = _call(env, _lead(env))
+    app: Any = env.client.app
+    app.state.settings = app.state.settings.model_copy(update={"prospect_mood": True})
+    env.model.replies += ["Okay."]
+    env.model.bookkeeping_replies += [
+        FakeTurn(tool_calls=(_tool("record_prospect_mood", mood="furious"),))
+    ]
+    _turn(env, call_id, token, said="Hm.")
+    _wait_for(
+        lambda: bool(
+            admin_fetch(db, "SELECT 1 FROM tool_executions WHERE tool = 'record_prospect_mood'")
+        )
+    )
+    row = admin_fetch(db, "SELECT status FROM tool_executions WHERE tool = 'record_prospect_mood'")
+    assert row[0]["status"] != "ok"
+    assert admin_fetch(db, "SELECT prospect_mood FROM calls")[0]["prospect_mood"] is None
+
+
+def test_turn_metrics_store_the_voice_style(env: Env, db: PgEnv) -> None:
+    call_id, token = _call(env, _lead(env))
+    headers = {"Authorization": f"Bearer {token}"}
+    report = {
+        "turns": [
+            {"seq": 0, "role": "agent", "e2e_latency_ms": 900, "voice_style": "slow/Calm"},
+            {"seq": 1, "role": "prospect", "end_of_turn_delay_ms": 500},
+        ]
+    }
+    sent = env.client.post(
+        f"/internal/v1/calls/{call_id}/turn-metrics", json=report, headers=headers
+    )
+    assert sent.status_code in (200, 201, 204), sent.text
+    rows = admin_fetch(db, "SELECT role, voice_style FROM turn_metrics ORDER BY seq")
+    assert [(r["role"], r["voice_style"]) for r in rows] == [
+        ("agent", "slow/Calm"),
+        ("prospect", None),
+    ]
+    bad = {"turns": [{"seq": 2, "role": "agent", "voice_style": "<script>"}]}
+    rejected = env.client.post(
+        f"/internal/v1/calls/{call_id}/turn-metrics", json=bad, headers=headers
+    )
+    assert rejected.status_code == 422
+
+
+def test_turn_taking_answers_clear_moments_without_the_model(env: Env, db: PgEnv) -> None:
+    """WP-11.6: off by default (the model answers); on, a fixed reply with no model call."""
+    call_id, token = _call(env, _lead(env))
+    env.model.replies += ["Of course."]
+    _turn(env, call_id, token, said="Hold on.")
+    assert len(env.model.requests) == 1  # off: the model answered
+
+    app: Any = env.client.app
+    app.state.settings = app.state.settings.model_copy(update={"turn_taking": True})
+    before = len(env.model.requests)
+    lines = _turn(env, call_id, token, said="Hold on.")
+    assert len(env.model.requests) == before  # no model call
+    assert [line["type"] for line in lines] == ["delta", "done"]
+    assert lines[0]["text"] == "Sure, take your time."
+
+    lines = _turn(env, call_id, token, said="Okay, bye.")
+    assert [line["type"] for line in lines] == ["delta", "end_call", "done"]
+    assert not admin_fetch(db, "SELECT 1 FROM tool_executions")  # nothing was claimed
+
+    # A do-not-call request still reaches the model, which uses the audited tool.
+    env.model.replies += ["Understood, I will not call again."]
+    _turn(env, call_id, token, said="Please don't call this number again, bye.")
+    assert len(env.model.requests) == before + 1
