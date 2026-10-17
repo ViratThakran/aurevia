@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (fifth session: WP-10.4 partial; Cartesia out of credits; Phase 11 next). **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (fifth session: #29 merged; Phase 11 in progress). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -38,6 +38,8 @@ WP-10.1, 10.4, 10.5.
 
 ## 2. Open pull requests
 
+Open: [#30](https://github.com/ViratThakran/aurevia/pull/30) WP-11.1 backchannel design, **waiting for Virat's approval** (WP-11.2 starts only after it).
+
 Merged on 17 Oct, each with CI green:
 
 | PR | What |
@@ -48,6 +50,8 @@ Merged on 17 Oct, each with CI green:
 | [#24](https://github.com/ViratThakran/aurevia/pull/24) | Pricing (b): warn on unpriced usage (usage page, analytics, logs); fixes the #18 limit test |
 | [#26](https://github.com/ViratThakran/aurevia/pull/26) | Docs: the buildable-now table (section 6), approved by Virat |
 | [#27](https://github.com/ViratThakran/aurevia/pull/27) | Fix: the price loader command crashed when run on its own (as `deploy.sh` runs it). Found while setting up WP-10.4; nothing had been deployed. |
+| [#28](https://github.com/ViratThakran/aurevia/pull/28) | Docs: the build-early approval and its conditions |
+| [#29](https://github.com/ViratThakran/aurevia/pull/29) | WP-10.4, partial: turn benchmark settings A to D (canned model; ranks settings, not Gate 10). Key terms, preemptive TTS and the rest of D wait on Cartesia credits. |
 
 Follow-ups, not started:
 - Codex P2 from #17: `deploy.sh` only warns when speech keys are missing; it should fail.
@@ -218,6 +222,6 @@ with fake providers.
 
 | Work package | PR | Switch (off by default) | Not proven yet |
 |---|---|---|---|
-| 10.4 tooling: canned model (`AUREVIA_AI_PROVIDER=canned`) | this PR | Only when chosen; refused in staging and production | Benchmark tool only, never a sales model |
-| 10.4: Deepgram key terms | this PR | `AUREVIA_STT_KEYTERMS` (empty) | Whether they fix "Aurevia" and "Meera" (run E, waiting on Cartesia credits) |
-| 10.4: preemptive text to speech | this PR | `AUREVIA_PREEMPTIVE_TTS` (false) | Any measurement (run F, waiting on Cartesia credits) |
+| 10.4 tooling: canned model (`AUREVIA_AI_PROVIDER=canned`) | [#29](https://github.com/ViratThakran/aurevia/pull/29) | Only when chosen; refused in staging and production | Benchmark tool only, never a sales model |
+| 10.4: Deepgram key terms | [#29](https://github.com/ViratThakran/aurevia/pull/29) | `AUREVIA_STT_KEYTERMS` (empty) | Whether they fix "Aurevia" and "Meera" (run E, waiting on Cartesia credits) |
+| 10.4: preemptive text to speech | [#29](https://github.com/ViratThakran/aurevia/pull/29) | `AUREVIA_PREEMPTIVE_TTS` (false) | Any measurement (run F, waiting on Cartesia credits) |
