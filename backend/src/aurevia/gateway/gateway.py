@@ -47,6 +47,7 @@ class GenerationRecord:
     served_model: str | None = None
     input_tokens: int = 0
     cached_input_tokens: int = 0
+    cache_write_input_tokens: int = 0
     output_tokens: int = 0
     first_token_ms: int | None = None
     stop_reason: str | None = None
@@ -239,6 +240,7 @@ class ModelGateway:
                 if event.usage is not None:
                     record.input_tokens = event.usage.input_tokens
                     record.cached_input_tokens = event.usage.cached_input_tokens
+                    record.cache_write_input_tokens = event.usage.cache_write_input_tokens
                     record.output_tokens = event.usage.output_tokens
                 if event.started:
                     record.output_started = True
@@ -252,6 +254,7 @@ class ModelGateway:
                     record.served_model = final.model
                     record.input_tokens = final.usage.input_tokens
                     record.cached_input_tokens = final.usage.cached_input_tokens
+                    record.cache_write_input_tokens = final.usage.cache_write_input_tokens
                     record.output_tokens = final.usage.output_tokens
                     record.stop_reason = final.stop_reason
                     record.provider_request_id = final.provider_request_id

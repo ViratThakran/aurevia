@@ -7,6 +7,7 @@ import { type UsageReport, money } from "@/lib/types";
 const RESOURCES: Record<string, string> = {
   llm_input_tokens: "AI model: input tokens",
   llm_cached_input_tokens: "AI model: cached input tokens",
+  llm_cache_write_input_tokens: "AI model: input written to cache",
   llm_output_tokens: "AI model: output tokens",
   stt_seconds: "Speech recognition: seconds",
   tts_characters: "Voice: characters spoken",
