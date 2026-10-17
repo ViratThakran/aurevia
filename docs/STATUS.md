@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (fifth session: #29 merged; Phase 11 in progress). **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (CI stall root cause fixed in #33; Phase 11 in progress). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -65,8 +65,15 @@ Follow-ups, not started:
 - Codex P2 from #17: `deploy.sh` only warns when speech keys are missing; it should fail.
 - PR #17's "not verified" list (real DNS and certificates, media ports, real audio, SIP, a real
   bucket, cron) waits for a server (WP-14.1).
-- CI stalled twice on backend `pytest` (PRs #18 and #24), and a re-run passed both times. The
-  cause is unknown; a per-test time limit would make a stall fail fast instead of hanging.
+- Backend `pytest` stalled in CI on PRs #18, #24, #31 and #38 (and once locally); a re-run passed
+  each time. **Cause (found 17 Oct, reproduced on 2 CPUs, 1 run in 4):** every spoken turn
+  starts a background "bookkeeping" pass that holds a database session. If the app shut down
+  while one was still running, its connection was left open inside a transaction, holding locks
+  on the call and lead rows. The next test's database cleanup (`TRUNCATE`) then waited on it
+  forever. **Fix (PR #33):** shutdown now lets running passes finish for up to 5 s, cancels the
+  rest, and only then closes the database (`drain_bookkeeping`); a regression test covers it.
+  **Safeguards:** 60 s per-test limit (`pytest-timeout`, dumps all thread stacks); test cleanup
+  fails after 20 s naming the blocking connection; CI backend job limited to 15 minutes.
 
 ## 3. Decisions Virat has made
 

@@ -6,6 +6,7 @@ import json
 import time
 import uuid
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -31,8 +32,8 @@ class Env:
     owner: dict[str, Any]
 
 
-@pytest.fixture
-def env(db: PgEnv, make_settings: SettingsFactory) -> Iterator[Env]:
+@contextmanager
+def _open_env(db: PgEnv, make_settings: SettingsFactory) -> Iterator[Env]:
     app = create_app(
         make_settings(
             database_url=db.app_url, jwt_secret=TEST_JWT_SECRET, database_app_role=db.app_role
@@ -50,6 +51,12 @@ def env(db: PgEnv, make_settings: SettingsFactory) -> Iterator[Env]:
     with TestClient(app, raise_server_exceptions=False) as client:
         owner = signup(client, "owner@example.com", "Acme")
         yield Env(client, transport, model, owner)
+
+
+@pytest.fixture
+def env(db: PgEnv, make_settings: SettingsFactory) -> Iterator[Env]:
+    with _open_env(db, make_settings) as opened:
+        yield opened
 
 
 def _lead(env: Env, name: str = "Ravi") -> str:
@@ -576,6 +583,32 @@ def test_slot_windows_are_five_minutes_long() -> None:
     assert calls_api._slot_window(at) == "2026-10-17T10:05Z"
     assert calls_api._slot_window(at.replace(minute=9, second=59)) == "2026-10-17T10:05Z"
     assert calls_api._slot_window(at.replace(minute=10, second=0)) == "2026-10-17T10:10Z"
+
+
+def test_shutdown_ends_running_bookkeeping_and_leaves_no_connection_open(
+    db: PgEnv, make_settings: SettingsFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A pass still running at shutdown is cancelled, not abandoned inside a transaction.
+
+    An abandoned one kept locks on the call and lead rows, so the next cleanup of the test
+    database waited forever (CI stalled this way).
+    """
+    monkeypatch.setattr(calls_api, "BOOKKEEPING_SHUTDOWN_GRACE_SECONDS", 0.2, raising=False)
+    with _open_env(db, make_settings) as env:
+        env.model.bookkeeping_delay = 3  # still running when the app shuts down (< model timeout)
+        call_id, token = _call(env, _lead(env))
+        env.model.replies += ["Hello."]
+        _turn(env, call_id, token, "Hi.")
+        _wait_for(lambda: uuid.UUID(call_id) in calls_api.PENDING_BOOKKEEPING)
+        time.sleep(0.5)  # the pass has opened its session and is waiting on the model
+
+    assert not calls_api.PENDING_BOOKKEEPING
+    open_sessions = admin_fetch(
+        db,
+        "SELECT state FROM pg_stat_activity WHERE usename = $1 AND datname = current_database()",
+        db.app_role,
+    )
+    assert open_sessions == []
 
 
 def test_agent_reactions_switch_reaches_the_turn_prompt(env: Env) -> None:

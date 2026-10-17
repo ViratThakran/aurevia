@@ -11,6 +11,8 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # The suite takes about 90 s. Without a limit a stalled run holds the job for 6 hours.
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
