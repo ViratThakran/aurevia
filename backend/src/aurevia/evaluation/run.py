@@ -153,6 +153,26 @@ def run_scenario(
     return result
 
 
+def throwaway_owner(client: TestClient) -> dict[str, str]:
+    """Sign up a throwaway workspace with the evaluation agent; return the owner's headers."""
+    email = f"eval-{secrets.token_hex(4)}@example.com"
+    tokens = client.post(
+        "/api/v1/auth/signup",
+        json={
+            "email": email,
+            "password": secrets.token_urlsafe(18),
+            "tenant_name": "Evaluation (throwaway)",
+        },
+    )
+    tokens.raise_for_status()
+    access = tokens.json()["access_token"]
+    owner = {"Authorization": f"Bearer {access}"}
+    claims = json.loads(base64.urlsafe_b64decode(access.split(".")[1] + "=="))
+    client.app.state.eval_tenant_id = claims["tid"]  # type: ignore[attr-defined]
+    client.put("/api/v1/agents/default", json=AGENT, headers=owner).raise_for_status()
+    return owner
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="aurevia.evaluation.run")
     parser.add_argument("--only", nargs="*", help="scenario names to run")
@@ -166,21 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     app.state.voice_transport = transport  # no LiveKit rooms, no agent dispatch
     results: list[ScenarioResult] = []
     with TestClient(app) as client:
-        email = f"eval-{secrets.token_hex(4)}@example.com"
-        tokens = client.post(
-            "/api/v1/auth/signup",
-            json={
-                "email": email,
-                "password": secrets.token_urlsafe(18),
-                "tenant_name": "Evaluation (throwaway)",
-            },
-        )
-        tokens.raise_for_status()
-        access = tokens.json()["access_token"]
-        owner = {"Authorization": f"Bearer {access}"}
-        claims = json.loads(base64.urlsafe_b64decode(access.split(".")[1] + "=="))
-        app.state.eval_tenant_id = claims["tid"]
-        client.put("/api/v1/agents/default", json=AGENT, headers=owner).raise_for_status()
+        owner = throwaway_owner(client)
         for scenario in scenarios:
             result = run_scenario(client, transport, owner, scenario)
             results.append(result)
