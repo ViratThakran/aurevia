@@ -6,7 +6,7 @@ from __future__ import annotations
 import contextlib
 import uuid
 from datetime import UTC, date, timedelta
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 from pydantic.json_schema import SkipJsonSchema
@@ -30,6 +30,7 @@ from aurevia.sales.models import (
 from aurevia.sales.scheduling import free_slots, hours_for, spoken
 from aurevia.sales.state import InvalidTransitionError, SalesState, transition
 from aurevia.tools.framework import Tool, ToolContext, ToolOutcome, ToolRegistry
+from aurevia.voice.models import ProspectMood
 
 
 class _Args(BaseModel):
@@ -72,6 +73,27 @@ class SetStage(Tool[SetStageArgs]):
             )
         ctx.call.sales_state = new
         return ToolOutcome.ok(f"Stage is now {new.value}.", stage=new.value)
+
+
+class MoodArgs(_Args):
+    mood: ProspectMood
+
+
+class RecordProspectMood(Tool[MoodArgs]):
+    """WP-11.4 (off by default): only in the registry when ``AUREVIA_PROSPECT_MOOD`` is on."""
+
+    name = "record_prospect_mood"
+    description = (
+        "Record how the prospect sounds right now, from their words: warm, neutral, rushed, "
+        "annoyed, skeptical or confused. Only when it is clear; it may change during the call."
+    )
+    args_model = MoodArgs
+    record_only = True
+    requires_lead = False
+
+    async def run(self, ctx: ToolContext, args: MoodArgs) -> ToolOutcome:
+        ctx.call.prospect_mood = args.mood.value
+        return ToolOutcome.ok(f"Mood is now {args.mood.value}.", mood=args.mood.value)
 
 
 # --- Lead facts ----------------------------------------------------------------------------
@@ -432,9 +454,11 @@ class RequestDoNotCall(Tool[DoNotCallArgs]):
         return ToolOutcome.ok("They will not be called again.")
 
 
-def default_registry() -> ToolRegistry:
+def default_registry(*, prospect_mood: bool = False) -> ToolRegistry:
+    mood: list[Tool[Any]] = [RecordProspectMood()] if prospect_mood else []
     return ToolRegistry(
         [
+            *mood,
             SetStage(),
             QualifyLead(),
             MarkInterested(),

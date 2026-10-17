@@ -165,6 +165,8 @@ class TurnMetricIn(_Body):
     e2e_latency_ms: int | None = _MS
     llm_ttft_ms: int | None = _MS
     tts_ttfb_ms: int | None = _MS
+    # WP-11.4: voice settings used for an agent turn, e.g. "slow/Calm" (no text, no ids).
+    voice_style: str | None = Field(default=None, max_length=40, pattern=r"^[A-Za-z/ -]+$")
 
 
 class TurnMetricsReport(_Body):

@@ -29,6 +29,7 @@ DEFERRED_TOOLS = frozenset(
         "mark_interested",
         "log_objection",
         "add_note",
+        "record_prospect_mood",  # only offered when WP-11.4 is switched on
     }
 )
 RECORD_THIS_TURN = "(Record this turn now.)"

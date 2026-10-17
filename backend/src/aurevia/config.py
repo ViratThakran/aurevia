@@ -96,6 +96,11 @@ class Settings(BaseSettings):
     # by default. The usage record shows every model attempted and the one that answered.
     llm_fallback_models: list[str] = Field(default_factory=list, max_length=3)
 
+    # --- Human feel (Phase 11, built early; off by default, not proven on real calls) ---
+    # WP-11.4: record the prospect's mood in the bookkeeping pass and send it to the voice
+    # worker, which may adjust the voice (its own switch, AUREVIA_MOOD_VOICE).
+    prospect_mood: bool = False
+
     # --- Memory (Phase 4) ---
     # Full transcripts are deleted this many days after they are written (DPDP data
     # minimisation); extracted lead facts are kept separately until removed.

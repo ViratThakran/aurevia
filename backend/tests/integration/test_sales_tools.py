@@ -576,3 +576,78 @@ def test_slot_windows_are_five_minutes_long() -> None:
     assert calls_api._slot_window(at) == "2026-10-17T10:05Z"
     assert calls_api._slot_window(at.replace(minute=9, second=59)) == "2026-10-17T10:05Z"
     assert calls_api._slot_window(at.replace(minute=10, second=0)) == "2026-10-17T10:10Z"
+
+
+def test_prospect_mood_is_recorded_and_sent_only_when_switched_on(env: Env, db: PgEnv) -> None:
+    """WP-11.4: off by default. On: bookkeeping records the mood through the audited
+    executor, and the next turn starts with it. The reply text is never changed."""
+    call_id, token = _call(env, _lead(env))
+    # Off: the mood tool is not offered, and no mood event is sent.
+    env.model.replies += ["We cover forty people."]
+    lines = _turn(env, call_id, token, said="Hi.")
+    assert all(line["type"] != "mood" for line in lines)
+    _wait_for(lambda: len(env.model.bookkeeping_requests) == 1)
+    offered = {t.name for t in env.model.bookkeeping_requests[-1].tools}
+    assert "record_prospect_mood" not in offered and "set_stage" in offered
+
+    app: Any = env.client.app
+    app.state.settings = app.state.settings.model_copy(update={"prospect_mood": True})
+    env.model.replies += ["Sorry about that. One question only.", "Thanks for your patience."]
+    env.model.bookkeeping_replies += [
+        FakeTurn(tool_calls=(_tool("record_prospect_mood", mood="annoyed"),))
+    ]
+    lines = _turn(env, call_id, token, said="This is the third call this week, honestly.")
+    assert all(line["type"] != "mood" for line in lines)  # nothing recorded before this turn
+    _wait_for(lambda: bool(admin_fetch(db, "SELECT 1 FROM calls WHERE prospect_mood = 'annoyed'")))
+    audited = admin_fetch(
+        db, "SELECT status FROM tool_executions WHERE tool = 'record_prospect_mood'"
+    )
+    assert [r["status"] for r in audited] == ["ok"]
+
+    lines = _turn(env, call_id, token, said="Fine, go on.")
+    assert lines[0] == {"type": "mood", "mood": "annoyed"}
+    assert "".join(line.get("text", "") for line in lines).strip() == "Thanks for your patience."
+
+
+def test_a_mood_outside_the_list_is_rejected(env: Env, db: PgEnv) -> None:
+    call_id, token = _call(env, _lead(env))
+    app: Any = env.client.app
+    app.state.settings = app.state.settings.model_copy(update={"prospect_mood": True})
+    env.model.replies += ["Okay."]
+    env.model.bookkeeping_replies += [
+        FakeTurn(tool_calls=(_tool("record_prospect_mood", mood="furious"),))
+    ]
+    _turn(env, call_id, token, said="Hm.")
+    _wait_for(
+        lambda: bool(
+            admin_fetch(db, "SELECT 1 FROM tool_executions WHERE tool = 'record_prospect_mood'")
+        )
+    )
+    row = admin_fetch(db, "SELECT status FROM tool_executions WHERE tool = 'record_prospect_mood'")
+    assert row[0]["status"] != "ok"
+    assert admin_fetch(db, "SELECT prospect_mood FROM calls")[0]["prospect_mood"] is None
+
+
+def test_turn_metrics_store_the_voice_style(env: Env, db: PgEnv) -> None:
+    call_id, token = _call(env, _lead(env))
+    headers = {"Authorization": f"Bearer {token}"}
+    report = {
+        "turns": [
+            {"seq": 0, "role": "agent", "e2e_latency_ms": 900, "voice_style": "slow/Calm"},
+            {"seq": 1, "role": "prospect", "end_of_turn_delay_ms": 500},
+        ]
+    }
+    sent = env.client.post(
+        f"/internal/v1/calls/{call_id}/turn-metrics", json=report, headers=headers
+    )
+    assert sent.status_code in (200, 201, 204), sent.text
+    rows = admin_fetch(db, "SELECT role, voice_style FROM turn_metrics ORDER BY seq")
+    assert [(r["role"], r["voice_style"]) for r in rows] == [
+        ("agent", "slow/Calm"),
+        ("prospect", None),
+    ]
+    bad = {"turns": [{"seq": 2, "role": "agent", "voice_style": "<script>"}]}
+    rejected = env.client.post(
+        f"/internal/v1/calls/{call_id}/turn-metrics", json=bad, headers=headers
+    )
+    assert rejected.status_code == 422
