@@ -1,5 +1,9 @@
 # Aurevia AI Sales Agent — Documentation Index
 
+## Start here
+- `STATUS.md` — current state, open PRs, blockers, next step (read first every session)
+- `phases/README.md` — phases 10 to 18, one file each, from the master plan in `plan/`
+
 ## 00 Foundation
 - `00-foundation/master-brief.md` — source of truth, with approved amendments
 - `00-foundation/README.md`
