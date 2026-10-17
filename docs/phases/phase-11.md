@@ -1,6 +1,6 @@
 # Phase 11: Human feel
 
-State: **not started.** Do not start before Gate 10 (plan rule 10). Content is from the plan
+State: **built early (approved 17 Oct), off by default, not proven on real calls:** 11.3 to 11.7 merged; 11.1 design waiting for Virat (PR #30); 11.2 starts only after that. Plan rule 10 is otherwise unchanged. Content is from the plan
 only.
 
 ## Goal
