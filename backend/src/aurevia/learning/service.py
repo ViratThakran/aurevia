@@ -26,7 +26,9 @@ class LearningService:
         transcript), then store only the redacted result. The request's original text is
         never written anywhere. A redaction failure stores nothing."""
         lines = body.lines or []
-        redacted, counts = await redact_lines([body.title, *(line.text for line in lines)], detector)
+        redacted, counts = await redact_lines(
+            [body.title, *(line.text for line in lines)], detector
+        )
         source = LearningSource(
             tenant_id=self._tenant_id,
             source_type=body.source_type.value,

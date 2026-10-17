@@ -67,7 +67,7 @@ def parse_csv(text: str) -> list[LineIn]:
     extra = set(reader.fieldnames) - {"speaker", "text", "start_ms", "end_ms"}
     if extra:
         raise ValueError(f"unknown CSV columns: {', '.join(sorted(extra))}")
-    lines = []
+    lines: list[LineIn] = []
     for number, row in enumerate(reader, start=2):
         if len(lines) >= MAX_LINES:
             raise ValueError(f"at most {MAX_LINES} lines")

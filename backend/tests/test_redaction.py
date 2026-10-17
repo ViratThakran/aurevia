@@ -113,3 +113,12 @@ def test_items_not_in_the_text_and_unknown_kinds_are_ignored() -> None:
         {"items": [{"kind": "NAME", "text": "Nobody Here"}, {"kind": "SECRET", "text": "Ravi"}]}
     )
     assert spans_from_reply(TRANSCRIPT, reply) == []
+
+
+def test_redact_lines_shares_placeholders_and_never_joins_lines() -> None:
+    from aurevia.learning.redaction import redact_lines
+
+    lines = ["Hello Ravi Kumar, call 98765", "43210 is not a phone here.", "Bye, Ravi Kumar."]
+    out, counts = asyncio.run(redact_lines(lines, FakeDetector()))
+    assert out == ["Hello [NAME_1], call 98765", "43210 is not a phone here.", "Bye, [NAME_1]."]
+    assert counts == {"NAME": 2}

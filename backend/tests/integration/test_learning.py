@@ -93,8 +93,10 @@ def test_import_stores_only_redacted_text_and_counts(client: TestClient, db: PgE
     audit = admin_fetch(
         db, "SELECT details FROM audit_events WHERE action = 'learning.source_imported'"
     )
-    details = json.loads(audit[0]["details"]) if isinstance(audit[0]["details"], str) else (
-        audit[0]["details"]
+    details = (
+        json.loads(audit[0]["details"])
+        if isinstance(audit[0]["details"], str)
+        else (audit[0]["details"])
     )
     assert details["redacted"] == {"NAME": 3, "PHONE": 1, "EMAIL": 1}
     assert "Ravi" not in json.dumps(details)
@@ -108,7 +110,7 @@ def test_csv_import(client: TestClient, db: PgEnv) -> None:
     owner = signup(client, "owner@example.com", "Acme")
     csv_text = (
         "speaker,text,start_ms,end_ms\n"
-        "expert,\"Hello, Ravi Kumar here?\",0,1500\n"
+        'expert,"Hello, Ravi Kumar here?",0,1500\n'
         "prospect,Yes.,1700,1900\n"
     )
     response = _import(client, owner, lines=None, lines_csv=csv_text)
@@ -142,7 +144,7 @@ def test_redaction_failure_stores_nothing(db: PgEnv, make_settings: SettingsFact
         response = _import(broken, owner)
     assert response.status_code == 503 and response.json()["error"]["code"] == "redaction_failed"
     for table in TABLES:
-        assert admin_fetch(db, f"SELECT count(*) AS n FROM {table}")[0]["n"] == 0  # noqa: S608
+        assert admin_fetch(db, f"SELECT count(*) AS n FROM {table}")[0]["n"] == 0
 
 
 def test_permissions_are_needed(client: TestClient, db: PgEnv) -> None:
@@ -191,6 +193,6 @@ def test_sources_stay_in_their_tenant(client: TestClient, db: PgEnv) -> None:
 
 def test_no_model_means_no_import(db: PgEnv, make_settings: SettingsFactory) -> None:
     with _client(db, make_settings, []) as c:
-        c.app.state.model_gateway = None  # type: ignore[attr-defined]
+        c.app.state.model_gateway = None
         owner = signup(c, "owner@example.com", "Acme")
         assert _import(c, owner).status_code == 503

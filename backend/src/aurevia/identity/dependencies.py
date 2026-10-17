@@ -151,7 +151,5 @@ AuditDep = Annotated[Principal, Depends(require_permission(Permission.AUDIT_READ
 AnalyticsDep = Annotated[Principal, Depends(require_permission(Permission.ANALYTICS_READ))]
 LearningImportDep = Annotated[Principal, Depends(require_permission(Permission.LEARNING_IMPORT))]
 LearningReviewDep = Annotated[Principal, Depends(require_permission(Permission.LEARNING_REVIEW))]
-LearningPublishDep = Annotated[
-    Principal, Depends(require_permission(Permission.LEARNING_PUBLISH))
-]
+LearningPublishDep = Annotated[Principal, Depends(require_permission(Permission.LEARNING_PUBLISH))]
 PlatformAdminDep = Annotated[Principal, Depends(_platform_admin)]
