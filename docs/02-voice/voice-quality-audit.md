@@ -272,3 +272,22 @@ Cost for the 6 scenarios was about $0.018 in both (Flash-Lite paid-tier rates).
   before the agent can speak about it. That is the design, and it scales with provider speed.
 - Not the key (real audio only, from earlier measurements): about 0.5 s of end-of-turn wait
   and about 0.5 s of speech recognition delay, before the model starts.
+
+## 12. WP-10.4 turn-handling benchmark (2026-10-17, partial)
+
+Full report: [benchmarks/2026-10-17-wp-10-4-turns.md](benchmarks/2026-10-17-wp-10-4-turns.md).
+
+- **Model:** a canned one (fixed replies, first word after about 1.2 s); speech is real.
+  These numbers **rank turn settings**. They are **not Gate 10 latency**.
+- **Measured (median reply, p50 / p95):**
+  - current default (fixed 0.5 s / 1.5 s, preemptive generation on): 1656 / 1720 ms;
+  - preemptive generation off: 1992 / 2815 ms;
+  - dynamic endpointing: 1668 / 1868 ms;
+  - fixed 0.8 s minimum wait (6 calls): 1668 / 1768 ms.
+- **Names:** without key terms, Deepgram never heard "Aurevia" or "Meera" correctly ("Mira from
+  Arabia"), so the key-terms run (E) matters.
+- **Waiting on Cartesia credits:** the rest of the 0.8 s setting, key terms (E), preemptive
+  text to speech (F). Not testable here: the turn-detector model (huggingface.co is blocked).
+  Needs Virat: ten human calls for the top two settings.
+- **Defaults unchanged.** New worker settings `AUREVIA_STT_KEYTERMS` (empty) and
+  `AUREVIA_PREEMPTIVE_TTS` (false) are off.

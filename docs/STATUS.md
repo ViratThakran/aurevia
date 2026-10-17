@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (fifth session: table approved; #26 and #27 merged; WP-10.4 running). **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (fifth session: WP-10.4 partial; Cartesia out of credits; Phase 11 next). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -15,10 +15,10 @@ the 8 sales scenarios pass, and Virat signs off the human microphone test.
 
 | WP | State |
 |---|---|
-| 10.1 Restore real audio (Cartesia) | Blocked: keys, Cartesia credits. |
+| 10.1 Restore real audio (Cartesia) | Blocked: **Cartesia out of credits** (HTTP 402, 17 Oct 10:51 UTC). Resumes when Virat says Cartesia is topped up. |
 | 10.2 Model bake-off | Not started. On hold until Virat says go. Needs the paid key. |
 | 10.3 Cut model time | Merged in PR #18 (17 Oct). Done-when not measured yet. |
-| 10.4 Turn-handling benchmark (Deepgram) | Blocked: keys. |
+| 10.4 Turn-handling benchmark (Deepgram) | Partial (17 Oct): settings A to D measured with a canned model; key terms (E), preemptive TTS (F) and D's last runs **waiting on Cartesia credits**. No default changed. |
 | 10.5 Human acceptance | Not started. Needs Virat at a microphone. |
 
 **Measured** (details and dates in the phase file)
@@ -83,6 +83,9 @@ Follow-ups, not started:
      key. If the free quota is hit, stop that item; no retry loops.
   5. Merge each PR only after CI is green. If backend CI stalls: cancel, re-run once, report.
   6. Update this file after each merged PR.
+- **17 Oct, order changed:** do not wait for Cartesia. Phase 11 next (then 12), as above.
+  10.1 and the rest of 10.4 resume only when Virat says Cartesia is topped up. No Cartesia or
+  other paid provider in the meantime.
 - Open, waiting for Virat: Gate 10 and WP-10.5 pass marks.
 
 ### Prices (cost report and spend limit)
@@ -113,7 +116,7 @@ Follow-ups, not started:
 |---|---|
 | ~~Keys and allowed domains~~ **Done in the fifth session (17 Oct):** `AUREVIA_GEMINI_API_KEY`, `DEEPGRAM_API_KEY` and `CARTESIA_API_KEY` are set; Gemini, Deepgram and Cartesia each accepted a free read-only call (HTTP 200). Not yet known: whether the Gemini key is the paid one, and whether Cartesia has credits. No Phase 10 run was started. | Virat |
 | Paid Gemini key (expected about 19 Oct). Needed for 10.2 and a fair Gate 10 run. | Virat |
-| Cartesia credits for 10.1. | Virat |
+| **Cartesia credits ran out** during WP-10.4 (17 Oct, 10:51 UTC). Needed for 10.1 and the rest of 10.4. Until Virat says it is topped up, no Cartesia or other paid provider is used. | Virat |
 | The Gemini key pasted into chat on 17 Oct should be rotated. | Virat |
 | Human microphone test (10.5). | Virat |
 | Check the Gemini prices on https://ai.google.dev/gemini-api/docs/pricing; if they match, a PR sets `verified = true` in `prices.toml` (and `tests/test_prices_file.py`). Until then Gemini usage is unpriced. | Virat |
@@ -215,4 +218,6 @@ with fake providers.
 
 | Work package | PR | Switch (off by default) | Not proven yet |
 |---|---|---|---|
-| (none merged yet) | | | |
+| 10.4 tooling: canned model (`AUREVIA_AI_PROVIDER=canned`) | this PR | Only when chosen; refused in staging and production | Benchmark tool only, never a sales model |
+| 10.4: Deepgram key terms | this PR | `AUREVIA_STT_KEYTERMS` (empty) | Whether they fix "Aurevia" and "Meera" (run E, waiting on Cartesia credits) |
+| 10.4: preemptive text to speech | this PR | `AUREVIA_PREEMPTIVE_TTS` (false) | Any measurement (run F, waiting on Cartesia credits) |

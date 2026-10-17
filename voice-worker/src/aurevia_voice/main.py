@@ -113,7 +113,10 @@ def turn_handling(config: WorkerSettings) -> TurnHandlingOptions:
             "min_delay": config.endpointing_min_delay,
             "max_delay": config.endpointing_max_delay,
         },
-        "preemptive_generation": {"enabled": config.preemptive_generation},
+        "preemptive_generation": {
+            "enabled": config.preemptive_generation,
+            "preemptive_tts": config.preemptive_tts,
+        },
         "interruption": {"min_duration": config.interruption_min_duration},
     }
 
@@ -210,6 +213,7 @@ async def entrypoint(ctx: JobContext) -> None:
             tts_model=settings.tts_model,
             tts_voice=opening.voice or settings.tts_voice,
             tts_language=opening.language.split("-")[0],
+            stt_keyterms=tuple(settings.stt_keyterms),
         )
         tts = build_tts(speech)
 

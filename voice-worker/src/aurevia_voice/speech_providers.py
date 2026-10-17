@@ -15,7 +15,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from livekit.agents import stt, tts, vad
+from livekit.agents import NOT_GIVEN, stt, tts, vad
 
 STTProvider = Literal["deepgram"]
 TTSProvider = Literal["cartesia"]
@@ -39,6 +39,9 @@ class SpeechOptions:
     tts_model: str | None
     tts_voice: str | None
     tts_language: str
+    # Deepgram key terms (nova-3): names to recognise better, e.g. the company and agent.
+    # Empty by default: WP-10.4 measures whether they help before they are used.
+    stt_keyterms: tuple[str, ...] = ()
 
 
 def missing_keys(
@@ -68,6 +71,7 @@ def build_stt(options: SpeechOptions, env: Mapping[str, str] | None = None) -> s
             model=options.stt_model,
             language=options.stt_language,
             interim_results=True,  # partial transcripts feed turn detection and barge-in
+            keyterms=list(options.stt_keyterms) if options.stt_keyterms else NOT_GIVEN,
         )
     raise SpeechConfigError(f"unknown STT provider {options.stt_provider!r}")
 

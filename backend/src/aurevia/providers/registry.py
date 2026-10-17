@@ -19,6 +19,10 @@ class ClosableModelProvider(ModelProvider, Protocol):
 
 def build_model_provider(settings: Settings) -> ClosableModelProvider | None:
     """The selected provider, or ``None`` when its key is not configured."""
+    if settings.ai_provider == "canned":
+        from aurevia.providers.fakes import CannedModelProvider
+
+        return CannedModelProvider(first_token_ms=settings.canned_first_token_ms)
     key = settings.provider_api_key
     if key is None:
         return None

@@ -1,0 +1,1066 @@
+{
+ "wp": "10.4",
+ "date": "2026-10-17",
+ "model": "canned (fixed replies, first word after ~1.2 s); NOT a real model",
+ "speech": "real Deepgram nova-3 (multi) and real Cartesia; local LiveKit 1.13.10",
+ "summary": {
+  "A_fixed-0.5_preempt-on / busy": {
+   "label": "A_fixed-0.5_preempt-on",
+   "runs": 6,
+   "completed": 5,
+   "failed": 1,
+   "e2e_p50_ms_median": 1648.0,
+   "e2e_p95_ms_median": 1680.0,
+   "end_of_turn_delay_p50_ms_median": 578.0,
+   "tts_ttfb_p50_ms_median": 182.0,
+   "llm_ttft_p50_ms_median": 1229.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 15,
+   "prospect_wer_mean": 0.008,
+   "key_term_hits": null
+  },
+  "A_fixed-0.5_preempt-on / names": {
+   "label": "A_fixed-0.5_preempt-on",
+   "runs": 5,
+   "completed": 5,
+   "failed": 0,
+   "e2e_p50_ms_median": 1642.0,
+   "e2e_p95_ms_median": 1706.0,
+   "end_of_turn_delay_p50_ms_median": 578.0,
+   "tts_ttfb_p50_ms_median": 167.0,
+   "llm_ttft_p50_ms_median": 1229.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 15,
+   "prospect_wer_mean": 0.258,
+   "key_term_hits": {
+    "aurevia": 0,
+    "meera": 0,
+    "priyanka": 4
+   }
+  },
+  "A_fixed-0.5_preempt-on / skeptical": {
+   "label": "A_fixed-0.5_preempt-on",
+   "runs": 5,
+   "completed": 5,
+   "failed": 0,
+   "e2e_p50_ms_median": 1700.0,
+   "e2e_p95_ms_median": 1880.0,
+   "end_of_turn_delay_p50_ms_median": 577.0,
+   "tts_ttfb_p50_ms_median": 198.0,
+   "llm_ttft_p50_ms_median": 1231.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 24,
+   "prospect_wer_mean": 0.006,
+   "key_term_hits": null
+  },
+  "A_fixed-0.5_preempt-on / all": {
+   "label": "A_fixed-0.5_preempt-on",
+   "runs": 16,
+   "completed": 15,
+   "failed": 1,
+   "e2e_p50_ms_median": 1656.0,
+   "e2e_p95_ms_median": 1720.0,
+   "end_of_turn_delay_p50_ms_median": 577.0,
+   "tts_ttfb_p50_ms_median": 171.0,
+   "llm_ttft_p50_ms_median": 1229.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 54,
+   "prospect_wer_mean": 0.091,
+   "key_term_hits": {
+    "aurevia": 0,
+    "meera": 0,
+    "priyanka": 4
+   }
+  },
+  "B_fixed-0.5_preempt-off / busy": {
+   "label": "B_fixed-0.5_preempt-off",
+   "runs": 5,
+   "completed": 5,
+   "failed": 0,
+   "e2e_p50_ms_median": 2003.0,
+   "e2e_p95_ms_median": 2822.0,
+   "end_of_turn_delay_p50_ms_median": 577.0,
+   "tts_ttfb_p50_ms_median": 180.0,
+   "llm_ttft_p50_ms_median": 1226.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 14,
+   "prospect_wer_mean": 0.016,
+   "key_term_hits": null
+  },
+  "B_fixed-0.5_preempt-off / skeptical": {
+   "label": "B_fixed-0.5_preempt-off",
+   "runs": 5,
+   "completed": 5,
+   "failed": 0,
+   "e2e_p50_ms_median": 1990.0,
+   "e2e_p95_ms_median": 2736.0,
+   "end_of_turn_delay_p50_ms_median": 577.0,
+   "tts_ttfb_p50_ms_median": 178.0,
+   "llm_ttft_p50_ms_median": 1227.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 25,
+   "prospect_wer_mean": 0.006,
+   "key_term_hits": null
+  },
+  "B_fixed-0.5_preempt-off / all": {
+   "label": "B_fixed-0.5_preempt-off",
+   "runs": 10,
+   "completed": 10,
+   "failed": 0,
+   "e2e_p50_ms_median": 1992.0,
+   "e2e_p95_ms_median": 2814.5,
+   "end_of_turn_delay_p50_ms_median": 577.0,
+   "tts_ttfb_p50_ms_median": 179.0,
+   "llm_ttft_p50_ms_median": 1226.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 39,
+   "prospect_wer_mean": 0.011,
+   "key_term_hits": null
+  },
+  "C_dynamic_preempt-on / busy": {
+   "label": "C_dynamic_preempt-on",
+   "runs": 5,
+   "completed": 5,
+   "failed": 0,
+   "e2e_p50_ms_median": 1677.0,
+   "e2e_p95_ms_median": 1688.0,
+   "end_of_turn_delay_p50_ms_median": 579.0,
+   "tts_ttfb_p50_ms_median": 174.0,
+   "llm_ttft_p50_ms_median": 1226.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 15,
+   "prospect_wer_mean": 0.0,
+   "key_term_hits": null
+  },
+  "C_dynamic_preempt-on / skeptical": {
+   "label": "C_dynamic_preempt-on",
+   "runs": 5,
+   "completed": 5,
+   "failed": 0,
+   "e2e_p50_ms_median": 1657.0,
+   "e2e_p95_ms_median": 1927.0,
+   "end_of_turn_delay_p50_ms_median": 577.0,
+   "tts_ttfb_p50_ms_median": 172.0,
+   "llm_ttft_p50_ms_median": 1229.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 25,
+   "prospect_wer_mean": 0.006,
+   "key_term_hits": null
+  },
+  "C_dynamic_preempt-on / all": {
+   "label": "C_dynamic_preempt-on",
+   "runs": 10,
+   "completed": 10,
+   "failed": 0,
+   "e2e_p50_ms_median": 1668.0,
+   "e2e_p95_ms_median": 1867.5,
+   "end_of_turn_delay_p50_ms_median": 578.0,
+   "tts_ttfb_p50_ms_median": 173.0,
+   "llm_ttft_p50_ms_median": 1227.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 40,
+   "prospect_wer_mean": 0.003,
+   "key_term_hits": null
+  },
+  "D_fixed-0.8_preempt-on / busy": {
+   "label": "D_fixed-0.8_preempt-on",
+   "runs": 5,
+   "completed": 3,
+   "failed": 2,
+   "e2e_p50_ms_median": 1638.0,
+   "e2e_p95_ms_median": 1683.0,
+   "end_of_turn_delay_p50_ms_median": 801.0,
+   "tts_ttfb_p50_ms_median": 182.0,
+   "llm_ttft_p50_ms_median": 1230.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 9,
+   "prospect_wer_mean": 0.0,
+   "key_term_hits": null
+  },
+  "D_fixed-0.8_preempt-on / skeptical": {
+   "label": "D_fixed-0.8_preempt-on",
+   "runs": 3,
+   "completed": 3,
+   "failed": 0,
+   "e2e_p50_ms_median": 1715.0,
+   "e2e_p95_ms_median": 1908.0,
+   "end_of_turn_delay_p50_ms_median": 801.0,
+   "tts_ttfb_p50_ms_median": 186.0,
+   "llm_ttft_p50_ms_median": 1227.0,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 15,
+   "prospect_wer_mean": 0.0,
+   "key_term_hits": null
+  },
+  "D_fixed-0.8_preempt-on / all": {
+   "label": "D_fixed-0.8_preempt-on",
+   "runs": 8,
+   "completed": 6,
+   "failed": 2,
+   "e2e_p50_ms_median": 1668.0,
+   "e2e_p95_ms_median": 1767.5,
+   "end_of_turn_delay_p50_ms_median": 801.0,
+   "tts_ttfb_p50_ms_median": 185.0,
+   "llm_ttft_p50_ms_median": 1229.5,
+   "interrupted_turns_total": 0,
+   "measured_turns_total": 24,
+   "prospect_wer_mean": 0.0,
+   "key_term_hits": null
+  }
+ },
+ "runs": {
+  "A_fixed-0.5_preempt-on": [
+   {
+    "scenario": "busy",
+    "call_id": "6158355f-15b8-4955-883f-4940100b7147",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1718,
+     "e2e_p95_ms": 1724,
+     "llm_ttft_p50_ms": 1231,
+     "tts_ttfb_p50_ms": 244,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "7a31a011-a6e9-42b3-b297-2f6a4df258b3",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1810,
+     "e2e_p95_ms": 2096,
+     "llm_ttft_p50_ms": 1237,
+     "tts_ttfb_p50_ms": 336,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello. Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine, you can have someone email me. Bye."
+   },
+   {
+    "scenario": "names",
+    "call_id": "4ccf6966-1aeb-4e2e-bc71-b2dd8fc9e984",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1641,
+     "e2e_p95_ms": 1690,
+     "llm_ttft_p50_ms": 1227,
+     "tts_ttfb_p50_ms": 162,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.25,
+    "heard": "Hello? Is this Mira from Arabia? Okay, Mira. How did Aryvia get my number? Send the Oribia details to my assistant, Priyanka Ayr. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "7b9fbaf1-9dbd-41b0-bc1a-f68123fc0a34",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1648,
+     "e2e_p95_ms": 1666,
+     "llm_ttft_p50_ms": 1226,
+     "tts_ttfb_p50_ms": 163,
+     "end_of_turn_delay_p50_ms": 579,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "57e6e8f4-4757-42cf-969f-3b01cd9f3ae1",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 4,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1826,
+     "e2e_p95_ms": 1880,
+     "llm_ttft_p50_ms": 1231,
+     "tts_ttfb_p50_ms": 322,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.029,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. Already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "names",
+    "call_id": "087fa4ca-5ff3-4365-a822-49657f621055",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1642,
+     "e2e_p95_ms": 1946,
+     "llm_ttft_p50_ms": 1234,
+     "tts_ttfb_p50_ms": 162,
+     "end_of_turn_delay_p50_ms": 578,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.25,
+    "heard": "Hello? Is this Mira from Arabia? Okay, Mira. How did Aryvia get my number? Send the Oribia details to my assistant. Priyanka Ayr. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "9686b28d-5802-43db-b7b8-659ccd0ae16a",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1647,
+     "e2e_p95_ms": 1680,
+     "llm_ttft_p50_ms": 1226,
+     "tts_ttfb_p50_ms": 182,
+     "end_of_turn_delay_p50_ms": 578,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.04,
+    "heard": "Yeah. Hi. In the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "7417eb85-40b0-44d2-9f94-ff1eb501c849",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1656,
+     "e2e_p95_ms": 1724,
+     "llm_ttft_p50_ms": 1228,
+     "tts_ttfb_p50_ms": 198,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine, you can have someone email me. Bye."
+   },
+   {
+    "scenario": "names",
+    "call_id": "43140019-224e-4031-963b-a0f0b4c175ca",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1638,
+     "e2e_p95_ms": 1680,
+     "llm_ttft_p50_ms": 1231,
+     "tts_ttfb_p50_ms": 168,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.25,
+    "heard": "Hello? Is this Mira from Arabia? Okay, Mira. How did get my number? Send the arrevia details to my assistant, Priyanka Ayr. Bye."
+   },
+   {
+    "scenario": "busy",
+    "status": "no_result"
+   },
+   {
+    "scenario": "busy",
+    "call_id": "8f2a9a8b-2d02-470e-bccc-e77d610ca335",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1673,
+     "e2e_p95_ms": 1685,
+     "llm_ttft_p50_ms": 1229,
+     "tts_ttfb_p50_ms": 184,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "e88a832d-1941-4c17-8214-84cc0145e6bf",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1700,
+     "e2e_p95_ms": 1720,
+     "llm_ttft_p50_ms": 1235,
+     "tts_ttfb_p50_ms": 171,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person? Or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "names",
+    "call_id": "16224ab9-1b5f-465f-b1d2-b0cff6a2198c",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1660,
+     "e2e_p95_ms": 1954,
+     "llm_ttft_p50_ms": 1226,
+     "tts_ttfb_p50_ms": 167,
+     "end_of_turn_delay_p50_ms": 578,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.25,
+    "heard": "Hello. Is this Mira from Olivia? Okay, Mira. Did Aryvia get my number? Send the Aribia details to my assistant. Priyanka Iyer. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "8b0945f9-8e81-436b-baed-39611a2d831a",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1641,
+     "e2e_p95_ms": 1672,
+     "llm_ttft_p50_ms": 1229,
+     "tts_ttfb_p50_ms": 175,
+     "end_of_turn_delay_p50_ms": 579,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "3202c3f4-74d0-4f80-a9b3-dfd94cc6d498",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1637,
+     "e2e_p95_ms": 1915,
+     "llm_ttft_p50_ms": 1228,
+     "tts_ttfb_p50_ms": 164,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "names",
+    "call_id": "52d6bf1b-702a-4dd6-a367-6694a7100392",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1700,
+     "e2e_p95_ms": 1706,
+     "llm_ttft_p50_ms": 1229,
+     "tts_ttfb_p50_ms": 171,
+     "end_of_turn_delay_p50_ms": 578,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.292,
+    "heard": "Hello. Is this Mira from Arabia? Okay, Mira. How did Aryvia get my number? Send the Auribia details to my assistant. Bye."
+   }
+  ],
+  "B_fixed-0.5_preempt-off": [
+   {
+    "scenario": "busy",
+    "call_id": "cf15c270-d91b-419f-b99c-2f82d9f1cb1d",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 2,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 3018,
+     "e2e_p95_ms": 3957,
+     "llm_ttft_p50_ms": 1226,
+     "tts_ttfb_p50_ms": 164,
+     "end_of_turn_delay_p50_ms": 2652,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.08,
+    "heard": "Yeah. Hi. In the middle of something. You just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "ee974e2e-8cbf-44a2-b387-aa281700d5a1",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1983,
+     "e2e_p95_ms": 1989,
+     "llm_ttft_p50_ms": 1223,
+     "tts_ttfb_p50_ms": 167,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.029,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. Already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "f51fdb38-31d5-4be5-bb60-c3c42bdaaf9d",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 2149,
+     "e2e_p95_ms": 2967,
+     "llm_ttft_p50_ms": 1224,
+     "tts_ttfb_p50_ms": 330,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "9155b2e0-1190-46be-94a7-4b66c23192ad",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1993,
+     "e2e_p95_ms": 2738,
+     "llm_ttft_p50_ms": 1227,
+     "tts_ttfb_p50_ms": 180,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello. Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "ca35e1da-f974-4051-a4c5-6777489baeb6",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1990,
+     "e2e_p95_ms": 2822,
+     "llm_ttft_p50_ms": 1226,
+     "tts_ttfb_p50_ms": 180,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "5f6768ad-31ca-4ce8-9426-ddcee1d19394",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1992,
+     "e2e_p95_ms": 2736,
+     "llm_ttft_p50_ms": 1227,
+     "tts_ttfb_p50_ms": 178,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "46b6370d-a9c0-43b6-b0c6-958c15c7e716",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1992,
+     "e2e_p95_ms": 2812,
+     "llm_ttft_p50_ms": 1226,
+     "tts_ttfb_p50_ms": 172,
+     "end_of_turn_delay_p50_ms": 579,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "79575790-096e-498f-b496-fb21af6556d1",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1990,
+     "e2e_p95_ms": 2398,
+     "llm_ttft_p50_ms": 1225,
+     "tts_ttfb_p50_ms": 180,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "cf6e90af-b06b-4e10-9670-85a19fc2e451",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 2003,
+     "e2e_p95_ms": 2817,
+     "llm_ttft_p50_ms": 1224,
+     "tts_ttfb_p50_ms": 180,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "0e1ebe6b-50d0-45d5-acab-59a3cdf66ae7",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1985,
+     "e2e_p95_ms": 6777,
+     "llm_ttft_p50_ms": 1229,
+     "tts_ttfb_p50_ms": 173,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine, you can have someone email me. Bye."
+   }
+  ],
+  "C_dynamic_preempt-on": [
+   {
+    "scenario": "busy",
+    "call_id": "0e5c9a16-d04a-4efd-aa49-2911a22ff1c4",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1793,
+     "e2e_p95_ms": 1827,
+     "llm_ttft_p50_ms": 1228,
+     "tts_ttfb_p50_ms": 326,
+     "end_of_turn_delay_p50_ms": 578,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "e70eff53-fce1-40d4-8981-ae82166bcc5b",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1704,
+     "e2e_p95_ms": 3162,
+     "llm_ttft_p50_ms": 1229,
+     "tts_ttfb_p50_ms": 184,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait, are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine, you can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "445a98a8-fe94-4413-88b7-c16a8fb53569",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1685,
+     "e2e_p95_ms": 1688,
+     "llm_ttft_p50_ms": 1226,
+     "tts_ttfb_p50_ms": 197,
+     "end_of_turn_delay_p50_ms": 579,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "b551e80e-169d-4ebb-9845-20ec296538c6",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1636,
+     "e2e_p95_ms": 1982,
+     "llm_ttft_p50_ms": 1225,
+     "tts_ttfb_p50_ms": 168,
+     "end_of_turn_delay_p50_ms": 578,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person? Or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine, you can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "38df18e7-2b62-4c77-b574-da438963d78a",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1627,
+     "e2e_p95_ms": 1665,
+     "llm_ttft_p50_ms": 1228,
+     "tts_ttfb_p50_ms": 162,
+     "end_of_turn_delay_p50_ms": 579,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "4e863d95-0533-4364-a077-bb3a45ce7146",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1676,
+     "e2e_p95_ms": 1927,
+     "llm_ttft_p50_ms": 1230,
+     "tts_ttfb_p50_ms": 172,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait, are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "602a8f76-b439-44d9-be20-6685d52b39aa",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1677,
+     "e2e_p95_ms": 1700,
+     "llm_ttft_p50_ms": 1223,
+     "tts_ttfb_p50_ms": 165,
+     "end_of_turn_delay_p50_ms": 579,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "3b9e7d1c-1711-46fc-9662-2aab6b9a928c",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1657,
+     "e2e_p95_ms": 1926,
+     "llm_ttft_p50_ms": 1225,
+     "tts_ttfb_p50_ms": 181,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.029,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. Can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "20718f0d-a4ed-4015-adc5-28bce9e7b6ec",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1660,
+     "e2e_p95_ms": 1679,
+     "llm_ttft_p50_ms": 1223,
+     "tts_ttfb_p50_ms": 174,
+     "end_of_turn_delay_p50_ms": 580,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "1861829b-5fe3-4cf7-980f-1d445707cfba",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1626,
+     "e2e_p95_ms": 1908,
+     "llm_ttft_p50_ms": 1229,
+     "tts_ttfb_p50_ms": 166,
+     "end_of_turn_delay_p50_ms": 577,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   }
+  ],
+  "D_fixed-0.8_preempt-on": [
+   {
+    "scenario": "busy",
+    "call_id": "425ef63a-ec1d-43a5-8499-e61650371985",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1587,
+     "e2e_p95_ms": 1661,
+     "llm_ttft_p50_ms": 1230,
+     "tts_ttfb_p50_ms": 166,
+     "end_of_turn_delay_p50_ms": 801,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "59c9c1fa-93c8-437b-9ae7-e0df10d20598",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1803,
+     "e2e_p95_ms": 1832,
+     "llm_ttft_p50_ms": 1233,
+     "tts_ttfb_p50_ms": 328,
+     "end_of_turn_delay_p50_ms": 801,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "14928e87-3a94-4d56-9b3d-4dee2522be3b",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1638,
+     "e2e_p95_ms": 1683,
+     "llm_ttft_p50_ms": 1229,
+     "tts_ttfb_p50_ms": 182,
+     "end_of_turn_delay_p50_ms": 801,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "c063f81a-5ab8-4d5a-bfb6-51e4adc9fdb0",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1715,
+     "e2e_p95_ms": 1908,
+     "llm_ttft_p50_ms": 1227,
+     "tts_ttfb_p50_ms": 184,
+     "end_of_turn_delay_p50_ms": 801,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "call_id": "df13cf19-c6e6-43ab-8c06-6cf52bcf01b1",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 4,
+     "measured_turns": 3,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1680,
+     "e2e_p95_ms": 1703,
+     "llm_ttft_p50_ms": 1231,
+     "tts_ttfb_p50_ms": 194,
+     "end_of_turn_delay_p50_ms": 801,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Yeah. Hi. I'm in the middle of something. Can you just tell me in one sentence what this is? Call me back next week then."
+   },
+   {
+    "scenario": "skeptical",
+    "call_id": "d6eb5543-fb9d-47fe-be10-cf9f936df027",
+    "status": "completed",
+    "latency": {
+     "agent_turns": 6,
+     "measured_turns": 5,
+     "interrupted_turns": 0,
+     "e2e_p50_ms": 1656,
+     "e2e_p95_ms": 2116,
+     "llm_ttft_p50_ms": 1227,
+     "tts_ttfb_p50_ms": 186,
+     "end_of_turn_delay_p50_ms": 801,
+     "target_p50_ms": 1000,
+     "target_p95_ms": 1800,
+     "meets_target": false
+    },
+    "prospect_wer": 0.0,
+    "heard": "Hello? Who is this? Wait. Are you a real person or a bot? Okay. We already have insurance through another broker. What would you do differently? Fine. You can have someone email me. Bye."
+   },
+   {
+    "scenario": "busy",
+    "status": "no_result",
+    "reason": [
+     "  File \"/home/user/aurevia/voice-worker/.venv/lib/python3.12/site-packages/livekit/rtc/_ffi_client.py\", line 77, in __del__",
+     "  File \"/home/user/aurevia/voice-worker/.venv/lib/python3.12/site-packages/livekit/rtc/_ffi_client.py\", line 99, in dispose",
+     "AssertionError:"
+    ]
+   },
+   {
+    "scenario": "busy",
+    "status": "no_result",
+    "reason": [
+     "Traceback (most recent call last):",
+     "Traceback (most recent call last):",
+     "Traceback (most recent call last):",
+     "Traceback (most recent call last):",
+     "Traceback (most recent call last):",
+     "Traceback (most recent call last):"
+    ]
+   }
+  ]
+ }
+}

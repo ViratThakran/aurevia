@@ -211,3 +211,56 @@ class FakeVoiceTransport:
             is_phone=data.get("is_phone", False),
             attributes=data.get("attributes", {}),
         )
+
+
+CANNED_REPLIES: tuple[str, ...] = (
+    "Got it, thank you. How many people are on your team right now?",
+    "That makes sense. What matters most to you in a plan like this?",
+    "Understood. Would a short call with our specialist next week help?",
+    "Thanks for telling me. Is there anything you would like to ask me?",
+)
+
+
+@dataclass
+class CannedModelProvider:
+    """Benchmarks only (``AUREVIA_AI_PROVIDER=canned``): short fixed replies, no network.
+
+    Waits ``first_token_ms`` before the first word, like a real model's first token, so the
+    speech path (speech-to-text, turn handling, text-to-speech) can be measured without
+    spending model quota. Never says it is human; never calls tools.
+    """
+
+    first_token_ms: int = 1200
+    name: str = "canned"
+    _turn: itertools.count[int] = field(default_factory=itertools.count)
+
+    def _reply(self, request: ModelRequest) -> str:
+        if "# Bookkeeping pass" in request.system:
+            return ""
+        return CANNED_REPLIES[next(self._turn) % len(CANNED_REPLIES)]
+
+    def _response(self, request: ModelRequest, text: str) -> ModelResponse:
+        return ModelResponse(
+            text=text,
+            model="canned-v1",
+            usage=ModelUsage(input_tokens=0, output_tokens=len(text.split())),
+            stop_reason="end_turn",
+        )
+
+    async def generate(self, request: ModelRequest) -> ModelResponse:
+        return self._response(request, self._reply(request))
+
+    async def stream(self, request: ModelRequest) -> AsyncIterator[ModelStreamEvent]:
+        text = self._reply(request)
+        yield ModelStreamEvent(usage=ModelUsage(input_tokens=0, output_tokens=0))
+        if text:
+            await asyncio.sleep(self.first_token_ms / 1000)
+            for index, word in enumerate(text.split(" ")):
+                yield ModelStreamEvent(delta=word if index == 0 else f" {word}")
+        yield ModelStreamEvent(final=self._response(request, text))
+
+    async def health(self) -> bool:
+        return True
+
+    async def aclose(self) -> None:
+        return None
