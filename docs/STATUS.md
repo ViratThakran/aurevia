@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026. **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (second session). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 ## 1. Where we are
@@ -24,7 +24,9 @@ scenarios pass, and Virat signs off the human microphone test.
     at 11" 3 → 2; pitch 2 → 2.
   - Fresh prompt tokens per request with a warm cache (estimated): next step ~1,855 → ~185;
     pitch ~1,860 → ~40.
-- PR #18 backend tests: 356 passed (including database tests, local Postgres 16).
+- PR #18 backend tests: 357 passed (including database tests, local Postgres 16).
+- PR #18 pricing fix: 1M input tokens, 800k from the cache, input 300/M, cached 30/M now cost
+  84, not 300. A monthly cost limit of 100 no longer blocks the next call (tested).
 - Rough paced run, 17 Oct, free Gemini key, 2 scenarios (a sanity check, **not** Gate 10):
   - Before (main): 6 of 6 turns succeeded. First word 1204, 1374, 2008, 2256, 2907, 3475 ms;
     p50 ≈ 2.1 s, p95 ≈ 3.5 s.
@@ -41,7 +43,7 @@ scenarios pass, and Virat signs off the human microphone test.
 
 | PR | What | Waiting for |
 |---|---|---|
-| [#18](https://github.com/ViratThakran/aurevia/pull/18) | WP-10.3: next-step meeting-time lookup, prompt caching | Real before/after numbers (needs keys). Codex finding P1: cached Claude tokens are billed at the full input price (overcharge; could trip the monthly cost limit), needs a fix. Codex P2 on an older commit (replayed slot lookups) looks covered by the 5-minute window, confirm. CI green. Then "merge PR 18". |
+| [#18](https://github.com/ViratThakran/aurevia/pull/18) | WP-10.3: next-step meeting-time lookup, prompt caching | Real before/after numbers (needs the paid Gemini key, about 19 Oct). Codex P1 (cached tokens billed at the full input price) is fixed: separate `llm_cached_input_tokens` price, migration 0010, test. Cache writes are still priced at the normal input rate. Codex P2 on an older commit (replayed slot lookups) looks covered by the 5-minute window, confirm. CI green. Then "merge PR 18". |
 | [#17](https://github.com/ViratThakran/aurevia/pull/17) | Hosting stage 1: `deploy/` packaging | CI backend tests failed (run on Friday evening, likely the weekday slots test that #18 fixes; not confirmed). Codex P2: `deploy.sh` only warns when speech keys are missing, should fail. A real server and domain to verify. Not deploying until told. |
 
 ## 3. Decisions Virat has made
@@ -59,7 +61,7 @@ scenarios pass, and Virat signs off the human microphone test.
 
 | What | On whom |
 |---|---|
-| Cloud environment: `AUREVIA_GEMINI_API_KEY`, `DEEPGRAM_API_KEY`, `CARTESIA_API_KEY` were not set in the last two sessions, and `api.deepgram.com` and `api.cartesia.ai` were refused by the network policy. Settings only reach a **new** session. | Virat |
+| Cloud environment: `AUREVIA_GEMINI_API_KEY`, `DEEPGRAM_API_KEY`, `CARTESIA_API_KEY` were not set in the last two sessions, and `api.deepgram.com` and `api.cartesia.ai` were refused by the network policy. Still the case in the 17 Oct second session. Settings only reach a **new** session. | Virat |
 | Paid Gemini key (expected about 19 Oct). Needed for 10.2 and a fair Gate 10 run. | Virat |
 | Cartesia credits for 10.1. | Virat |
 | The Gemini key pasted into chat on 17 Oct should be rotated. | Virat |
@@ -75,10 +77,12 @@ and `api.cartesia.ai` to Allowed domains, save, start a new session, and paste:
 Read docs/STATUS.md first. Check that AUREVIA_GEMINI_API_KEY, DEEPGRAM_API_KEY and
 CARTESIA_API_KEY are set and that api.deepgram.com and api.cartesia.ai are reachable.
 Don't print the keys. If anything is missing, stop and tell me exactly what. If all is there:
-1. Run the WP-10.3 before/after, paced with no retries ("before" = main, "after" =
-   phase-10-wp-3-tool-rounds), then the 8 sales scenarios. Report p50, p95, and turns
-   succeeded and failed.
-2. Run 10.1 (Cartesia audio) and 10.4 (Deepgram turn handling) and report measured numbers.
-3. Update docs/STATUS.md.
-Test text only. If a provider hits a quota, stop and report. Don't start 10.2 until I reply.
+1. Run 10.1 (Cartesia audio) and 10.4 (Deepgram turn handling) and report measured numbers.
+2. Update docs/STATUS.md.
+Test text only. If a provider hits a quota, stop and report. The Gemini before/after waits
+for the paid key. Don't start 10.2 until I reply.
 ```
+
+Once the paid Gemini key is in (about 19 Oct), the next session also runs the WP-10.3
+before/after, paced with no retries ("before" = main, "after" = phase-10-wp-3-tool-rounds),
+and the 8 sales scenarios, reporting p50, p95, and turns succeeded and failed.
