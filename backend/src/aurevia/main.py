@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from aurevia import __version__
 from aurevia.api.health import router as liveness_router
 from aurevia.api.internal import internal_router
+from aurevia.api.internal.calls import drain_bookkeeping
 from aurevia.api.v1.router import api_v1_router
 from aurevia.api.webhooks import router as webhooks_router
 from aurevia.campaigns.scheduler import scheduler_loop
@@ -107,6 +108,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             retention.cancel()
         if dialer is not None:
             dialer.cancel()
+        # Before the database closes: running bookkeeping passes hold sessions on it.
+        await drain_bookkeeping()
         provider: ClosableModelProvider | None = app.state.model_provider
         if provider is not None:
             await provider.aclose()

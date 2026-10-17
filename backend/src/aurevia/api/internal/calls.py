@@ -115,6 +115,8 @@ async def start_call(
 # so the next prompt sees the stage it recorded and the two never write the call concurrently.
 PENDING_BOOKKEEPING: dict[uuid.UUID, asyncio.Task[None]] = {}
 BOOKKEEPING_WAIT_SECONDS = 2.0
+# At shutdown, how long running passes may finish before they are cancelled.
+BOOKKEEPING_SHUTDOWN_GRACE_SECONDS = 5.0
 # One retry for transient model failures (quota, timeout, outage), after this pause.
 BOOKKEEPING_RETRY_SECONDS = 2.0
 _RETRYABLE = frozenset({"rate_limited", "timeout", "unavailable"})
@@ -131,6 +133,28 @@ async def _wait_for_bookkeeping(call_id: uuid.UUID) -> None:
             "Turn started before the previous bookkeeping pass finished",
             extra={"fields": {"call_id": str(call_id)}},
         )
+
+
+async def drain_bookkeeping() -> None:
+    """At shutdown: let running bookkeeping passes finish briefly, cancel the rest, wait for them.
+
+    Each pass holds a database session open. If the app closed the database while one was still
+    running, its connection was abandoned inside a transaction, holding locks on the call and
+    lead rows until the process ended (this stalled the test suite's database cleanup).
+    """
+    loop = asyncio.get_running_loop()
+    tasks = [t for t in PENDING_BOOKKEEPING.values() if not t.done() and t.get_loop() is loop]
+    if not tasks:
+        return
+    _, unfinished = await asyncio.wait(tasks, timeout=BOOKKEEPING_SHUTDOWN_GRACE_SECONDS)
+    for task in unfinished:
+        task.cancel()
+    if unfinished:
+        logger.warning(
+            "Shutdown cancelled bookkeeping passes still running",
+            extra={"fields": {"count": len(unfinished)}},
+        )
+        await asyncio.gather(*unfinished, return_exceptions=True)
 
 
 def _track_bookkeeping(call_id: uuid.UUID, task: asyncio.Task[None]) -> None:

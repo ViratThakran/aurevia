@@ -54,16 +54,14 @@ Follow-ups, not started:
 - PR #17's "not verified" list (real DNS and certificates, media ports, real audio, SIP, a real
   bucket, cron) waits for a server (WP-14.1).
 - Backend `pytest` stalled in CI on PRs #18, #24 and #31 (and once locally); a re-run passed
-  each time. **Where:** all three CI logs stop right after the last `test_rls.py` test, in the
-  cleanup that empties the test database (`TRUNCATE`); Postgres logs "skipping analyze ... lock
-  not available" for `users`, `tenants`, `calls` and others every minute until the job is
-  cancelled. So cleanup was waiting on a lock held by a connection some earlier test left open
-  inside a transaction. **Not found:** which connection. It did not reproduce in 9 runs of
-  `test_sales_tools.py`, 48 runs of a bookkeeping-timing stress test, or a deliberately leaked
-  bookkeeping pass. **Now in place:** a 60 s per-test limit (`pytest-timeout`, dumps every
-  thread's stack), a 20 s lock limit on test cleanup that fails with the blocking connection's
-  user, state and last query, and a 15 minute limit on the CI backend job. The next stall will
-  name its cause; if it does, fix that test.
+  each time. **Cause (found 17 Oct, reproduced on 2 CPUs, 1 run in 4):** every spoken turn
+  starts a background "bookkeeping" pass that holds a database session. If the app shut down
+  while one was still running, its connection was left open inside a transaction, holding locks
+  on the call and lead rows. The next test's database cleanup (`TRUNCATE`) then waited on it
+  forever. **Fix (PR #33):** shutdown now lets running passes finish for up to 5 s, cancels the
+  rest, and only then closes the database (`drain_bookkeeping`); a regression test covers it.
+  **Safeguards:** 60 s per-test limit (`pytest-timeout`, dumps all thread stacks); test cleanup
+  fails after 20 s naming the blocking connection; CI backend job limited to 15 minutes.
 
 ## 3. Decisions Virat has made
 
