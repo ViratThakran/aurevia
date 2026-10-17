@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (fourth session, after merging #22, #23, #17, #24). **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (fifth session: keys checked, buildable-now table proposed). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -97,7 +97,7 @@ Follow-ups, not started:
 
 | What | On whom |
 |---|---|
-| Cloud environment: `AUREVIA_GEMINI_API_KEY`, `DEEPGRAM_API_KEY`, `CARTESIA_API_KEY` not set, and `api.deepgram.com`, `api.cartesia.ai` refused by the network policy, in all three 17 Oct sessions. Settings only reach a **new** session. | Virat |
+| ~~Keys and allowed domains~~ **Done in the fifth session (17 Oct):** `AUREVIA_GEMINI_API_KEY`, `DEEPGRAM_API_KEY` and `CARTESIA_API_KEY` are set; Gemini, Deepgram and Cartesia each accepted a free read-only call (HTTP 200). Not yet known: whether the Gemini key is the paid one, and whether Cartesia has credits. No Phase 10 run was started. | Virat |
 | Paid Gemini key (expected about 19 Oct). Needed for 10.2 and a fair Gate 10 run. | Virat |
 | Cartesia credits for 10.1. | Virat |
 | The Gemini key pasted into chat on 17 Oct should be rotated. | Virat |
@@ -107,8 +107,9 @@ Follow-ups, not started:
 
 ## 5. Next step
 
-Virat: in the cloud environment settings, set the three variables above, add `api.deepgram.com`
-and `api.cartesia.ai` to Allowed domains, save, start a new session, and paste:
+Keys and allowed domains are in place (checked 17 Oct, fifth session). Virat: review the table
+in section 6, then either start Phase 10 measurements with the message below, or approve the
+table. In a new session, paste:
 
 ```text
 Read docs/STATUS.md first, then docs/phases/phase-10.md. Check that AUREVIA_GEMINI_API_KEY,
@@ -125,3 +126,75 @@ Once the paid Gemini key is in (about 19 Oct), the next session also runs the WP
 before/after, paced with no retries ("before" = commit `fb8afdc`, main just before PR #18;
 "after" = commit `5b17634`, main with PR #18), and the 8 sales scenarios, reporting p50, p95,
 and turns succeeded and failed.
+
+## 6. Proposed: what in Phases 11 to 18 can be built now (for review, not started)
+
+**Yes** means it can be built and tested with fake providers: no paid key, no real call, no
+outside account. Each "yes" item would go behind a switch that is **off by default**. Anything
+that needs a real measurement (speed, model choice, real audio, real calls, listeners) stays
+**waiting on keys** (or on the person named). Nothing here is built yet.
+
+| Phase | Work package | Buildable now | What it needs from Virat |
+|---|---|---|---|
+| 11 | 11.1 Backchannel spike (design doc, simulator proof) | Yes | Approve the design before 11.2 (the plan says stop for approval). Real-audio check waits on keys and a microphone. |
+| 11 | 11.2 Backchannel engine (rules, rate limit, clip lookup) | Yes, after 11.1 is approved | Real clips need Cartesia credits (tests use silent placeholder clips). How often it says "hmm": your choice by ear later. |
+| 11 | 11.3 Agent reactions (prompt version, style scoring) | Partly: code and style scoring yes | "8 of 8 scenarios pass" needs the real model: waiting on keys. |
+| 11 | 11.4 Mood and emotion (mood field, mood-to-voice mapping) | Yes (mocked voice provider) | Confirm the mapping defaults (the plan's tone-by-stage table). Hearing it waits on keys. |
+| 11 | 11.5 Natural speech (rupees, dates, phone numbers, pronunciation dictionary) | Partly: text rules and dictionary yes | A list of company and product names. Hinglish switching benchmark on mixed audio: waiting on keys. |
+| 11 | 11.6 Turn-taking polish ("hold on", "repeat that", "I'm driving", silences, goodbye) | Yes (simulator) | Nothing now; how it feels waits on the microphone test. |
+| 11 | 11.7 Human-feel scorecard | Partly: metric calculation from transcripts yes | Ten listeners and the blind test; expert numbers from Phase 12. |
+| 12 | 12.0 Recordings inventory | No | Your spreadsheet; counsel sees the prospect-consent question. |
+| 12 | 12.1 Batch transcription | Partly: adapter interface, fake provider, delete-audio-after rule yes | Real transcription needs your recordings, counsel's view, and storage rules: waiting. |
+| 12 | 12.2 Redaction (patterns plus model detector interface) | Yes (fake detector, fake personal data) | Nothing. |
+| 12 | 12.3 Learning tables, permissions, CSV and JSON import | Yes (new tables with forced RLS, isolation tests) | Nothing. |
+| 12 | 12.4 Labeling (model proposes, person spot-checks) | Partly: label schema, review screen yes | Label accuracy needs the real model and real calls: waiting. |
+| 12 | 12.5 Timing profile (pauses, overlaps, backchannels from word timings) | Partly: the calculation on synthetic data yes | The real profile needs your recordings. |
+| 12 | 12.6 Technique extraction and review queue | Partly: review queue, audit, automatic policy check yes | Extraction needs real transcripts and the model: waiting. |
+| 12 | 12.7 Playbooks and retrieval (versions, max 3 per turn) | Yes | You approve every entry before it can be used. |
+| 12 | 12.8 Evaluate (simulator A/B) | Partly: A/B harness with fakes yes | A real result needs the paid model key: waiting on keys. |
+| 12 | 12.A Source type (call or talk) and seed playbook format | Yes; seed entries entered as "proposed" | You approve at least 10 entries (Gate 12). |
+| 13 | 13.1 Cost metering (reports, budget alert, per-tenant kill switch) | Partly: all of it with fakes yes | "Real cost per minute from 20 test calls": waiting on keys and real calls. |
+| 13 | 13.2 Voice bake-off | No | Real audio, listeners, provider accounts. |
+| 13 | 13.3 Audio cache (pre-rendered phrases, hit rate) | Yes (fake voice provider) | Real clips need Cartesia credits. |
+| 13 | 13.4 Model routing, context trimming, summaries | Partly: routing rules and trimming yes | "Cost per scenario drops" needs the paid key (and 10.2's model choice): waiting. |
+| 13 | 13.5 Do not pay for silence | Partly: start speech after answer, call-length cap, skip short non-answers yes | Voicemail detection needs real phone audio: waiting. |
+| 13 | 13.6 Phone rates | No | Written quotes from carriers. |
+| 13 | 13.7 Pricing plans and ROI calculator | Yes (placeholder numbers, assumptions stated) | Your real prices and pay assumptions before use. |
+| 14 | 14.1 Staging server | No | Provider, domain, budget. |
+| 14 | 14.2 Region and media measurement | No | A server. |
+| 14 | 14.3 Phone trunk | No | Carrier choice and account. |
+| 14 | 14.4 Phone-audio quality | No | Real phone calls. |
+| 14 | 14.5 Do-not-disturb registry | Partly: caching rules and the four required tests with a fake registry yes | A registry or scrubbing-service account; counsel's caching rules. Unknown stays blocked. |
+| 14 | 14.6 Registrations (DLT, caller ID) | No | You and counsel. |
+| 14 | 14.7 Counsel review | No | Counsel. |
+| 14 | 14.8 Call safety (pacing, abandoned-call limit, daily caps, campaign kill switch, retries) | Yes (some caps exist; tests prove each) | Nothing; real voicemail handling waits on real calls. |
+| 14 | 14.9 Operations (alerts for failures, outages, cost spikes) | Partly: alert rules with a fake notifier yes | An alert channel (email or Slack) and a server for the restore drill. |
+| 14 | Spend limit blocks on unpriced usage (B1) | Yes, built switched off | Your go-ahead to switch it on before the first pilot. |
+| 15 | 15.1 Calendar | Partly: interface, slots, time zones, encrypted tokens, failure tests with a fake calendar yes | A Google Cloud project for sign-in (and later Microsoft). |
+| 15 | 15.2 CRM | Partly: interface, field mapping, duplicates, safe retries, signed webhook, CSV export yes | HubSpot and Zoho developer accounts. |
+| 15 | 15.3 Messaging follow-ups | Partly: consent-per-channel check, templates only, opt-outs, delivery status with fakes yes | WhatsApp, SMS and email accounts; DLT templates. |
+| 15 | 15.4 After the call (sequences, no-show recovery, lead score) | Yes with fakes | Summary quality needs the real model: waiting on keys. |
+| 15 | 15.5 Handoff alerts and scheduled callbacks | Yes (fake notifier) | Real email or Slack account later. |
+| 15 | 15.6 Public API keys and signed webhooks | Yes | Nothing. |
+| 16 | 16.1 Onboarding wizard | Yes | Nothing. |
+| 16 | 16.2 Knowledge base | Partly: upload, per-tenant chunks, retrieval with fake embeddings, sources shown yes | Real retrieval quality and the 100 ms budget need a model key: waiting. |
+| 16 | 16.3 Vertical templates (insurance first) | Yes | You review the template wording. |
+| 16 | 16.4 Practice against simulated prospects | Yes with the fake model | Real practice runs need a model key. |
+| 16 | 16.5 Call review screen (no audio) | Yes | Nothing. |
+| 16 | 16.6 Analytics funnel | Yes | Nothing. |
+| 16 | 16.7 Billing | Partly: invoices, usage charges, trial credits, suspend and resume yes | Razorpay account, legal entity and GST number. |
+| 16 | 16.8 Two-factor sign-in, session controls | Yes (authenticator-app codes need no outside account) | Nothing. |
+| 16 | 16.9 Owner view (cost, revenue, margin, health) | Yes | Nothing. |
+| 16 | 16.10 Customer help | Partly: in-app help pages yes | Terms, privacy policy and DPA from counsel; status page and support email accounts. |
+| 17 | 17.1, 17.2, 17.3, 17.6 Niche, pilot design, legal pack, decision | No | You and counsel. |
+| 17 | 17.4 Sales material | Partly: demo-call request form with consent capture through the gate yes | Landing page hosting, demo video. |
+| 17 | 17.5 Run the pilot | Partly: weekly report generator, pilot tenants with caps, results page yes | Pilot companies. |
+| 18 | All items | No | The plan says start none of them before Gate 17; each waits for its trigger. |
+
+Two things to decide with this table:
+- **This changes plan rule 10** ("do not build a later phase early") and the CLAUDE.md line
+  "Do not build future phases early". Approving the table would allow building the "yes" items
+  early, switched off. Please say so explicitly when you approve.
+- **PR size.** You asked for one phase per PR. Phase 11 alone has 7 work packages, so its PR
+  would be large. The plan's rule is one work package per PR, which is easier to review.
+  Your choice; the default is one phase per PR as you asked.
