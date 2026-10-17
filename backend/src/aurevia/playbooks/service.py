@@ -188,7 +188,12 @@ class PlaybookService:
         return entry
 
     async def add_entry(
-        self, version_id: uuid.UUID, body: EntryIn, *, actor_user_id: uuid.UUID | None
+        self,
+        version_id: uuid.UUID,
+        body: EntryIn,
+        *,
+        actor_user_id: uuid.UUID | None,
+        commit: bool = True,
     ) -> PlaybookEntry:
         version = await self._draft(version_id)
         existing = await self.entries(version.id)
@@ -197,7 +202,8 @@ class PlaybookService:
         entry = self._add_entry(version, len(existing), body)
         await self._session.flush()
         self._audit("playbook.entry_added", entry, actor_user_id)
-        await self._session.commit()
+        if commit:
+            await self._session.commit()
         return entry
 
     async def edit_entry(

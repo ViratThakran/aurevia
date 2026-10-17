@@ -97,6 +97,11 @@ def _pattern_spans(text: str) -> list[Span]:
     return spans
 
 
+def pattern_kinds(text: str) -> set[str]:
+    """Kinds of personal data the patterns find in ``text`` (no values). For checks only."""
+    return {span.kind.value for span in _pattern_spans(text)}
+
+
 def _merge(spans: Sequence[Span], length: int) -> list[Span]:
     """Drop overlaps (the earlier, then longer, span wins) and spans outside the text."""
     chosen: list[Span] = []
