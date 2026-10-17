@@ -1416,6 +1416,283 @@
     ]
    }
   },
+  "/api/v1/learning/techniques": {
+   "get": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "The technique review queue (WP-12.6), newest first",
+    "operationId": "list_techniques_api_v1_learning_techniques_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/TechniqueStatus"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "proposed",
+       "title": "Status"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/TechniqueOut"
+         },
+         "title": "Response List Techniques Api V1 Learning Techniques Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "Add a technique candidate; the policy check runs first",
+    "operationId": "propose_technique_api_v1_learning_techniques_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TechniqueIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TechniqueOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/learning/techniques/{technique_id}": {
+   "put": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "Edit a candidate; it is checked again and goes back to the queue",
+    "operationId": "edit_technique_api_v1_learning_techniques__technique_id__put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "technique_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Technique Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TechniqueEditIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TechniqueOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/learning/techniques/{technique_id}/review": {
+   "post": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "Approve or reject a candidate (a flagged one cannot be approved)",
+    "operationId": "review_technique_api_v1_learning_techniques__technique_id__review_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "technique_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Technique Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TechniqueReviewIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TechniqueOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/learning/techniques/{technique_id}/to-playbook": {
+   "post": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "Copy an approved technique into a draft playbook as a proposed entry",
+    "operationId": "technique_to_playbook_api_v1_learning_techniques__technique_id__to_playbook_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "technique_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Technique Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TechniqueToPlaybookIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TechniqueOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/playbooks": {
    "get": {
     "tags": [
@@ -8596,6 +8873,302 @@
      "talk"
     ],
     "title": "SourceType"
+   },
+   "TechniqueEditIn": {
+    "properties": {
+     "stage": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SalesState"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "situation": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Situation"
+     },
+     "says": {
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Says"
+     },
+     "tone": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Tone"
+     },
+     "goal": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Goal"
+     },
+     "conditions": {
+      "type": "string",
+      "maxLength": 300,
+      "title": "Conditions",
+      "default": ""
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "situation",
+     "says",
+     "tone",
+     "goal"
+    ],
+    "title": "TechniqueEditIn"
+   },
+   "TechniqueIn": {
+    "properties": {
+     "stage": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SalesState"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "situation": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Situation"
+     },
+     "says": {
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Says"
+     },
+     "tone": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Tone"
+     },
+     "goal": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Goal"
+     },
+     "conditions": {
+      "type": "string",
+      "maxLength": 300,
+      "title": "Conditions",
+      "default": ""
+     },
+     "excerpt": {
+      "type": "string",
+      "maxLength": 1000,
+      "title": "Excerpt",
+      "default": ""
+     },
+     "source_ids": {
+      "items": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "type": "array",
+      "maxItems": 100,
+      "title": "Source Ids"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "situation",
+     "says",
+     "tone",
+     "goal"
+    ],
+    "title": "TechniqueIn",
+    "description": "A technique candidate. People add them now; the extraction model (later) will too."
+   },
+   "TechniqueOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "stage": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SalesState"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "situation": {
+      "type": "string",
+      "title": "Situation"
+     },
+     "says": {
+      "type": "string",
+      "title": "Says"
+     },
+     "tone": {
+      "type": "string",
+      "title": "Tone"
+     },
+     "goal": {
+      "type": "string",
+      "title": "Goal"
+     },
+     "conditions": {
+      "type": "string",
+      "title": "Conditions"
+     },
+     "excerpt": {
+      "type": "string",
+      "title": "Excerpt"
+     },
+     "source_ids": {
+      "items": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "type": "array",
+      "title": "Source Ids"
+     },
+     "booked_count": {
+      "type": "integer",
+      "title": "Booked Count"
+     },
+     "unbooked_count": {
+      "type": "integer",
+      "title": "Unbooked Count"
+     },
+     "proposed_by": {
+      "$ref": "#/components/schemas/LabelSource"
+     },
+     "policy_flags": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Policy Flags"
+     },
+     "status": {
+      "$ref": "#/components/schemas/TechniqueStatus"
+     },
+     "reviewed_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reviewed At"
+     },
+     "playbook_entry_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Playbook Entry Id"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "policy_reasons": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Policy Reasons",
+      "description": "What the automatic policy check found, in words.",
+      "readOnly": true
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "stage",
+     "situation",
+     "says",
+     "tone",
+     "goal",
+     "conditions",
+     "excerpt",
+     "source_ids",
+     "booked_count",
+     "unbooked_count",
+     "proposed_by",
+     "policy_flags",
+     "status",
+     "reviewed_at",
+     "playbook_entry_id",
+     "created_at",
+     "policy_reasons"
+    ],
+    "title": "TechniqueOut"
+   },
+   "TechniqueReviewIn": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "approved",
+       "rejected"
+      ],
+      "title": "Status"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "status"
+    ],
+    "title": "TechniqueReviewIn"
+   },
+   "TechniqueStatus": {
+    "type": "string",
+    "enum": [
+     "proposed",
+     "approved",
+     "rejected"
+    ],
+    "title": "TechniqueStatus"
+   },
+   "TechniqueToPlaybookIn": {
+    "properties": {
+     "version_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Version Id"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "version_id"
+    ],
+    "title": "TechniqueToPlaybookIn"
    },
    "TenantResponse": {
     "properties": {

@@ -25,12 +25,14 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Uuid,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aurevia.db.base import Base, UUIDPrimaryKey, one_of
+from aurevia.playbooks import models as _playbook_models  # noqa: F401  (techniques -> entries)
 
 
 class SourceType(StrEnum):
@@ -152,6 +154,55 @@ class LearningLabel(UUIDPrimaryKey, Base):
         ForeignKey("users.id", ondelete="SET NULL")
     )
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class TechniqueStatus(StrEnum):
+    PROPOSED = "proposed"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class LearningTechnique(UUIDPrimaryKey, Base):
+    """A technique candidate (WP-12.6): what an expert does in a situation, from the sources.
+
+    It enters the review queue as ``proposed`` after the automatic policy check; a person
+    approves, edits or rejects it. Only an approved technique can be copied into a draft
+    playbook, where it is again ``proposed`` until someone with ``learning.publish`` approves it.
+    """
+
+    __tablename__ = "learning_techniques"
+    __table_args__ = (
+        CheckConstraint(one_of("status", TechniqueStatus), name="status"),
+        CheckConstraint(one_of("proposed_by", LabelSource), name="proposed_by"),
+        Index("ix_learning_techniques_tenant_status", "tenant_id", "status", "created_at"),
+    )
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    stage: Mapped[str | None] = mapped_column(String(20))
+    situation: Mapped[str] = mapped_column(String(300))
+    says: Mapped[str] = mapped_column(String(500))
+    tone: Mapped[str] = mapped_column(String(100))
+    goal: Mapped[str] = mapped_column(String(200))
+    conditions: Mapped[str] = mapped_column(String(300), default="")
+    # A short redacted excerpt from a source that shows the technique.
+    excerpt: Mapped[str] = mapped_column(Text, default="")
+    source_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid()), default=list)
+    # How often it was seen in booked and in unbooked calls.
+    booked_count: Mapped[int] = mapped_column(Integer, default=0)
+    unbooked_count: Mapped[int] = mapped_column(Integer, default=0)
+    proposed_by: Mapped[str] = mapped_column(String(10))
+    policy_flags: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    status: Mapped[str] = mapped_column(String(10), default=TechniqueStatus.PROPOSED)
+    reviewed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    playbook_entry_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("playbook_entries.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -19,6 +19,7 @@ import {
   formatDate,
   label as readable,
 } from "@/components/ui";
+import { TechniqueQueue } from "@/components/technique-queue";
 import { api, type Schemas } from "@/lib/api";
 import { useAction, useApi } from "@/lib/hooks";
 import { KINDS, describeLabel, labelValue, type LabelKind } from "@/lib/labels";
@@ -35,7 +36,7 @@ export default function LearningPage() {
     <>
       <PageHeader
         title="Learning"
-        description="Expert-call transcripts, redacted before they were stored, and their labels. The model proposes labels; a person checks them."
+        description="Expert-call transcripts, redacted before they were stored, their labels, and the techniques found in them. The model proposes; a person checks."
       />
       {sources.error ? (
         <Alert>
@@ -80,6 +81,9 @@ export default function LearningPage() {
         )}
       </Card>
       {selected ? <SourceReview key={selected} id={selected} onChanged={accuracy.reload} /> : null}
+      <div className="mt-6">
+        <TechniqueQueue />
+      </div>
     </>
   );
 }

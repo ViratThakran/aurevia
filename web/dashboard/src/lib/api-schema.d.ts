@@ -472,6 +472,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/learning/techniques": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The technique review queue (WP-12.6), newest first */
+        get: operations["list_techniques_api_v1_learning_techniques_get"];
+        put?: never;
+        /** Add a technique candidate; the policy check runs first */
+        post: operations["propose_technique_api_v1_learning_techniques_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/techniques/{technique_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Edit a candidate; it is checked again and goes back to the queue */
+        put: operations["edit_technique_api_v1_learning_techniques__technique_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/techniques/{technique_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject a candidate (a flagged one cannot be approved) */
+        post: operations["review_technique_api_v1_learning_techniques__technique_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/techniques/{technique_id}/to-playbook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy an approved technique into a draft playbook as a proposed entry */
+        post: operations["technique_to_playbook_api_v1_learning_techniques__technique_id__to_playbook_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/playbooks": {
         parameters: {
             query?: never;
@@ -2755,6 +2824,116 @@ export interface components {
          * @enum {string}
          */
         SourceType: "call" | "talk";
+        /** TechniqueEditIn */
+        TechniqueEditIn: {
+            stage?: components["schemas"]["SalesState"] | null;
+            /** Situation */
+            situation: string;
+            /** Says */
+            says: string;
+            /** Tone */
+            tone: string;
+            /** Goal */
+            goal: string;
+            /**
+             * Conditions
+             * @default
+             */
+            conditions: string;
+        };
+        /**
+         * TechniqueIn
+         * @description A technique candidate. People add them now; the extraction model (later) will too.
+         */
+        TechniqueIn: {
+            stage?: components["schemas"]["SalesState"] | null;
+            /** Situation */
+            situation: string;
+            /** Says */
+            says: string;
+            /** Tone */
+            tone: string;
+            /** Goal */
+            goal: string;
+            /**
+             * Conditions
+             * @default
+             */
+            conditions: string;
+            /**
+             * Excerpt
+             * @default
+             */
+            excerpt: string;
+            /** Source Ids */
+            source_ids?: string[];
+        };
+        /** TechniqueOut */
+        TechniqueOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            stage: components["schemas"]["SalesState"] | null;
+            /** Situation */
+            situation: string;
+            /** Says */
+            says: string;
+            /** Tone */
+            tone: string;
+            /** Goal */
+            goal: string;
+            /** Conditions */
+            conditions: string;
+            /** Excerpt */
+            excerpt: string;
+            /** Source Ids */
+            source_ids: string[];
+            /** Booked Count */
+            booked_count: number;
+            /** Unbooked Count */
+            unbooked_count: number;
+            proposed_by: components["schemas"]["LabelSource"];
+            /** Policy Flags */
+            policy_flags: string[];
+            status: components["schemas"]["TechniqueStatus"];
+            /** Reviewed At */
+            reviewed_at: string | null;
+            /** Playbook Entry Id */
+            playbook_entry_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Policy Reasons
+             * @description What the automatic policy check found, in words.
+             */
+            readonly policy_reasons: string[];
+        };
+        /** TechniqueReviewIn */
+        TechniqueReviewIn: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "approved" | "rejected";
+        };
+        /**
+         * TechniqueStatus
+         * @enum {string}
+         */
+        TechniqueStatus: "proposed" | "approved" | "rejected";
+        /** TechniqueToPlaybookIn */
+        TechniqueToPlaybookIn: {
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+        };
         /** TenantResponse */
         TenantResponse: {
             /**
@@ -4001,6 +4180,175 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LabelAccuracyOut"];
+                };
+            };
+        };
+    };
+    list_techniques_api_v1_learning_techniques_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["TechniqueStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TechniqueOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_technique_api_v1_learning_techniques_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TechniqueIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TechniqueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_technique_api_v1_learning_techniques__technique_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                technique_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TechniqueEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TechniqueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_technique_api_v1_learning_techniques__technique_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                technique_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TechniqueReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TechniqueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    technique_to_playbook_api_v1_learning_techniques__technique_id__to_playbook_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                technique_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TechniqueToPlaybookIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TechniqueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
