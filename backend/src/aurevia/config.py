@@ -96,6 +96,10 @@ class Settings(BaseSettings):
     # by default. The usage record shows every model attempted and the one that answered.
     llm_fallback_models: list[str] = Field(default_factory=list, max_length=3)
 
+    # --- Human feel (Phase 11, built early; off by default, not proven on real calls) ---
+    # WP-11.3: let the agent start some replies with a short, varied reaction ("Hm, okay.").
+    agent_reactions: bool = False
+
     # --- Memory (Phase 4) ---
     # Full transcripts are deleted this many days after they are written (DPDP data
     # minimisation); extracted lead facts are kept separately until removed.
