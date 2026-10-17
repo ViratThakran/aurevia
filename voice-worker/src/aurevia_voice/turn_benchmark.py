@@ -81,8 +81,17 @@ def run_once(args: argparse.Namespace, scenario: str) -> dict[str, Any]:
         except subprocess.TimeoutExpired:
             return {"scenario": scenario, "status": "timeout"}
         if not out.exists():
-            # Keep the end of the error output so the reason is known (it never holds keys).
-            reason = (done.stderr or done.stdout or "").strip().splitlines()[-3:]
+            # Keep the last real error lines so the reason is known (they never hold keys).
+            # LiveKit's FFI clean-up prints a harmless traceback at every exit: skip it.
+            noise = ("FfiHandle", "_ffi_client.py", "self.dispose()", "assert dropped")
+            lines = [
+                line
+                for line in (done.stderr or done.stdout or "").splitlines()
+                if line.strip()
+                and not any(n in line for n in noise)
+                and line.strip() not in ("AssertionError:", "^^^^^^^^^^^^")
+            ]
+            reason = lines[-6:]
             return {"scenario": scenario, "status": "no_result", "reason": reason}
         result: dict[str, Any] = json.loads(out.read_text(encoding="utf-8"))
         return result
