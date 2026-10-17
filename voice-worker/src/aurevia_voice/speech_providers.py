@@ -17,6 +17,8 @@ from typing import Any, Literal
 
 from livekit.agents import NOT_GIVEN, stt, tts, vad
 
+from aurevia_voice.mood import VoiceStyle
+
 STTProvider = Literal["deepgram"]
 TTSProvider = Literal["cartesia"]
 
@@ -74,6 +76,21 @@ def build_stt(options: SpeechOptions, env: Mapping[str, str] | None = None) -> s
             keyterms=list(options.stt_keyterms) if options.stt_keyterms else NOT_GIVEN,
         )
     raise SpeechConfigError(f"unknown STT provider {options.stt_provider!r}")
+
+
+def apply_voice_style(text_to_speech: Any, style: VoiceStyle) -> bool:
+    """Apply a mood's voice style (WP-11.4) to a TTS built here. Returns whether it applied.
+
+    Only Cartesia supports speed and emotion controls; other voices keep their defaults.
+    """
+    update = getattr(text_to_speech, "update_options", None)
+    if update is None or "cartesia" not in str(getattr(text_to_speech, "label", "")).lower():
+        return False
+    update(
+        speed=style.speed if style.speed is not None else "normal",
+        emotion=[style.emotion] if style.emotion is not None else [],
+    )
+    return True
 
 
 def build_tts(

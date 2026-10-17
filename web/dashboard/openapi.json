@@ -7392,6 +7392,19 @@
        }
       ],
       "title": "Tts Ttfb Ms"
+     },
+     "voice_style": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40,
+        "pattern": "^[A-Za-z/ -]+$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Voice Style"
      }
     },
     "additionalProperties": false,

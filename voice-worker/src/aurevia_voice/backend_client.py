@@ -7,7 +7,7 @@ builds the prompt, applies the sales rules, calls the Model Gateway and records 
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -46,7 +46,10 @@ class BackendClient:
         call_id: str,
         call_token: str,
         http: httpx.AsyncClient | None = None,
+        on_mood: Callable[[str], None] | None = None,
     ) -> None:
+        # WP-11.4 (off by default): told the mood the backend sends at the start of a turn.
+        self.on_mood = on_mood
         self._call_path = f"/internal/v1/calls/{call_id}"
         self._http = http or httpx.AsyncClient(
             base_url=base_url,
@@ -87,6 +90,9 @@ class BackendClient:
                     yield event["text"]
                 elif event["type"] == "error":
                     raise BackendError(event["code"], status=502, retryable=False)
+                elif event["type"] == "mood":
+                    if self.on_mood is not None and isinstance(event.get("mood"), str):
+                        self.on_mood(event["mood"])
                 elif event["type"] == "done":
                     return
         raise BackendError("stream_ended_early", status=502, retryable=False)

@@ -18,6 +18,8 @@ def _ms(metrics: dict[str, Any], key: str) -> int | None:
 @dataclass
 class TurnMetricsCollector:
     turns: list[dict[str, Any]] = field(default_factory=list)
+    # WP-11.4: the voice style in use, recorded on agent turns (None: feature off).
+    voice_style: str | None = None
 
     def add(self, item: object) -> None:
         if not isinstance(item, llm.ChatMessage) or item.role not in ("user", "assistant"):
@@ -35,4 +37,6 @@ class TurnMetricsCollector:
             turn["e2e_latency_ms"] = _ms(metrics, "e2e_latency")
             turn["llm_ttft_ms"] = _ms(metrics, "llm_node_ttft")
             turn["tts_ttfb_ms"] = _ms(metrics, "tts_node_ttfb")
+            if self.voice_style is not None:
+                turn["voice_style"] = self.voice_style
         self.turns.append(turn)

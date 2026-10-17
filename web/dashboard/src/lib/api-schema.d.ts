@@ -2408,6 +2408,8 @@ export interface components {
             llm_ttft_ms?: number | null;
             /** Tts Ttfb Ms */
             tts_ttfb_ms?: number | null;
+            /** Voice Style */
+            voice_style?: string | null;
         };
         /** TurnMetricsReport */
         TurnMetricsReport: {
