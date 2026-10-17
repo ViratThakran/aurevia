@@ -27,6 +27,7 @@ from aurevia.gateway import ModelGateway
 from aurevia.logging import configure_logging
 from aurevia.memory.jobs import retention_loop
 from aurevia.middleware import RequestContextMiddleware
+from aurevia.platform.prices import warn_missing_prices
 from aurevia.providers.dnd import UnconfiguredDndRegistry
 from aurevia.providers.livekit_sip import LiveKitSipTelephony
 from aurevia.providers.registry import (
@@ -65,6 +66,15 @@ async def _check_database_role(database: Database, settings: Settings) -> None:
     logger.warning(message, extra={"fields": {"role": check.role}})
 
 
+async def _check_model_prices(database: Database, settings: Settings) -> None:
+    """Warn about model prices missing for the configured models. Never stops startup."""
+    try:
+        async with database.sessionmaker() as session:
+            await warn_missing_prices(session, settings)
+    except Exception:
+        logger.warning("Model price check skipped: database unreachable", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = app.state.settings
@@ -76,6 +86,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     retention: asyncio.Task[None] | None = None
     if database is not None:
         await _check_database_role(database, settings)
+        await _check_model_prices(database, settings)
         if settings.environment != "test":
             retention = asyncio.create_task(retention_loop(database, RETENTION_INTERVAL_SECONDS))
     dialer: asyncio.Task[None] | None = None
