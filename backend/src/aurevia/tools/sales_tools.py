@@ -9,6 +9,7 @@ from datetime import UTC, date, timedelta
 from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy import select
 
 from aurevia.compliance.models import DoNotCallReason
@@ -224,6 +225,11 @@ class ScheduleFollowup(Tool[FollowupArgs]):
 class SlotsArgs(_Args):
     from_date: date | None = Field(default=None, description="First day to look at (YYYY-MM-DD)")
     days: int = Field(default=3, ge=1, le=7)
+    # Server-only, hidden from the model's tool schema: a time window label set by the API's
+    # pre-turn lookup. It is part of the request, so a new window is a new request (a fresh
+    # lookup with its own audit row) rather than a repeat answered from the first audit row.
+    # The lookup ignores it.
+    fresh_window: SkipJsonSchema[str | None] = Field(default=None, max_length=32)
 
 
 class GetAvailableSlots(Tool[SlotsArgs]):

@@ -18,6 +18,7 @@ from aurevia.main import create_app
 from aurevia.providers.fakes import FakeModelProvider, FakeTurn, FakeVoiceTransport
 from aurevia.providers.model import ToolCall
 from aurevia.sales.state import STATE_GOALS, SalesState
+from aurevia.tools.sales_tools import default_registry
 from tests.conftest import TEST_JWT_SECRET, SettingsFactory
 from tests.integration.conftest import PgEnv, admin_fetch, bearer, signup
 
@@ -471,32 +472,62 @@ def _move_to(env: Env, call_id: str, token: str, *stages: str) -> None:
         assert _turn(env, call_id, token)[-1]["sales_state"] == stage
 
 
-def test_free_times_are_prefetched_through_the_audited_tool_when_a_meeting_is_near(
-    env: Env, db: PgEnv
-) -> None:
-    call_id, token = _call(env, _lead(env))
-    _move_to(env, call_id, token, "pitch", "next_step")
-    # Earlier turns (discovery) looked nothing up; the pitch turn did, through the executor.
-    first_system = env.model.requests[0].system
-    assert "# Free meeting times" not in first_system
-    audit = admin_fetch(
-        db, "SELECT tool, status FROM tool_executions WHERE tool = 'get_available_slots'"
+def _slot_lookups(db: PgEnv) -> list[dict[str, Any]]:
+    rows = admin_fetch(
+        db,
+        "SELECT status, arguments FROM tool_executions WHERE tool = 'get_available_slots' "
+        "ORDER BY created_at",
     )
-    assert audit and all(row["status"] == "ok" for row in audit)
+    return [{"status": r["status"], "arguments": json.loads(r["arguments"])} for r in rows]
 
+
+def test_free_times_are_prefetched_only_at_the_next_step_stage(env: Env, db: PgEnv) -> None:
+    call_id, token = _call(env, _lead(env))
+    _move_to(env, call_id, token, "pitch")  # this turn ran in discovery
+    env.model.replies += ["Here is how it works."]
+    _turn(env, call_id, token, "Tell me more.")  # a turn in the pitch stage
+    assert all("# Free meeting times" not in r.system for r in env.model.requests)
+    assert _slot_lookups(db) == []  # nothing looked up before the next step
+
+    _move_to(env, call_id, token, "next_step")  # this turn still ran in pitch
     before = len(env.model.requests)
     env.model.replies += ["Would Tuesday at eleven suit you?"]
     lines = _turn(env, call_id, token, "When could we talk?")
-    request = env.model.requests[-1]
-    assert "# Free meeting times (looked up just now)" in request.system
+    assert "# Free meeting times (looked up just now)" in env.model.requests[-1].system
     # One model request on the spoken path: no slots round trip before the first word.
     assert len(env.model.requests) - before == 1
     assert not [line for line in lines if line["type"] == "tool"]
+    # The lookup went through the audited executor.
+    lookups = _slot_lookups(db)
+    assert [row["status"] for row in lookups] == ["ok"]
+    assert lookups[0]["arguments"]["fresh_window"]
+
+
+def test_listed_times_are_refreshed_in_a_new_window_and_reused_within_one(
+    env: Env, db: PgEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    call_id, token = _call(env, _lead(env))
+    _move_to(env, call_id, token, "pitch", "next_step")
+    window = iter(["w1", "w1", "w2"])
+    monkeypatch.setattr(calls_api, "_slot_window", lambda now: next(window))
+    for said in ("When?", "Hmm, let me check.", "Okay, what about now?"):
+        env.model.replies += ["Tuesday?"]
+        _turn(env, call_id, token, said)
+    # Same window: answered from the first audit row (idempotency, unchanged). New window:
+    # a new request, so a fresh lookup with its own audit row.
+    assert [row["arguments"]["fresh_window"] for row in _slot_lookups(db)] == ["w1", "w2"]
+
+
+def test_the_model_never_sees_the_server_only_window_argument() -> None:
+    spec = next(t for t in default_registry().specs() if t.name == "get_available_slots")
+    assert "fresh_window" not in spec.parameters["properties"]
 
 
 def test_listed_time_books_in_one_tool_round_and_is_still_checked(env: Env, db: PgEnv) -> None:
     call_id, token = _call(env, _lead(env))
     _move_to(env, call_id, token, "pitch", "next_step")
+    env.model.replies += ["Would Tuesday at eleven suit you?"]
+    _turn(env, call_id, token, "When could we talk?")
     system = env.model.requests[-1].system
     start = system.split("(start: ")[1].split(")")[0]
     before = len(env.model.requests)
@@ -530,3 +561,12 @@ def test_cached_input_tokens_are_recorded_per_request(env: Env, db: PgEnv) -> No
     )
     assert rows and all(r["cached_input_tokens"] == 700 for r in rows)
     assert all(r["input_tokens"] >= r["cached_input_tokens"] for r in rows)
+
+
+def test_slot_windows_are_five_minutes_long() -> None:
+    from datetime import UTC, datetime
+
+    at = datetime(2026, 10, 17, 10, 7, 59, tzinfo=UTC)
+    assert calls_api._slot_window(at) == "2026-10-17T10:05Z"
+    assert calls_api._slot_window(at.replace(minute=9, second=59)) == "2026-10-17T10:05Z"
+    assert calls_api._slot_window(at.replace(minute=10, second=0)) == "2026-10-17T10:10Z"

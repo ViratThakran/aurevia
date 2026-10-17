@@ -58,21 +58,32 @@ from aurevia.voice.service import CallService, profile_of, require_in_progress
 
 logger = logging.getLogger(__name__)
 
-# Stages where a meeting may be agreed. Free times are looked up before the model runs, through
-# the same audited slots tool, so offering a time needs no model -> tool -> model round trip.
-# Booking is still a tool call that re-checks the slot; nothing is skipped.
-SLOT_PREFETCH_STATES = frozenset({SalesState.PITCH, SalesState.NEXT_STEP})
+# At the next-step stage (where a meeting is agreed, per the system design) free times are
+# looked up before the model runs, through the same audited slots tool, so offering a time
+# needs no model -> tool -> model round trip. Booking is still a tool call that re-checks the
+# slot; nothing is skipped.
+SLOT_PREFETCH_STATES = frozenset({SalesState.NEXT_STEP})
 PREFETCH_SLOTS_CALL_ID = "prefetch-slots"
 PREFETCH_SLOTS_DAYS = 7  # a week, so a Friday-evening call still sees Monday's times
+# Listed times are at most this old. Within a window the same lookup is answered from its
+# audit row (idempotency, unchanged); a new window is a new request, so it looks again.
+PREFETCH_SLOTS_MAX_AGE_MINUTES = 5
 
 
-async def _prefetch_slots(executor: ToolExecutor) -> tuple[FreeSlot, ...] | None:
+def _slot_window(now: datetime) -> str:
+    """The label of the PREFETCH_SLOTS_MAX_AGE_MINUTES-long window that ``now`` falls in."""
+    minutes = int(now.timestamp() // 60)
+    start = minutes - minutes % PREFETCH_SLOTS_MAX_AGE_MINUTES
+    return datetime.fromtimestamp(start * 60, UTC).strftime("%Y-%m-%dT%H:%MZ")
+
+
+async def _prefetch_slots(executor: ToolExecutor, now: datetime) -> tuple[FreeSlot, ...] | None:
     """Free meeting times via the audited executor; None if the lookup did not succeed."""
     result = await executor.execute(
         ToolCall(
             id=PREFETCH_SLOTS_CALL_ID,
             name="get_available_slots",
-            arguments={"days": PREFETCH_SLOTS_DAYS},
+            arguments={"days": PREFETCH_SLOTS_DAYS, "fresh_window": _slot_window(now)},
         )
     )
     if result.is_error:
@@ -290,7 +301,7 @@ async def take_turn(
                 )
                 turn_context = context
                 if state in SLOT_PREFETCH_STATES:
-                    turn_context = replace(context, free_slots=await _prefetch_slots(executor))
+                    turn_context = replace(context, free_slots=await _prefetch_slots(executor, now))
                 async for event in ConversationEngine(gateway).stream_reply(
                     agent=profile,
                     state=state,
