@@ -43,6 +43,12 @@ class WorkerSettings(BaseSettings):
     # Start the model while the prospect may still be talking; cancelled if they continue.
     # Lowers latency; cancelled starts are recorded as interrupted LLM turns.
     preemptive_generation: bool = True
+    # Also start text-to-speech before the turn is confirmed (LiveKit's default: off). Saves
+    # the voice's time to first sound when the guess holds; off until WP-10.4 shows it helps.
+    preemptive_tts: bool = False
+    # Deepgram key terms (JSON list), e.g. ["Aurevia", "Meera"]. Empty (off) by default; turn
+    # them on only if WP-10.4's numbers show they help.
+    stt_keyterms: list[str] = Field(default_factory=list, max_length=50)
     # Prospect speech needed to interrupt the agent (barge-in).
     interruption_min_duration: float = Field(default=0.5, ge=0.1, le=3.0)
 

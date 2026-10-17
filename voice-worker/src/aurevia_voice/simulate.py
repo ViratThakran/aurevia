@@ -24,6 +24,7 @@ import sys
 import time
 import urllib.request
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Any
 
 import aiohttp
@@ -63,6 +64,12 @@ SCENARIOS: dict[str, list[str]] = {
         "नमस्ते, मुझे थोड़ा बताइए आपकी कंपनी क्या करती है?",
         "Hamari team mein chaalees log hain aur renewal March mein hai.",
         "Okay, let's continue in English. Please email me the details. Bye.",
+    ],
+    # Names the speech-to-text must get right (WP-10.4 Deepgram key terms).
+    "names": [
+        "Hello? Is this Meera from Aurevia?",
+        "Okay Meera, how did Aurevia get my number?",
+        "Send the Aurevia details to my assistant, Priyanka Iyer. Bye.",
     ],
 }
 
@@ -135,7 +142,8 @@ async def run(args: argparse.Namespace) -> int:
         track, rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
     )
 
-    async with aiohttp.ClientSession() as http:
+    # trust_env: use the standard proxy variables (HTTPS_PROXY, NO_PROXY) when they are set.
+    async with aiohttp.ClientSession(trust_env=True) as http:
         options = SpeechOptions(
             stt_provider="deepgram",
             tts_provider="cartesia",
@@ -176,7 +184,11 @@ async def run(args: argparse.Namespace) -> int:
     transcript = _api(base, "GET", f"/api/v1/voice/calls/{call_id}/transcript", token=access)
     heard = " ".join(ln["text"] for ln in transcript["lines"] if ln["speaker"] == "prospect")
     wer = round(word_error_rate(" ".join(said), heard), 3) if heard else None
-    print(json.dumps({"status": call["status"], "latency": latency, "prospect_wer": wer}, indent=2))
+    result = {"status": call["status"], "latency": latency, "prospect_wer": wer, "heard": heard}
+    print(json.dumps({k: v for k, v in result.items() if k != "heard"}, indent=2))
+    if args.json_out:
+        record = json.dumps({"scenario": args.scenario, "call_id": call_id, **result})
+        await asyncio.to_thread(Path(args.json_out).write_text, record, encoding="utf-8")
     if args.barge_in and latency["interrupted_turns"] < 1:
         print("FAIL: the interruption was not registered")
         return 1
@@ -198,6 +210,7 @@ def main() -> None:
     parser.add_argument("--lead-id", default=None, help="lead to call (memory is kept per lead)")
     parser.add_argument("--voice", default=None, help="TTS voice id for the prospect")
     parser.add_argument("--settle-seconds", type=float, default=6.0)
+    parser.add_argument("--json-out", default=None, help="also write the result to this file")
     args = parser.parse_args()
     started = time.monotonic()
     code = asyncio.run(run(args))

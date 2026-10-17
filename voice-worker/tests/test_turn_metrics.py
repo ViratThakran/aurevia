@@ -88,18 +88,19 @@ def test_turn_handling_defaults_and_overrides(monkeypatch: pytest.MonkeyPatch) -
 
     defaults = turn_handling(WorkerSettings(backend_url="http://x"))
     assert defaults["endpointing"] == {"mode": "fixed", "min_delay": 0.5, "max_delay": 1.5}
-    assert defaults["preemptive_generation"] == {"enabled": True}
+    assert defaults["preemptive_generation"] == {"enabled": True, "preemptive_tts": False}
     tuned = turn_handling(
         WorkerSettings(
             backend_url="http://x",
             endpointing_min_delay=0.7,
             endpointing_mode="dynamic",
             preemptive_generation=False,
+            preemptive_tts=True,
         )
     )
     assert tuned["endpointing"]["min_delay"] == 0.7
     assert tuned["endpointing"]["mode"] == "dynamic"
-    assert tuned["preemptive_generation"] == {"enabled": False}
+    assert tuned["preemptive_generation"] == {"enabled": False, "preemptive_tts": True}
 
 
 def test_silence_reprompts_then_hangs_up_and_speech_resets() -> None:

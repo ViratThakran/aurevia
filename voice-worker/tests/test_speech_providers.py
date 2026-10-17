@@ -112,3 +112,21 @@ def test_worker_never_imports_a_model_sdk() -> None:
         for path in SRC.glob("*.py")
     }
     assert {name: names for name, names in found.items() if names} == {}
+
+
+def test_deepgram_key_terms_are_off_by_default_and_passed_when_set() -> None:
+    from dataclasses import replace
+
+    async def build(options: SpeechOptions) -> Any:
+        return build_stt(options, ENV)
+
+    default = asyncio.run(build(OPTIONS))
+    assert not default._opts.keyterm  # off unless WP-10.4 shows they help
+    named = asyncio.run(build(replace(OPTIONS, stt_keyterms=("Aurevia", "Meera"))))
+    assert list(named._opts.keyterm) == ["Aurevia", "Meera"]
+
+
+def test_worker_key_terms_setting_is_empty_by_default() -> None:
+    from aurevia_voice.config import WorkerSettings
+
+    assert WorkerSettings(backend_url="http://backend.invalid").stt_keyterms == []

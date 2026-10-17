@@ -22,7 +22,9 @@ DEPLOYED_ENVIRONMENTS: frozenset[str] = frozenset({"staging", "production"})
 
 MIN_JWT_SECRET_LENGTH = 32
 
-AIProvider = Literal["gemini", "anthropic"]
+# "canned": fixed short replies after a set delay, no network. Benchmarks of the speech path
+# only (WP-10.4); refused in staging and production.
+AIProvider = Literal["gemini", "anthropic", "canned"]
 
 # Default model per provider when AUREVIA_LLM_MODEL is unset.
 DEFAULT_MODELS: dict[str, str] = {
@@ -30,6 +32,7 @@ DEFAULT_MODELS: dict[str, str] = {
     # repeatedly returned 504s on this account, so it is a fallback candidate instead.
     "gemini": "gemini-3.5-flash",
     "anthropic": "claude-opus-5-5",
+    "canned": "canned-v1",
 }
 
 
@@ -71,6 +74,8 @@ class Settings(BaseSettings):
     # --- AI Model Gateway ---
     # Which model provider the gateway uses. Only the selected provider's key is needed.
     ai_provider: AIProvider = "gemini"
+    # Only with ai_provider="canned": delay before the first word, like a real model's first token.
+    canned_first_token_ms: int = Field(default=1200, ge=0, le=10000)
     gemini_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
     # Unset: the selected provider's default (DEFAULT_MODELS). Pinned names only, never
@@ -188,6 +193,8 @@ class Settings(BaseSettings):
     def _check_deployed_environment(self) -> Self:
         if self.environment not in DEPLOYED_ENVIRONMENTS:
             return self
+        if self.ai_provider == "canned":
+            raise ValueError(f"ai_provider=canned is for benchmarks only, not {self.environment}")
         missing = [name for name in ("database_url", "jwt_secret") if getattr(self, name) is None]
         if missing:
             raise ValueError(f"{', '.join(missing)} required when environment={self.environment}")
@@ -216,7 +223,7 @@ class Settings(BaseSettings):
     @property
     def provider_api_key(self) -> SecretStr | None:
         """The key of the selected AI provider; other providers' keys are never needed."""
-        keys = {"gemini": self.gemini_api_key, "anthropic": self.anthropic_api_key}
+        keys = {"gemini": self.gemini_api_key, "anthropic": self.anthropic_api_key, "canned": None}
         return keys[self.ai_provider]
 
     def secret_values(self) -> list[str]:
