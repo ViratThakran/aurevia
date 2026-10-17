@@ -8,6 +8,7 @@ import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 
 from aurevia.providers.dnd import DndLookup, DndStatus
 from aurevia.providers.model import (
@@ -21,6 +22,11 @@ from aurevia.providers.model import (
 )
 from aurevia.providers.speech import AudioChunk, STTConfig, TranscriptEvent, TTSConfig
 from aurevia.providers.telephony import AnsweredCall, DialError, OutboundCallRequest
+from aurevia.providers.transcription import (
+    TranscribedSegment,
+    Transcription,
+    TranscriptionError,
+)
 from aurevia.providers.voice_transport import InvalidWebhookError, TransportEvent
 
 
@@ -124,6 +130,23 @@ class FakeSTTProvider:
                 return
             yield TranscriptEvent(text=text.split(" ")[0], is_final=False)
             yield TranscriptEvent(text=text, is_final=True, confidence=1.0)
+
+
+@dataclass
+class FakeBatchTranscriber:
+    """Returns scripted segments for any recording (WP-12.1). Records which files it read."""
+
+    segments: list[TranscribedSegment]
+    fail: bool = False
+    name: str = "fake-batch-stt"
+    seen: list[Path] = field(default_factory=list)
+
+    async def transcribe(self, audio: Path, *, language: str) -> Transcription:
+        self.seen.append(audio)
+        await asyncio.to_thread(audio.read_bytes)  # the recording must exist
+        if self.fail:
+            raise TranscriptionError("scripted failure")
+        return Transcription(language=language, segments=tuple(self.segments))
 
 
 @dataclass
