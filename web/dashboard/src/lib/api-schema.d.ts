@@ -2269,7 +2269,7 @@ export interface components {
          * PriceResource
          * @enum {string}
          */
-        PriceResource: "llm_input_tokens" | "llm_cached_input_tokens" | "llm_output_tokens" | "stt_seconds" | "tts_characters" | "telephony_seconds";
+        PriceResource: "llm_input_tokens" | "llm_cached_input_tokens" | "llm_cache_write_input_tokens" | "llm_output_tokens" | "stt_seconds" | "tts_characters" | "telephony_seconds";
         /** ReadinessResponse */
         ReadinessResponse: {
             /**

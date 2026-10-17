@@ -38,6 +38,8 @@ class UsageEvent(UUIDPrimaryKey, Base):
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     # The part of input_tokens served from the provider's prompt cache.
     cached_input_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # The part of input_tokens written to the provider's prompt cache (priced above input).
+    cache_write_input_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     audio_seconds: Mapped[float] = mapped_column(Float, default=0.0)
     characters: Mapped[int] = mapped_column(Integer, default=0)

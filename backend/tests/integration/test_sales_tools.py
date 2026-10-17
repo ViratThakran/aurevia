@@ -553,14 +553,20 @@ def test_listed_time_books_in_one_tool_round_and_is_still_checked(env: Env, db: 
 def test_cached_input_tokens_are_recorded_per_request(env: Env, db: PgEnv) -> None:
     call_id, token = _call(env, _lead(env))
     env.model.cached_input_tokens = 700
+    env.model.cache_write_input_tokens = 300
     env.model.replies += ["Hello there."]
     _turn(env, call_id, token, "Hi.")
     time.sleep(0.3)  # usage is written as the stream ends
     rows = admin_fetch(
-        db, "SELECT input_tokens, cached_input_tokens FROM usage_events WHERE kind = 'llm'"
+        db,
+        "SELECT input_tokens, cached_input_tokens, cache_write_input_tokens "
+        "FROM usage_events WHERE kind = 'llm'",
     )
     assert rows and all(r["cached_input_tokens"] == 700 for r in rows)
-    assert all(r["input_tokens"] >= r["cached_input_tokens"] for r in rows)
+    assert all(r["cache_write_input_tokens"] == 300 for r in rows)
+    assert all(
+        r["input_tokens"] >= r["cached_input_tokens"] + r["cache_write_input_tokens"] for r in rows
+    )
 
 
 def test_slot_windows_are_five_minutes_long() -> None:

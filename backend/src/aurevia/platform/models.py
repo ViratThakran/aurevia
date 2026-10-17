@@ -31,6 +31,7 @@ from aurevia.db.base import Base, UUIDPrimaryKey, one_of
 class PriceResource(StrEnum):
     LLM_INPUT_TOKENS = "llm_input_tokens"  # input not read from the prompt cache
     LLM_CACHED_INPUT_TOKENS = "llm_cached_input_tokens"  # input read from the prompt cache
+    LLM_CACHE_WRITE_INPUT_TOKENS = "llm_cache_write_input_tokens"  # input written to the cache
     LLM_OUTPUT_TOKENS = "llm_output_tokens"
     STT_SECONDS = "stt_seconds"
     TTS_CHARACTERS = "tts_characters"
