@@ -1,0 +1,4 @@
+# Nightly database backup + upload. Install on the server (as root):
+#   sudo cp deploy/cron/aurevia-backup.cron /etc/cron.d/aurevia-backup
+# Change /opt/aurevia if the repository is cloned elsewhere. 21:00 UTC = 02:30 IST.
+0 21 * * * root /opt/aurevia/deploy/backup.sh >> /var/log/aurevia-backup.log 2>&1

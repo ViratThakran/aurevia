@@ -91,6 +91,7 @@ class ModelUsage:
     input_tokens: int  # all input tokens, including any served from the provider's cache
     output_tokens: int
     cached_input_tokens: int = 0  # the part of input_tokens read from the cache
+    cache_write_input_tokens: int = 0  # the part of input_tokens written to the cache
 
 
 @dataclass(frozen=True)
