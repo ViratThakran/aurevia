@@ -52,6 +52,9 @@ Merged on 17 Oct, each with CI green:
 | [#27](https://github.com/ViratThakran/aurevia/pull/27) | Fix: the price loader command crashed when run on its own (as `deploy.sh` runs it). Found while setting up WP-10.4; nothing had been deployed. |
 | [#28](https://github.com/ViratThakran/aurevia/pull/28) | Docs: the build-early approval and its conditions |
 | [#29](https://github.com/ViratThakran/aurevia/pull/29) | WP-10.4, partial: turn benchmark settings A to D (canned model; ranks settings, not Gate 10). Key terms, preemptive TTS and the rest of D wait on Cartesia credits. |
+| [#31](https://github.com/ViratThakran/aurevia/pull/31) | Docs: STATUS after #29 (backend CI stalled once; cancelled and re-run, then green) |
+| [#32](https://github.com/ViratThakran/aurevia/pull/32) | WP-11.3: agent-side reactions, off by default (`AUREVIA_AGENT_REACTIONS`) |
+| [#34](https://github.com/ViratThakran/aurevia/pull/34) | WP-11.4: prospect mood and voice style, off by default (migration 0012) |
 
 Follow-ups, not started:
 - Codex P2 from #17: `deploy.sh` only warns when speech keys are missing; it should fail.
@@ -226,3 +229,5 @@ with fake providers.
 | 10.4: Deepgram key terms | [#29](https://github.com/ViratThakran/aurevia/pull/29) | `AUREVIA_STT_KEYTERMS` (empty) | Whether they fix "Aurevia" and "Meera" (run E, waiting on Cartesia credits) |
 | 10.4: preemptive text to speech | [#29](https://github.com/ViratThakran/aurevia/pull/29) | `AUREVIA_PREEMPTIVE_TTS` (false) | Any measurement (run F, waiting on Cartesia credits) |
 | 11.3 agent-side reactions (prompt variant `voice-2026-10-17.reactions1`, style metrics `reaction_rate`, `repeated_reaction_rate`) | [#32](https://github.com/ViratThakran/aurevia/pull/32) | `AUREVIA_AGENT_REACTIONS` (false) | The 8 sales scenarios and word counts with a real model (paid Gemini key); how it sounds |
+| 11.4 prospect mood and voice style (`record_prospect_mood` tool, `calls.prospect_mood`, `turn_metrics.voice_style`, migration 0012) | [#34](https://github.com/ViratThakran/aurevia/pull/34) | Backend `AUREVIA_PROSPECT_MOOD` (false) and worker `AUREVIA_MOOD_VOICE` (false) | How it sounds; whether Cartesia's speed and emotion controls take effect on the current voice model (waiting on Cartesia credits, listening test) |
+| 11.5 natural speech (rupee amounts in lakh and crore, mobile numbers digit by digit, numeric dates, a pronunciation list); voice text only, the transcript keeps the original | this PR | `AUREVIA_NATURAL_SPEECH` (false), `AUREVIA_PRONUNCIATIONS` (empty) | How it sounds; per-turn Hinglish switching benchmark on mixed-language audio (waiting on Cartesia and Deepgram) |

@@ -39,11 +39,13 @@ from aurevia_voice.backend_client import BackendClient, BackendError
 from aurevia_voice.config import WorkerSettings
 from aurevia_voice.language import Language, LanguageSwitch
 from aurevia_voice.llm_bridge import BackendLLM
+from aurevia_voice.mood import DEFAULT_STYLE, style_for
 from aurevia_voice.phone import wait_for_answer
 from aurevia_voice.redaction import install_log_redaction
 from aurevia_voice.silence import SilenceTracker
 from aurevia_voice.speech_providers import (
     SpeechOptions,
+    apply_voice_style,
     build_stt,
     build_tts,
     load_vad,
@@ -324,6 +326,17 @@ async def entrypoint(ctx: JobContext) -> None:
 
     collector = TurnMetricsCollector()
     transcript = TranscriptCollector()
+
+    if settings.mood_voice:
+        # WP-11.4 (off by default): the next reply uses the voice style for the latest mood.
+        collector.voice_style = DEFAULT_STYLE.label
+
+        def on_mood(mood: str) -> None:
+            style = style_for(mood)
+            if apply_voice_style(tts, style):
+                collector.voice_style = style.label
+
+        backend.on_mood = on_mood
 
     def on_item(event: Any) -> None:
         collector.add(event.item)

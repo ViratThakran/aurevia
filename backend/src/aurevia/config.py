@@ -99,6 +99,9 @@ class Settings(BaseSettings):
     # --- Human feel (Phase 11, built early; off by default, not proven on real calls) ---
     # WP-11.3: let the agent start some replies with a short, varied reaction ("Hm, okay.").
     agent_reactions: bool = False
+    # WP-11.4: record the prospect's mood in the bookkeeping pass and send it to the voice
+    # worker, which may adjust the voice (its own switch, AUREVIA_MOOD_VOICE).
+    prospect_mood: bool = False
 
     # --- Memory (Phase 4) ---
     # Full transcripts are deleted this many days after they are written (DPDP data

@@ -24,6 +24,17 @@ from aurevia.db.base import Base, Timestamps, UUIDPrimaryKey, one_of
 from aurevia.sales.state import SalesState
 
 
+class ProspectMood(StrEnum):
+    """How the prospect sounds, from their words (WP-11.4; recorded only when switched on)."""
+
+    WARM = "warm"
+    NEUTRAL = "neutral"
+    RUSHED = "rushed"
+    ANNOYED = "annoyed"
+    SKEPTICAL = "skeptical"
+    CONFUSED = "confused"
+
+
 class CallChannel(StrEnum):
     BROWSER = "browser"
     PHONE = "phone"
@@ -95,6 +106,10 @@ class Call(UUIDPrimaryKey, Timestamps, Base):
         CheckConstraint(one_of("status", CallStatus), name="status"),
         CheckConstraint(one_of("sales_state", SalesState), name="sales_state"),
         CheckConstraint(
+            f"prospect_mood IS NULL OR {one_of('prospect_mood', ProspectMood)}",
+            name="prospect_mood",
+        ),
+        CheckConstraint(
             f"direction IS NULL OR {one_of('direction', CallDirection)}", name="direction"
         ),
         CheckConstraint(
@@ -122,6 +137,8 @@ class Call(UUIDPrimaryKey, Timestamps, Base):
     channel: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(20), default=CallStatus.CREATED)
     sales_state: Mapped[str] = mapped_column(String(30), default=SalesState.NEW)
+    # Latest mood the bookkeeping pass recorded (WP-11.4, off by default). Text-based only.
+    prospect_mood: Mapped[str | None] = mapped_column(String(20))
     room: Mapped[str] = mapped_column(String(100), unique=True)
     turn_count: Mapped[int] = mapped_column(Integer, default=0)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

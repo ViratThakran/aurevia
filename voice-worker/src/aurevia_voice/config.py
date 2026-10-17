@@ -49,6 +49,9 @@ class WorkerSettings(BaseSettings):
     # Deepgram key terms (JSON list), e.g. ["Aurevia", "Meera"]. Empty (off) by default; turn
     # them on only if WP-10.4's numbers show they help.
     stt_keyterms: list[str] = Field(default_factory=list, max_length=50)
+    # WP-11.4 (off by default): adjust speed and emotion to the mood the backend sends. Needs
+    # the backend's AUREVIA_PROSPECT_MOOD too; not proven on real calls.
+    mood_voice: bool = False
     # WP-11.5 (off by default): say rupee amounts, phone numbers and dates the way people do.
     natural_speech: bool = False
     # WP-11.5: respellings for names the voice gets wrong (JSON), e.g. {"Aurevia": "Aw-REE-vee-uh"}.
