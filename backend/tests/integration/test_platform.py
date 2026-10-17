@@ -352,6 +352,59 @@ def test_cached_input_tokens_are_priced_separately(env: Env, db: PgEnv) -> None:
     assert started.status_code == 201, started.text
 
 
+def test_cache_write_tokens_are_priced_separately(env: Env, db: PgEnv) -> None:
+    """Cache-write input is priced at its own rate; without one it is unpriced, not guessed."""
+    _make_platform_admin(db)
+    tenant_id = me(env.client, env.owner)["tenant"]["id"]
+    # One Claude request: 1M input tokens = 100k plain + 600k cache reads + 300k cache writes.
+    admin_execute(
+        db,
+        "INSERT INTO usage_events (id, tenant_id, kind, provider, model, input_tokens, "
+        "cached_input_tokens, cache_write_input_tokens, output_tokens, audio_seconds, "
+        "characters, interrupted) VALUES "
+        f"(gen_random_uuid(), '{tenant_id}', 'llm', 'anthropic', 'claude-haiku', 1000000, "
+        "600000, 300000, 0, 0, 0, false)",
+    )
+
+    def add_price(resource: str, amount: str) -> None:
+        price = {
+            "provider": "anthropic",
+            "resource": resource,
+            "currency": "INR",
+            "amount": amount,
+            "per_quantity": 1_000_000,
+            "effective_from": (NOON_IST - timedelta(days=60)).isoformat(),
+        }
+        created = env.client.post("/api/v1/platform/prices", json=price, headers=bearer(env.owner))
+        assert created.status_code == 201, created.text
+
+    def usage() -> dict[str, Any]:
+        body: dict[str, Any] = env.client.get("/api/v1/usage", headers=bearer(env.owner)).json()
+        return body
+
+    def resource(body: dict[str, Any], name: str) -> dict[str, Any]:
+        found: dict[str, Any] = next(r for r in body["resources"] if r["resource"] == name)
+        return found
+
+    add_price("llm_input_tokens", "400")
+    add_price("llm_cached_input_tokens", "20")
+    # No write price yet: writes are unpriced and do not take the plain input rate
+    # (charging them as plain input would give 160 + 12 = 172).
+    before = usage()
+    assert resource(before, "llm_input_tokens")["quantity"] == "100000"
+    writes = resource(before, "llm_cache_write_input_tokens")
+    assert writes["quantity"] == "300000" and writes["unpriced_quantity"] == "300000"
+    assert before["cost"] == {"INR": "52.000000"}  # 100k x 400/M + 600k x 20/M
+    assert before["fully_priced"] is False
+
+    add_price("llm_cache_write_input_tokens", "500")
+    after = usage()
+    writes = resource(after, "llm_cache_write_input_tokens")
+    assert writes["cost"] == {"INR": "150.000000"} and writes["unpriced_quantity"] == "0"
+    assert after["cost"] == {"INR": "202.000000"}  # 40 + 12 + 300k x 500/M
+    assert after["fully_priced"] is True
+
+
 def test_phone_minutes_are_recorded_as_telephony_usage(env: Env, db: PgEnv) -> None:
     _setup_lines(env)
     call_id = _post(env, "/calls/outbound", {"lead_id": _lead(env)}).json()["call_id"]

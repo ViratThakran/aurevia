@@ -1,0 +1,99 @@
+# Aurevia model prices: the reviewed price file.
+#
+# Changes go through a pull request. Load with (schema owner's connection):
+#   python -m aurevia.platform.prices load
+# Loading only ever adds rows: an entry already in the database is skipped, and past prices
+# never change. To change a price, add a NEW entry with a later effective_from; never edit or
+# remove an entry that has been loaded.
+#
+# verified = false means the figure has not been checked on the provider's own pricing page.
+# Unverified entries are NOT loaded unless --include-unverified is passed.
+#
+# Amounts are per `per_quantity` units, in `currency`. The spend limit only adds prices in the
+# plan's own currency, so keep these in the same currency as the limits (USD here).
+
+# --- Google Gemini ----------------------------------------------------------------------
+# Unverified: from third-party sites (modelcompare.dev, evolink.ai), 17 Oct 2026. Google's
+# page (https://ai.google.dev/gemini-api/docs/pricing) could not be reached to check them.
+# Gemini's automatic caching has no cache-write charge, so no write price is needed.
+
+[[price]]
+provider = "gemini"
+model = "gemini-3.5-flash"
+resource = "llm_input_tokens"
+currency = "USD"
+amount = "1.50"
+per_quantity = 1000000
+effective_from = 2026-10-17T00:00:00Z
+verified = false
+source = "third-party sites, 17 Oct 2026; check https://ai.google.dev/gemini-api/docs/pricing"
+
+[[price]]
+provider = "gemini"
+model = "gemini-3.5-flash"
+resource = "llm_cached_input_tokens"
+currency = "USD"
+amount = "0.15"
+per_quantity = 1000000
+effective_from = 2026-10-17T00:00:00Z
+verified = false
+source = "third-party sites, 17 Oct 2026; check https://ai.google.dev/gemini-api/docs/pricing"
+
+[[price]]
+provider = "gemini"
+model = "gemini-3.5-flash"
+resource = "llm_output_tokens"
+currency = "USD"
+amount = "9.00"
+per_quantity = 1000000
+effective_from = 2026-10-17T00:00:00Z
+verified = false
+source = "third-party sites, 17 Oct 2026; check https://ai.google.dev/gemini-api/docs/pricing"
+
+# --- Anthropic Claude -------------------------------------------------------------------
+# Verified on https://platform.claude.com/docs/en/about-claude/pricing, 17 Oct 2026.
+# Cache writes use the 5-minute cache (the only one Aurevia uses).
+
+[[price]]
+provider = "anthropic"
+model = "claude-opus-5-5"
+resource = "llm_input_tokens"
+currency = "USD"
+amount = "4.00"
+per_quantity = 1000000
+effective_from = 2026-10-17T00:00:00Z
+verified = true
+source = "https://platform.claude.com/docs/en/about-claude/pricing, 17 Oct 2026"
+
+[[price]]
+provider = "anthropic"
+model = "claude-opus-5-5"
+resource = "llm_cached_input_tokens"
+currency = "USD"
+amount = "0.20"
+per_quantity = 1000000
+effective_from = 2026-10-17T00:00:00Z
+verified = true
+source = "https://platform.claude.com/docs/en/about-claude/pricing, 17 Oct 2026"
+
+[[price]]
+provider = "anthropic"
+model = "claude-opus-5-5"
+resource = "llm_cache_write_input_tokens"
+currency = "USD"
+amount = "5.00"
+per_quantity = 1000000
+effective_from = 2026-10-17T00:00:00Z
+verified = true
+source = "https://platform.claude.com/docs/en/about-claude/pricing, 17 Oct 2026 (5-minute cache)"
+
+[[price]]
+provider = "anthropic"
+model = "claude-opus-5-5"
+resource = "llm_output_tokens"
+currency = "USD"
+amount = "20.00"
+per_quantity = 1000000
+effective_from = 2026-10-17T00:00:00Z
+verified = true
+source = "https://platform.claude.com/docs/en/about-claude/pricing, 17 Oct 2026"
