@@ -97,6 +97,8 @@ class Settings(BaseSettings):
     llm_fallback_models: list[str] = Field(default_factory=list, max_length=3)
 
     # --- Human feel (Phase 11, built early; off by default, not proven on real calls) ---
+    # WP-11.3: let the agent start some replies with a short, varied reaction ("Hm, okay.").
+    agent_reactions: bool = False
     # WP-11.4: record the prospect's mood in the bookkeeping pass and send it to the voice
     # worker, which may adjust the voice (its own switch, AUREVIA_MOOD_VOICE).
     prospect_mood: bool = False

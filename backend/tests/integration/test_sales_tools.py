@@ -578,6 +578,19 @@ def test_slot_windows_are_five_minutes_long() -> None:
     assert calls_api._slot_window(at.replace(minute=10, second=0)) == "2026-10-17T10:10Z"
 
 
+def test_agent_reactions_switch_reaches_the_turn_prompt(env: Env) -> None:
+    """WP-11.3: off by default; switching it on changes only the openers rule."""
+    call_id, token = _call(env, _lead(env))
+    env.model.replies += ["We cover forty people.", "Hm, okay. Who decides?"]
+    _turn(env, call_id, token, "Hi.")
+    default_system = env.model.requests[-1].system
+    assert "short, natural reaction" not in default_system
+    app: Any = env.client.app
+    app.state.settings = app.state.settings.model_copy(update={"agent_reactions": True})
+    _turn(env, call_id, token, "We have forty staff.")
+    assert "short, natural reaction" in env.model.requests[-1].system
+
+
 def test_prospect_mood_is_recorded_and_sent_only_when_switched_on(env: Env, db: PgEnv) -> None:
     """WP-11.4: off by default. On: bookkeeping records the mood through the audited
     executor, and the next turn starts with it. The reply text is never changed."""

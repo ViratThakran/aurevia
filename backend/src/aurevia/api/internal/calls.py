@@ -268,6 +268,7 @@ async def take_turn(
         prospect_name=lead.name if lead else None,
         prospect_company=lead.company if lead else None,
         now_spoken=f"{spoken(now, hours)} ({hours.timezone})",
+        reactions=settings.agent_reactions,
     )
     state = after_prospect_turn(SalesState(call.sales_state))
     call.sales_state = state

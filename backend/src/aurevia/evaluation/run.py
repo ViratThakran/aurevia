@@ -25,7 +25,7 @@ from sqlalchemy import select
 
 from aurevia.api.internal.calls import PENDING_BOOKKEEPING
 from aurevia.config import Settings
-from aurevia.conversation.prompt import PROMPT_VERSION
+from aurevia.conversation.prompt import prompt_version
 from aurevia.db.session import set_tenant_context
 from aurevia.evaluation.scenarios import SCENARIOS, Scenario, ScenarioResult, judge
 from aurevia.evaluation.style import measure
@@ -160,7 +160,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     scenarios = [s for s in SCENARIOS if not args.only or s.name in args.only]
 
-    app = create_app(Settings())
+    settings = Settings()
+    app = create_app(settings)
     transport = FakeVoiceTransport()
     app.state.voice_transport = transport  # no LiveKit rooms, no agent dispatch
     results: list[ScenarioResult] = []
@@ -202,7 +203,7 @@ def main(argv: list[str] | None = None) -> int:
         with open(args.report, "w", encoding="utf-8") as handle:
             json.dump(
                 {
-                    "prompt_version": PROMPT_VERSION,
+                    "prompt_version": prompt_version(settings.agent_reactions),
                     "style": style.as_dict(),
                     "first_word_ms": {"p50": p50, "p95": p95},
                     "scenarios": [r.__dict__ for r in results],
