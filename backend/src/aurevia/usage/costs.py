@@ -3,6 +3,11 @@
 Each usage event is priced with the newest price that was already effective when the usage
 happened (a model-specific price beats ``*``). Usage without a matching price is reported as
 unpriced: no price is ever guessed.
+
+Model input is split in two: tokens read from the provider's prompt cache are priced as
+``llm_cached_input_tokens`` (providers charge much less for them), and only the rest as
+``llm_input_tokens``. Cached tokens with no cached price are unpriced, never charged at the
+full input rate.
 """
 
 from __future__ import annotations
@@ -24,7 +29,10 @@ SELECT r.resource, p.currency,
        sum(r.qty * p.amount / p.per_quantity) AS cost
 FROM usage_events u
 CROSS JOIN LATERAL (VALUES
-    ('llm_input_tokens',  CASE WHEN u.kind = 'llm' THEN u.input_tokens::numeric END),
+    ('llm_input_tokens',
+     CASE WHEN u.kind = 'llm' THEN (u.input_tokens - u.cached_input_tokens)::numeric END),
+    ('llm_cached_input_tokens',
+     CASE WHEN u.kind = 'llm' THEN u.cached_input_tokens::numeric END),
     ('llm_output_tokens', CASE WHEN u.kind = 'llm' THEN u.output_tokens::numeric END),
     ('stt_seconds',       CASE WHEN u.kind = 'stt' THEN u.audio_seconds::numeric END),
     ('tts_characters',    CASE WHEN u.kind = 'tts' THEN u.characters::numeric END),
