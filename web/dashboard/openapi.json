@@ -1224,6 +1224,198 @@
     }
    }
   },
+  "/api/v1/learning/sources/{source_id}/labels": {
+   "get": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "Labels on one source (WP-12.4)",
+    "operationId": "list_labels_api_v1_learning_sources__source_id__labels_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "source_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Source Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/LabelOut"
+         },
+         "title": "Response List Labels Api V1 Learning Sources  Source Id  Labels Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "Add a person's label (stored as checked by them)",
+    "operationId": "add_label_api_v1_learning_sources__source_id__labels_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "source_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Source Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LabelIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LabelOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/learning/labels/{label_id}/review": {
+   "post": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "Approve or reject a proposed label",
+    "operationId": "review_label_api_v1_learning_labels__label_id__review_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "label_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Label Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LabelReviewIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LabelOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/learning/labels/accuracy": {
+   "get": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "How the model's proposed labels fared when checked",
+    "operationId": "label_accuracy_api_v1_learning_labels_accuracy_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LabelAccuracyOut"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
   "/api/v1/playbooks": {
    "get": {
     "tags": [
@@ -6634,6 +6826,180 @@
     ],
     "title": "InvitationResponse"
    },
+   "LabelAccuracyOut": {
+    "properties": {
+     "model_labels": {
+      "type": "integer",
+      "title": "Model Labels"
+     },
+     "waiting": {
+      "type": "integer",
+      "title": "Waiting"
+     },
+     "approved": {
+      "type": "integer",
+      "title": "Approved"
+     },
+     "rejected": {
+      "type": "integer",
+      "title": "Rejected"
+     },
+     "accuracy": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Accuracy"
+     }
+    },
+    "type": "object",
+    "required": [
+     "model_labels",
+     "waiting",
+     "approved",
+     "rejected",
+     "accuracy"
+    ],
+    "title": "LabelAccuracyOut",
+    "description": "How the model's proposed labels fared in a person's check (WP-12.4 done-when)."
+   },
+   "LabelIn": {
+    "properties": {
+     "kind": {
+      "$ref": "#/components/schemas/LabelKind"
+     },
+     "line_seq": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Line Seq"
+     },
+     "value": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Value"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "kind",
+     "value"
+    ],
+    "title": "LabelIn"
+   },
+   "LabelKind": {
+    "type": "string",
+    "enum": [
+     "stage",
+     "objection",
+     "outcome",
+     "qualification",
+     "next_step",
+     "talk_ratio",
+     "question_count"
+    ],
+    "title": "LabelKind"
+   },
+   "LabelOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "kind": {
+      "$ref": "#/components/schemas/LabelKind"
+     },
+     "line_seq": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Line Seq"
+     },
+     "value": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Value"
+     },
+     "proposed_by": {
+      "$ref": "#/components/schemas/LabelSource"
+     },
+     "review_status": {
+      "$ref": "#/components/schemas/ReviewStatus"
+     },
+     "reviewed_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reviewed At"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "kind",
+     "line_seq",
+     "value",
+     "proposed_by",
+     "review_status",
+     "reviewed_at",
+     "created_at"
+    ],
+    "title": "LabelOut"
+   },
+   "LabelReviewIn": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "approved",
+       "rejected"
+      ],
+      "title": "Status"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "status"
+    ],
+    "title": "LabelReviewIn"
+   },
+   "LabelSource": {
+    "type": "string",
+    "enum": [
+     "model",
+     "person"
+    ],
+    "title": "LabelSource"
+   },
    "LatencyResponse": {
     "properties": {
      "agent_turns": {
@@ -7927,6 +8293,15 @@
      "refresh_token"
     ],
     "title": "RefreshRequest"
+   },
+   "ReviewStatus": {
+    "type": "string",
+    "enum": [
+     "proposed",
+     "approved",
+     "rejected"
+    ],
+    "title": "ReviewStatus"
    },
    "Role": {
     "type": "string",

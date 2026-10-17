@@ -15,9 +15,17 @@ from aurevia.identity.dependencies import (
     SessionDep,
     SettingsDep,
 )
-from aurevia.learning.models import LearningSource
+from aurevia.learning.labels import LabelIn, LabelReviewIn
+from aurevia.learning.models import LearningLabel, LearningSource, ReviewStatus
 from aurevia.learning.redaction import GatewayDetector, RedactionError
-from aurevia.learning.schemas import LineOut, SourceDetailOut, SourceImportIn, SourceOut
+from aurevia.learning.schemas import (
+    LabelAccuracyOut,
+    LabelOut,
+    LineOut,
+    SourceDetailOut,
+    SourceImportIn,
+    SourceOut,
+)
 from aurevia.learning.service import LearningService
 
 
@@ -76,3 +84,44 @@ async def get_source(
         **_out(source).model_dump(),
         lines=[LineOut.model_validate(line, from_attributes=True) for line in lines],
     )
+
+
+def _label(label: LearningLabel) -> LabelOut:
+    return LabelOut.model_validate(label, from_attributes=True)
+
+
+@router.get("/sources/{source_id}/labels", summary="Labels on one source (WP-12.4)")
+async def list_labels(
+    source_id: uuid.UUID, principal: LearningReviewDep, session: SessionDep
+) -> list[LabelOut]:
+    labels = await LearningService(session, principal.tenant_id).labels(source_id)
+    return [_label(label) for label in labels]
+
+
+@router.post(
+    "/sources/{source_id}/labels",
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a person's label (stored as checked by them)",
+)
+async def add_label(
+    source_id: uuid.UUID, body: LabelIn, principal: LearningReviewDep, session: SessionDep
+) -> LabelOut:
+    label = await LearningService(session, principal.tenant_id).add_label(
+        source_id, body, actor_user_id=principal.user_id
+    )
+    return _label(label)
+
+
+@router.post("/labels/{label_id}/review", summary="Approve or reject a proposed label")
+async def review_label(
+    label_id: uuid.UUID, body: LabelReviewIn, principal: LearningReviewDep, session: SessionDep
+) -> LabelOut:
+    label = await LearningService(session, principal.tenant_id).review_label(
+        label_id, ReviewStatus(body.status), actor_user_id=principal.user_id
+    )
+    return _label(label)
+
+
+@router.get("/labels/accuracy", summary="How the model's proposed labels fared when checked")
+async def label_accuracy(principal: LearningReviewDep, session: SessionDep) -> LabelAccuracyOut:
+    return await LearningService(session, principal.tenant_id).label_accuracy()
