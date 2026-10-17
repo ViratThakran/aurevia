@@ -49,6 +49,12 @@ const GENERAL: NavItem[] = [
   { href: "/compliance", label: "Compliance", icon: "shield" },
   { href: "/team", label: "Team", icon: "team" },
   {
+    href: "/learning",
+    label: "Learning",
+    icon: "leaf",
+    permission: "learning.review",
+  },
+  {
     href: "/audit",
     label: "Audit log",
     icon: "file",

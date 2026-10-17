@@ -17,6 +17,7 @@ from tests.integration.conftest import (
     PASSWORD,
     PgEnv,
     add_member,
+    admin_execute,
     admin_fetch,
     bearer,
     me,
@@ -196,3 +197,92 @@ def test_no_model_means_no_import(db: PgEnv, make_settings: SettingsFactory) -> 
         c.app.state.model_gateway = None
         owner = signup(c, "owner@example.com", "Acme")
         assert _import(c, owner).status_code == 503
+
+
+def _labels_url(source_id: str) -> str:
+    return f"/api/v1/learning/sources/{source_id}/labels"
+
+
+def test_person_labels_and_value_shapes(client: TestClient, db: PgEnv) -> None:
+    owner = signup(client, "owner@example.com", "Acme")
+    source_id = _import(client, owner).json()["id"]
+    added = client.post(
+        _labels_url(source_id),
+        json={"kind": "stage", "line_seq": 2, "value": {"stage": "qualification"}},
+        headers=bearer(owner),
+    )
+    assert added.status_code == 201, added.text
+    assert (added.json()["proposed_by"], added.json()["review_status"]) == ("person", "approved")
+    call_level = client.post(
+        _labels_url(source_id),
+        json={"kind": "outcome", "value": {"result": "qualified"}},
+        headers=bearer(owner),
+    )
+    assert call_level.status_code == 201
+
+    for body in (
+        {"kind": "stage", "value": {"stage": "qualification"}},  # needs a line
+        {"kind": "stage", "line_seq": 9, "value": {"stage": "pitch"}},  # no such line
+        {"kind": "objection", "line_seq": 1, "value": {"category": "weather"}},  # unknown value
+        {"kind": "outcome", "line_seq": 0, "value": {"result": "qualified"}},  # whole call only
+        {"kind": "talk_ratio", "value": {"expert_share": 1.5}},
+    ):
+        response = client.post(_labels_url(source_id), json=body, headers=bearer(owner))
+        assert response.status_code == 422, body
+    listed = client.get(_labels_url(source_id), headers=bearer(owner)).json()
+    assert [(label["kind"], label["line_seq"]) for label in listed] == [
+        ("stage", 2),
+        ("outcome", None),
+    ]
+    audit = admin_fetch(
+        db, "SELECT count(*) AS n FROM audit_events WHERE action = 'learning.label_added'"
+    )
+    assert audit[0]["n"] == 2
+
+
+def test_model_labels_are_checked_and_accuracy_is_recorded(client: TestClient, db: PgEnv) -> None:
+    owner = signup(client, "owner@example.com", "Acme")
+    source_id = _import(client, owner).json()["id"]
+    tenant_id = me(client, owner)["tenant"]["id"]
+    # The model's proposals (written directly: the labelling model is WP-12.4's later part).
+    for seq, stage in ((0, "opening"), (1, "pitch"), (2, "qualification")):
+        admin_execute(
+            db,
+            "INSERT INTO learning_labels (id, tenant_id, source_id, line_seq, kind, value, "
+            "proposed_by, review_status) VALUES (gen_random_uuid(), "
+            f"'{tenant_id}', '{source_id}', {seq}, 'stage', "
+            f"'{{\"stage\": \"{stage}\"}}', 'model', 'proposed')",
+        )
+    url = "/api/v1/learning/labels/accuracy"
+    assert client.get(url, headers=bearer(owner)).json()["accuracy"] is None
+    labels = client.get(_labels_url(source_id), headers=bearer(owner)).json()
+    for label, status in zip(labels, ("approved", "rejected", "approved"), strict=True):
+        reviewed = client.post(
+            f"/api/v1/learning/labels/{label['id']}/review",
+            json={"status": status},
+            headers=bearer(owner),
+        )
+        assert reviewed.json()["review_status"] == status
+    assert client.get(url, headers=bearer(owner)).json() == {
+        "model_labels": 3,
+        "waiting": 0,
+        "approved": 2,
+        "rejected": 1,
+        "accuracy": 0.667,
+    }
+    bad = client.post(
+        f"/api/v1/learning/labels/{labels[0]['id']}/review",
+        json={"status": "proposed"},
+        headers=bearer(owner),
+    )
+    assert bad.status_code == 422
+
+    other = signup(client, "other@example.com", "Other Co")
+    foreign = client.post(
+        f"/api/v1/learning/labels/{labels[0]['id']}/review",
+        json={"status": "rejected"},
+        headers=bearer(other),
+    )
+    assert foreign.status_code == 404
+    assert client.get(_labels_url(source_id), headers=bearer(other)).status_code == 404
+    assert client.get(url, headers=bearer(other)).json()["model_labels"] == 0
