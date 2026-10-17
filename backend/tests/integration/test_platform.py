@@ -283,6 +283,75 @@ def test_usage_is_priced_from_versioned_prices(env: Env, db: PgEnv) -> None:
     assert tuple(privileges) == (False, False)  # past costs never change
 
 
+def test_cached_input_tokens_are_priced_separately(env: Env, db: PgEnv) -> None:
+    """Cache-read input is priced at its own rate, never at the full input rate."""
+    _make_platform_admin(db)
+    tenant_id = me(env.client, env.owner)["tenant"]["id"]
+    # One Claude request: 1M input tokens, of which 800k were read from the prompt cache.
+    admin_execute(
+        db,
+        "INSERT INTO usage_events (id, tenant_id, kind, provider, model, input_tokens, "
+        "cached_input_tokens, output_tokens, audio_seconds, characters, interrupted) VALUES "
+        f"(gen_random_uuid(), '{tenant_id}', 'llm', 'anthropic', 'claude-haiku', 1000000, "
+        "800000, 0, 0, 0, false)",
+    )
+
+    def add_price(resource: str, amount: str) -> None:
+        price = {
+            "provider": "anthropic",
+            "resource": resource,
+            "currency": "INR",
+            "amount": amount,
+            "per_quantity": 1_000_000,
+            "effective_from": (NOON_IST - timedelta(days=60)).isoformat(),
+        }
+        created = env.client.post("/api/v1/platform/prices", json=price, headers=bearer(env.owner))
+        assert created.status_code == 201, created.text
+
+    def usage() -> dict[str, Any]:
+        body: dict[str, Any] = env.client.get("/api/v1/usage", headers=bearer(env.owner)).json()
+        return body
+
+    def resource(body: dict[str, Any], name: str) -> dict[str, Any]:
+        found: dict[str, Any] = next(r for r in body["resources"] if r["resource"] == name)
+        return found
+
+    add_price("llm_input_tokens", "300")
+    # Only the 200k uncached tokens take the input rate (the full-rate bug would give 300).
+    # With no cached price yet, the 800k cached tokens are unpriced, not guessed.
+    before = usage()
+    assert before["cost"] == {"INR": "60.000000"}  # 200k x 300/M
+    assert resource(before, "llm_input_tokens")["quantity"] == "200000"
+    cached = resource(before, "llm_cached_input_tokens")
+    assert cached["quantity"] == "800000" and cached["unpriced_quantity"] == "800000"
+    assert before["fully_priced"] is False
+
+    add_price("llm_cached_input_tokens", "30")
+    after = usage()
+    assert after["cost"] == {"INR": "84.000000"}  # 200k x 300/M + 800k x 30/M
+    cached = resource(after, "llm_cached_input_tokens")
+    assert cached["cost"] == {"INR": "24.000000"} and cached["unpriced_quantity"] == "0"
+    assert resource(after, "llm_input_tokens")["cost"] == {"INR": "60.000000"}
+    assert after["fully_priced"] is True
+
+    # A monthly cost limit of 100 is not reached (charging cached tokens at the full rate
+    # would count 300 and block the next call).
+    plan = {
+        "plan_name": "capped",
+        "monthly_cost_limit": "100",
+        "cost_currency": "INR",
+        "max_concurrent_calls": 5,
+    }
+    assert (
+        env.client.put(
+            f"/api/v1/platform/tenants/{tenant_id}/plan", json=plan, headers=bearer(env.owner)
+        ).status_code
+        == 200
+    )
+    started = env.client.post("/api/v1/voice/sessions", json={}, headers=bearer(env.owner))
+    assert started.status_code == 201, started.text
+
+
 def test_phone_minutes_are_recorded_as_telephony_usage(env: Env, db: PgEnv) -> None:
     _setup_lines(env)
     call_id = _post(env, "/calls/outbound", {"lead_id": _lead(env)}).json()["call_id"]
