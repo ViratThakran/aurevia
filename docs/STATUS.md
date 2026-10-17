@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (fifth session: keys checked, buildable-now table proposed). **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (fifth session: table approved; #26 and #27 merged; WP-10.4 running). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -38,7 +38,7 @@ WP-10.1, 10.4, 10.5.
 
 ## 2. Open pull requests
 
-None open (17 Oct, after this docs PR). Merged on 17 Oct, each with CI green:
+Merged on 17 Oct, each with CI green:
 
 | PR | What |
 |---|---|
@@ -46,6 +46,8 @@ None open (17 Oct, after this docs PR). Merged on 17 Oct, each with CI green:
 | [#23](https://github.com/ViratThakran/aurevia/pull/23) | Pricing (a): reviewed price file, add-only loader, startup check |
 | [#17](https://github.com/ViratThakran/aurevia/pull/17) | Hosting stage 1: `deploy/` packaging, now loading prices after migrations. Nothing deployed: no server exists. |
 | [#24](https://github.com/ViratThakran/aurevia/pull/24) | Pricing (b): warn on unpriced usage (usage page, analytics, logs); fixes the #18 limit test |
+| [#26](https://github.com/ViratThakran/aurevia/pull/26) | Docs: the buildable-now table (section 6), approved by Virat |
+| [#27](https://github.com/ViratThakran/aurevia/pull/27) | Fix: the price loader command crashed when run on its own (as `deploy.sh` runs it). Found while setting up WP-10.4; nothing had been deployed. |
 
 Follow-ups, not started:
 - Codex P2 from #17: `deploy.sh` only warns when speech keys are missing; it should fail.
@@ -69,6 +71,18 @@ Follow-ups, not started:
   check; (b) warn on unpriced usage now, **switch to blocking before the first pilot or paying
   tenant** (`docs/phases/phase-14.md`); (c) Claude cache writes priced separately. In PRs #22
   to #24.
+- **17 Oct: build the "yes" items of section 6 early**, as an explicit exception to plan rule
+  10 and the CLAUDE.md line against building later phases early. Conditions:
+  1. One PR per work package, small enough to review.
+  2. Every new feature off by default, tested with fake providers, and marked "built, not
+     proven on real calls" here.
+  3. Order: Phase 10 work needing only Deepgram and Cartesia (10.4, then 10.1; stop if
+     Cartesia credits run out), then Phase 11, then Phase 12. Stop after Phase 12 and report
+     before Phase 13 or later.
+  4. Real model calls (WP-10.3 before/after, 10.2, the 8 scenarios) wait for the paid Gemini
+     key. If the free quota is hit, stop that item; no retry loops.
+  5. Merge each PR only after CI is green. If backend CI stalls: cancel, re-run once, report.
+  6. Update this file after each merged PR.
 - Open, waiting for Virat: Gate 10 and WP-10.5 pass marks.
 
 ### Prices (cost report and spend limit)
@@ -127,7 +141,7 @@ before/after, paced with no retries ("before" = commit `fb8afdc`, main just befo
 "after" = commit `5b17634`, main with PR #18), and the 8 sales scenarios, reporting p50, p95,
 and turns succeeded and failed.
 
-## 6. Proposed: what in Phases 11 to 18 can be built now (for review, not started)
+## 6. Approved (17 Oct): what in Phases 11 to 18 can be built now
 
 **Yes** means it can be built and tested with fake providers: no paid key, no real call, no
 outside account. Each "yes" item would go behind a switch that is **off by default**. Anything
@@ -191,10 +205,14 @@ that needs a real measurement (speed, model choice, real audio, real calls, list
 | 17 | 17.5 Run the pilot | Partly: weekly report generator, pilot tenants with caps, results page yes | Pilot companies. |
 | 18 | All items | No | The plan says start none of them before Gate 17; each waits for its trigger. |
 
-Two things to decide with this table:
-- **This changes plan rule 10** ("do not build a later phase early") and the CLAUDE.md line
-  "Do not build future phases early". Approving the table would allow building the "yes" items
-  early, switched off. Please say so explicitly when you approve.
-- **PR size.** You asked for one phase per PR. Phase 11 alone has 7 work packages, so its PR
-  would be large. The plan's rule is one work package per PR, which is easier to review.
-  Your choice; the default is one phase per PR as you asked.
+Both decisions were made on 17 Oct: build early as an exception to rule 10 (see section 3),
+and one PR per work package.
+
+### Built, not proven on real calls
+
+Features built under this approval are listed here. Each is off by default and tested only
+with fake providers.
+
+| Work package | PR | Switch (off by default) | Not proven yet |
+|---|---|---|---|
+| (none merged yet) | | | |
