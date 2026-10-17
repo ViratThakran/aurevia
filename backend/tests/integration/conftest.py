@@ -127,11 +127,51 @@ def upgrade_to_head(env: PgEnv) -> None:
     command.upgrade(alembic_config(env), "head")
 
 
+# TRUNCATE needs an exclusive lock on every table, so it waits for any connection a test left
+# inside an open transaction. Without a limit it waits forever (CI stalled this way). With one,
+# the test fails and names the connection that blocked it.
+CLEANUP_LOCK_TIMEOUT = "20s"
+
+_BLOCKERS = (
+    "SELECT a.pid, a.usename, a.state, a.wait_event_type, a.xact_start, a.query_start, "
+    "left(a.query, 200) AS query FROM pg_stat_activity a "
+    "WHERE a.datname = current_database() AND a.pid <> pg_backend_pid() "
+    "AND (a.state <> 'idle' OR a.xact_start IS NOT NULL) ORDER BY a.xact_start NULLS LAST"
+)
+
+
+async def _truncate_or_explain(dsn: str) -> None:
+    conn = await asyncpg.connect(dsn)
+    try:
+        try:
+            await conn.execute(f"SET lock_timeout = '{CLEANUP_LOCK_TIMEOUT}'")
+            await conn.execute(f"TRUNCATE {TABLES} CASCADE")
+        except asyncpg.LockNotAvailableError:
+            rows = await conn.fetch(_BLOCKERS)
+            detail = "\n".join(str(dict(row)) for row in rows) or "(no open sessions found)"
+            # Do not leave the database wedged for the tests that follow.
+            await conn.execute(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                "WHERE datname = current_database() AND pid <> pg_backend_pid() "
+                "AND usename <> current_user"
+            )
+            pytest.fail(
+                f"Cleanup waited {CLEANUP_LOCK_TIMEOUT} for a lock: a test left a database "
+                f"connection open inside a transaction. Sessions at that moment:\n{detail}",
+                pytrace=False,
+            )
+        await conn.execute("RESET lock_timeout")
+        for statement in _RESET_POLICY_VERSIONS:
+            await conn.execute(statement)
+    finally:
+        await conn.close()
+
+
 @pytest.fixture
 def db(pg: PgEnv) -> Iterator[PgEnv]:
     """The session database, emptied after each test."""
     yield pg
-    asyncio.run(_execute(pg.admin_dsn, f"TRUNCATE {TABLES} CASCADE", *_RESET_POLICY_VERSIONS))
+    asyncio.run(_truncate_or_explain(pg.admin_dsn))
 
 
 # Policy versions are platform data that tests may publish, review or retire. Back to the

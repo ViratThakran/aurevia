@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (fifth session: WP-10.4 partial; Cartesia out of credits; Phase 11 next). **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (sixth session: CI stall diagnostics; Phase 11 next). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -53,8 +53,17 @@ Follow-ups, not started:
 - Codex P2 from #17: `deploy.sh` only warns when speech keys are missing; it should fail.
 - PR #17's "not verified" list (real DNS and certificates, media ports, real audio, SIP, a real
   bucket, cron) waits for a server (WP-14.1).
-- CI stalled twice on backend `pytest` (PRs #18 and #24), and a re-run passed both times. The
-  cause is unknown; a per-test time limit would make a stall fail fast instead of hanging.
+- Backend `pytest` stalled in CI on PRs #18, #24 and #31 (and once locally); a re-run passed
+  each time. **Where:** all three CI logs stop right after the last `test_rls.py` test, in the
+  cleanup that empties the test database (`TRUNCATE`); Postgres logs "skipping analyze ... lock
+  not available" for `users`, `tenants`, `calls` and others every minute until the job is
+  cancelled. So cleanup was waiting on a lock held by a connection some earlier test left open
+  inside a transaction. **Not found:** which connection. It did not reproduce in 9 runs of
+  `test_sales_tools.py`, 48 runs of a bookkeeping-timing stress test, or a deliberately leaked
+  bookkeeping pass. **Now in place:** a 60 s per-test limit (`pytest-timeout`, dumps every
+  thread's stack), a 20 s lock limit on test cleanup that fails with the blocking connection's
+  user, state and last query, and a 15 minute limit on the CI backend job. The next stall will
+  name its cause; if it does, fix that test.
 
 ## 3. Decisions Virat has made
 
