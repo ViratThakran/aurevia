@@ -2452,6 +2452,11 @@ export interface components {
             role: "prospect" | "agent";
             /** Text */
             text: string;
+            /**
+             * Interrupted
+             * @default false
+             */
+            interrupted: boolean;
         };
         /** ValidationError */
         ValidationError: {
