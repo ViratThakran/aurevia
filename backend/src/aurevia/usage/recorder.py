@@ -31,6 +31,7 @@ async def record_llm_usage(
         model=record.requested_model,
         served_model=record.served_model,
         input_tokens=record.input_tokens,
+        cached_input_tokens=record.cached_input_tokens,
         output_tokens=record.output_tokens,
         first_token_ms=record.first_token_ms,
         interrupted=record.interrupted,

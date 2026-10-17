@@ -47,6 +47,8 @@ class FakeModelProvider:
     bookkeeping_errors: list[ProviderErrorKind] = field(default_factory=list)
     # Seconds each bookkeeping call takes (to test turns that overlap a slow pass).
     bookkeeping_delay: float = 0.0
+    # Input tokens each request reports as read from a prompt cache.
+    cached_input_tokens: int = 0
 
     def _next(self, request: ModelRequest) -> ModelResponse:
         if "# Bookkeeping pass" in request.system:
@@ -68,8 +70,10 @@ class FakeModelProvider:
             tool_calls=calls,
             model=request.model,
             usage=ModelUsage(
-                input_tokens=sum(len(m.content.split()) for m in request.messages),
+                input_tokens=sum(len(m.content.split()) for m in request.messages)
+                + self.cached_input_tokens,
                 output_tokens=len(text.split()),
+                cached_input_tokens=self.cached_input_tokens,
             ),
             stop_reason="end_turn",
         )
@@ -82,7 +86,11 @@ class FakeModelProvider:
             await asyncio.sleep(self.bookkeeping_delay)
         response = self._next(request)
         yield ModelStreamEvent(
-            usage=ModelUsage(input_tokens=response.usage.input_tokens, output_tokens=0)
+            usage=ModelUsage(
+                input_tokens=response.usage.input_tokens,
+                output_tokens=0,
+                cached_input_tokens=response.usage.cached_input_tokens,
+            )
         )
         if response.text:
             for word in response.text.split(" "):

@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from aurevia.sales.state import STATE_GOALS, SalesState
 
-PROMPT_VERSION = "voice-2026-10-10.4"
+PROMPT_VERSION = "voice-2026-10-16.2"
 
 
 @dataclass(frozen=True)
@@ -35,11 +35,22 @@ class RememberedFact:
 
 
 @dataclass(frozen=True)
+class FreeSlot:
+    """A meeting time the server looked up (through the audited slots tool) before the turn."""
+
+    start: str  # ISO 8601, the value book_meeting takes
+    spoken: str  # e.g. "Monday 12 October at 11 AM"
+
+
+@dataclass(frozen=True)
 class PromptContext:
     memories: Sequence[RememberedFact] = field(default_factory=tuple)
     prospect_name: str | None = None
     prospect_company: str | None = None
     now_spoken: str | None = None  # e.g. "Friday 9 October 2026, 3:40 PM (Asia/Kolkata)"
+    # Looked up before the turn when a meeting may be agreed, so offering a time needs no
+    # tool round. None: not looked up (the model uses get_available_slots as before).
+    free_slots: Sequence[FreeSlot] | None = None
 
 
 def _flat(text: str, limit: int) -> str:
@@ -59,7 +70,25 @@ them out as a list), and if the prospect says something has changed, go with wha
 {lines}"""
 
 
+def _free_slots(slots: Sequence[FreeSlot] | None) -> str:
+    if slots is None:
+        return ""
+    if not slots:
+        return (
+            "\n\n# Free meeting times\n"
+            "None in the coming week. Offer a call back or a colleague follow-up."
+        )
+    lines = "\n".join(f"- {_flat(s.spoken, 80)} (start: {_flat(s.start, 40)})" for s in slots)
+    return f"""
+
+# Free meeting times (looked up just now)
+Offer only these times, one or two at a time, in words. To book one the prospect accepts, call
+book_meeting with its start value; it is booked only if the tool says ok.
+{lines}"""
+
+
 def _actions(company: str, tools_enabled: bool) -> str:
+    # The same text on every turn of a call, so the rules part of the prompt stays cacheable.
     if not tools_enabled:
         return (
             "- You cannot book meetings, send emails or change any records during this call. "
@@ -70,7 +99,8 @@ def _actions(company: str, tools_enabled: bool) -> str:
         "something is booked, scheduled, saved or arranged unless the tool result says ok is "
         "true. If a tool result is not ok, say plainly that it did not work and offer an "
         "alternative, such as another time or a colleague following up.\n"
-        "- Before offering meeting times, look them up with get_available_slots; never guess.\n"
+        '- Offer only meeting times listed under "Free meeting times" (when present) or '
+        "returned by get_available_slots; never guess.\n"
         "- Stage, qualification, interest and objections are recorded for you after you speak. "
         "Just talk to the prospect; use tools when the reply depends on them (meeting times, "
         "booking, do-not-call, handing over to a colleague) and, in the same response as your "
@@ -98,6 +128,20 @@ def _setup(agent: AgentProfile) -> str:
     return "".join(f"\n\n{part}" for part in parts)
 
 
+@dataclass(frozen=True)
+class SystemPrompt:
+    """The prompt in two parts. ``stable`` is byte-identical on every turn of a call (rules,
+    company, setup, who is called, earlier-call notes), so providers can cache it; ``turn``
+    holds what changes per turn (time, stage goal, free meeting times)."""
+
+    stable: str
+    turn: str
+
+    @property
+    def text(self) -> str:
+        return self.stable + self.turn
+
+
 def build_system_prompt(
     agent: AgentProfile,
     state: SalesState,
@@ -105,6 +149,16 @@ def build_system_prompt(
     *,
     tools_enabled: bool = False,
 ) -> str:
+    return build_system_prompt_parts(agent, state, context, tools_enabled=tools_enabled).text
+
+
+def build_system_prompt_parts(
+    agent: AgentProfile,
+    state: SalesState,
+    context: PromptContext | None = None,
+    *,
+    tools_enabled: bool = False,
+) -> SystemPrompt:
     ctx = context or PromptContext()
     prospect = ""
     if ctx.prospect_name:
@@ -113,8 +167,8 @@ def build_system_prompt(
             who += f" of {_flat(ctx.prospect_company, 100)}"
         prospect = f"\n\n# Who you are calling\n{who}"
     now = f"\n\n# Current time\n{ctx.now_spoken}" if ctx.now_spoken else ""
-    return f"""You are {agent.name}, calling on behalf of {agent.company_name}. You are on a live \
-voice call: everything you write is spoken aloud by a text-to-speech voice.
+    stable = f"""You are {agent.name}, calling on behalf of {agent.company_name}. You are on a \
+live voice call: everything you write is spoken aloud by a text-to-speech voice.
 
 # Honesty
 - You are an AI assistant. Never say or imply that you are human.
@@ -149,7 +203,9 @@ times the way a person would say them aloud.
 {agent.company_description}
 
 # Goal of this call
-{agent.objective}{_setup(agent)}{prospect}{now}
+{agent.objective}{_setup(agent)}{prospect}{_notes(ctx.memories)}"""
+    turn = f"""{now}
 
 # Right now
-{STATE_GOALS[state]}{_notes(ctx.memories)}"""
+{STATE_GOALS[state]}{_free_slots(ctx.free_slots if tools_enabled else None)}"""
+    return SystemPrompt(stable=stable, turn=turn)

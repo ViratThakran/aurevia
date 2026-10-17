@@ -1,18 +1,29 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 import pytest
 
 from aurevia.conversation.engine import (
     CALL_CONNECTED,
+    ConversationEngine,
     InvalidHistoryError,
+    TurnRecords,
     Utterance,
     to_model_messages,
 )
-from aurevia.conversation.prompt import AgentProfile, build_system_prompt
+from aurevia.conversation.prompt import (
+    AgentProfile,
+    FreeSlot,
+    PromptContext,
+    build_system_prompt,
+)
 from aurevia.errors import AuthenticationError
+from aurevia.gateway import ModelGateway
 from aurevia.identity.security import AccessClaims, create_access_token
+from aurevia.providers.fakes import FakeModelProvider
+from aurevia.providers.model import ModelMessage
 from aurevia.sales.state import (
     STATE_GOALS,
     TRANSITIONS,
@@ -139,3 +150,75 @@ def test_call_token_with_wrong_secret_is_rejected() -> None:
     )
     with pytest.raises(AuthenticationError):
         decode_call_token(token, secret=TEST_JWT_SECRET)
+
+
+def _agent() -> AgentProfile:
+    return AgentProfile(
+        name="Meera",
+        company_name="Acme",
+        company_description="We sell term insurance.",
+        objective="Book a call.",
+        language="English",
+    )
+
+
+def test_listed_free_times_replace_the_lookup_instruction() -> None:
+    slots = (FreeSlot(start="2026-10-20T05:30:00+00:00", spoken="Tuesday 20 October at 11 AM"),)
+    prompt = build_system_prompt(
+        _agent(), SalesState.NEXT_STEP, PromptContext(free_slots=slots), tools_enabled=True
+    )
+    assert "# Free meeting times (looked up just now)" in prompt
+    assert "- Tuesday 20 October at 11 AM (start: 2026-10-20T05:30:00+00:00)" in prompt
+    assert 'listed under "Free meeting times"' in prompt
+    # The honesty rule about tool results is unchanged.
+    assert "unless the tool result says ok is true" in prompt
+
+
+def test_no_free_times_and_no_lookup_keep_the_old_behaviour() -> None:
+    empty = build_system_prompt(
+        _agent(), SalesState.NEXT_STEP, PromptContext(free_slots=()), tools_enabled=True
+    )
+    assert "None in the coming week" in empty
+    plain = build_system_prompt(_agent(), SalesState.NEXT_STEP, tools_enabled=True)
+    assert "# Free meeting times" not in plain
+    # The rules part of the prompt does not depend on whether times were listed (cacheable).
+    assert plain.split("# About the company")[0] == empty.split("# About the company")[0]
+
+
+def test_free_times_are_not_listed_when_tools_are_off() -> None:
+    slots = (FreeSlot(start="2026-10-20T05:30:00+00:00", spoken="Tuesday at 11"),)
+    prompt = build_system_prompt(_agent(), SalesState.NEXT_STEP, PromptContext(free_slots=slots))
+    assert "# Free meeting times" not in prompt
+    assert "You cannot book meetings" in prompt
+
+
+def test_engine_marks_the_stable_prompt_part_as_cacheable() -> None:
+    """Two turns at different stages and times share a byte-identical cacheable prefix."""
+    model = FakeModelProvider(replies=["Hello.", "Sure."])
+    gateway = ModelGateway(
+        model, model="m", max_tokens=64, first_token_timeout_seconds=2, total_timeout_seconds=4
+    )
+    engine = ConversationEngine(gateway)
+    messages = (ModelMessage(role="user", content="Hi"),)
+
+    async def turn(state: SalesState, now: str) -> None:
+        async for _ in engine.stream_reply(
+            agent=_agent(),
+            state=state,
+            messages=messages,
+            new_record=lambda: gateway.new_record({}),
+            records=TurnRecords(),
+            context=PromptContext(prospect_name="Ravi", now_spoken=now),
+        ):
+            pass
+
+    asyncio.run(turn(SalesState.DISCOVERY, "Friday 3:40 PM"))
+    asyncio.run(turn(SalesState.NEXT_STEP, "Friday 3:42 PM"))
+    first, second = model.requests
+    assert first.system_cache_prefix > 0
+    assert first.system_cache_prefix == second.system_cache_prefix
+    prefix = first.system[: first.system_cache_prefix]
+    assert prefix == second.system[: second.system_cache_prefix]
+    assert "# Right now" not in prefix and "# Current time" not in prefix
+    assert "Ravi" in prefix  # who is called stays fixed for the call
+    assert first.system != second.system  # the per-turn part did change

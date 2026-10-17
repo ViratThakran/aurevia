@@ -79,14 +79,18 @@ class ModelRequest:
     max_tokens: int
     timeout_seconds: float = 30.0
     tools: tuple[ToolSpec, ...] = ()
+    # Length of the leading part of ``system`` that is identical on every turn of a call.
+    # Providers with explicit prompt caching mark it as cacheable; 0 means do not mark.
+    system_cache_prefix: int = 0
     # Correlation ids (tenant_id, call_id, request_id, prompt_version); never content.
     metadata: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
 class ModelUsage:
-    input_tokens: int
+    input_tokens: int  # all input tokens, including any served from the provider's cache
     output_tokens: int
+    cached_input_tokens: int = 0  # the part of input_tokens read from the cache
 
 
 @dataclass(frozen=True)
