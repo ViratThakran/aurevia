@@ -109,6 +109,9 @@ class Settings(BaseSettings):
     # --- Learning from expert recordings (Phase 12, built early; off by default) ---
     # The learning API (import, review). Off: its endpoints answer 404.
     learning_enabled: bool = False
+    # Playbooks (WP-12.7, 12.A): versions and entries. Off: the API answers 404 and no
+    # playbook is used in calls.
+    playbooks_enabled: bool = False
 
     # --- Memory (Phase 4) ---
     # Full transcripts are deleted this many days after they are written (DPDP data

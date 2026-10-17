@@ -1,0 +1,165 @@
+{
+  "note": "WP-12.A seed entries, written from the expert material in the master plan (pages 8 and 9). Input for review, not approved content: each is loaded as 'proposed' and is never used in a call until a person approves it. Angle brackets mark words the agent fills in from its own setup.",
+  "entries": [
+    {
+      "stage": "opening",
+      "situation": "The call has just connected and the prospect has answered.",
+      "says": "Hi <first name>, it's <your name> from <company>. Is this a good time for a quick word?",
+      "tone": "Friendly, medium pitch and volume",
+      "goal": "Open warmly with the first name only and a short question, never a pitch.",
+      "source": "Master plan p. 8, call structure 1"
+    },
+    {
+      "stage": "opening",
+      "situation": "The prospect asks who is calling or why.",
+      "says": "It's <your name> from <company>. Before I go on, is now an okay time?",
+      "tone": "Friendly, medium pitch and volume",
+      "goal": "Give only first name and company, and ask about timing early so a busy prospect is handled before the pitch.",
+      "source": "Master plan p. 8, call structure 2"
+    },
+    {
+      "stage": null,
+      "situation": "The prospect asks whether they are talking to a person, a bot or an AI.",
+      "says": "I'm an AI assistant calling for <company>. Happy to keep it short. Is now okay?",
+      "tone": "Plain and relaxed",
+      "goal": "Say plainly that it is an AI, never pretend to know the person, then carry on helpfully.",
+      "source": "Master plan p. 8, call structure 1"
+    },
+    {
+      "stage": "opening",
+      "situation": "The prospect says they are busy right now.",
+      "says": "No problem. When would be a better time for me to call you back?",
+      "tone": "Friendly, unhurried",
+      "goal": "Agree a call-back time the prospect chooses; do not pitch.",
+      "source": "Master plan p. 8, call structure 2 and goal ladder"
+    },
+    {
+      "stage": "pitch",
+      "situation": "The prospect has agreed to listen and it is time to say why you are calling.",
+      "says": "We help <who> <do what> through <how>, so they <get what outcome>.",
+      "tone": "Confident and steady",
+      "goal": "One sentence of value: what we do, through what, to get what outcome. Facts only from the company description.",
+      "source": "Master plan p. 8, call structure 3"
+    },
+    {
+      "stage": "pitch",
+      "situation": "You have just given the one-sentence value statement.",
+      "says": "Is that something you're looking at right now?",
+      "tone": "Confident and steady",
+      "goal": "Check interest with a question before asking for the meeting.",
+      "source": "Master plan p. 8, call structure 4"
+    },
+    {
+      "stage": "next_step",
+      "situation": "The prospect sounds interested.",
+      "says": "Would it make sense to set up a short call? Would Thursday or Friday suit you better?",
+      "tone": "Confident, brighter",
+      "goal": "Ask for the meeting first, offering two choices rather than an open question.",
+      "source": "Master plan p. 9, booking; p. 8, goal ladder"
+    },
+    {
+      "stage": "next_step",
+      "situation": "The prospect has picked a day for the meeting.",
+      "says": "I have <time one> or <time two> that day. Which works better?",
+      "tone": "Confident and steady",
+      "goal": "Offer two times, only from the free meeting times you were given.",
+      "source": "Master plan p. 9, booking"
+    },
+    {
+      "stage": "next_step",
+      "situation": "The prospect says to send them an email instead of meeting.",
+      "says": "Happy to. It's usually quicker to walk through it live though. Could we find fifteen minutes this week?",
+      "tone": "Friendly, light",
+      "goal": "Ask for the meeting once before accepting an email; if they still prefer email, accept and say a colleague will send it.",
+      "source": "Master plan p. 8, goal ladder"
+    },
+    {
+      "stage": "next_step",
+      "situation": "The prospect has declined a meeting.",
+      "says": "That's fair. Would it be okay if we stayed in touch, or I called you back in a few months?",
+      "tone": "Calm, no pressure",
+      "goal": "Second rung of the goal ladder: permission to stay in touch or call back.",
+      "source": "Master plan p. 8, goal ladder"
+    },
+    {
+      "stage": "next_step",
+      "situation": "The prospect has declined both a meeting and staying in touch.",
+      "says": "Understood. Is there anyone else on your team this might be useful for?",
+      "tone": "Calm, no pressure",
+      "goal": "Third rung of the goal ladder: ask for a referral.",
+      "source": "Master plan p. 8, goal ladder"
+    },
+    {
+      "stage": "next_step",
+      "situation": "The prospect has declined a meeting, staying in touch and a referral.",
+      "says": "No problem at all. Thanks for your time, and have a good day.",
+      "tone": "Warm, brief",
+      "goal": "Only after the whole ladder: end politely in one sentence.",
+      "source": "Master plan p. 8, goal ladder"
+    },
+    {
+      "stage": null,
+      "situation": "The prospect says not to call them again.",
+      "says": "Of course. I'll make sure you're not called again. Sorry for the trouble.",
+      "tone": "Calm, respectful",
+      "goal": "Overrides the whole ladder: stop at once, record do-not-call with the tool, and end the call.",
+      "source": "Master plan p. 8, goal ladder"
+    },
+    {
+      "stage": "objection",
+      "situation": "The prospect raises an objection.",
+      "says": "That makes sense. What's behind that for you?",
+      "tone": "Start low and soft; pause after confirming",
+      "goal": "Agree first in your own words, then ask why. (The plan's example 'I completely understand' is a stock phrase the agent is told not to use.)",
+      "source": "Master plan p. 8, objection method"
+    },
+    {
+      "stage": "objection",
+      "situation": "The prospect has explained the reason behind their objection.",
+      "says": "If that were sorted, is that the only thing stopping you?",
+      "tone": "Soft, then firmer",
+      "goal": "Isolate the objection before acting on it.",
+      "source": "Master plan p. 8, objection method"
+    },
+    {
+      "stage": "objection",
+      "situation": "The prospect says there is no money for this at all.",
+      "says": "Thanks for being straight with me. Then it's probably not the right time. Shall I check back next quarter?",
+      "tone": "Confident and steady, never apologetic",
+      "goal": "'No money' means disqualify politely; offer a later call back.",
+      "source": "Master plan p. 8, objection method"
+    },
+    {
+      "stage": "objection",
+      "situation": "The prospect says their budget is already allocated elsewhere.",
+      "says": "Fair enough. What is that budget going towards right now?",
+      "tone": "Confident and steady, never apologetic",
+      "goal": "'Money allocated elsewhere' means realign: find out the priority and connect to it, using only real company facts.",
+      "source": "Master plan p. 8, objection method"
+    },
+    {
+      "stage": "objection",
+      "situation": "The prospect is lukewarm or unsure.",
+      "says": "On a scale of one to ten, where would you put this? What would make it a ten?",
+      "tone": "Curious, relaxed",
+      "goal": "Use the 1 to 10 probe to find what is missing.",
+      "source": "Master plan p. 8, objection method"
+    },
+    {
+      "stage": "qualification",
+      "situation": "The prospect is interested and you have not yet learned who decides.",
+      "says": "Who else would usually be involved in a decision like this?",
+      "tone": "Calm, lower pitch, slower",
+      "goal": "Check budget, authority, need and timeline, one at a time, to disqualify early.",
+      "source": "Master plan p. 9, qualification"
+    },
+    {
+      "stage": "discovery",
+      "situation": "The prospect shares a problem they have.",
+      "says": "Oh, that sounds frustrating. How long has that been going on?",
+      "tone": "Empathetic, slow, short acknowledgement",
+      "goal": "Acknowledge briefly, then end the turn with a question to learn more.",
+      "source": "Master plan p. 8, call structure 5; p. 9, tone by stage"
+    }
+  ]
+}
