@@ -18,7 +18,11 @@ from aurevia.platform.prices import (
 
 def test_the_reviewed_price_file_covers_every_default_model() -> None:
     entries = read_price_file(default_price_file())
+    # "canned" is the benchmark-only stand-in (refused in deployments): nothing to price.
+    assert "canned" not in REQUIRED_RESOURCES
     for provider, model in DEFAULT_MODELS.items():
+        if provider == "canned":
+            continue
         priced = {e.resource for e in entries if e.provider == provider and e.model == model}
         assert set(REQUIRED_RESOURCES[provider]) <= priced, (provider, model)
 

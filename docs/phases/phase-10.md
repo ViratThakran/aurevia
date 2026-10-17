@@ -26,7 +26,7 @@ The plan calls these pass marks for speed "to confirm" by Virat (decisions table
 | 10.1 | Restore real audio (Cartesia): re-run the Test Call, prove a real audio retry and the "audio played" state, remove the limitation from `docs/02-voice/voice-runtime.md`. | A real retry speaks and the transcript shows played, not just generated. | Blocked (keys, Cartesia credits) | none |
 | 10.2 | Model bake-off with a paid key: Flash-Lite class, current Flash, Claude Haiku class (pinned names). Time to first token, end to end, cost per scenario, style. | A default and a fallback model are chosen from numbers saved in `docs/02-voice/benchmarks/`. | Not started. On hold until Virat says go. | none |
 | 10.3 | Cut model time: smaller prompt, prompt caching, pre-fetch free slots at the next-step stage. | Model first token under 600 ms at the median, tool rounds per booking drop, `tests/test_conversation.py` and honesty rules unchanged. | Merged 17 Oct; done-when not measured yet (needs the paid key) | [#18](https://github.com/ViratThakran/aurevia/pull/18) |
-| 10.4 | Turn-handling benchmark in the simulator: fixed vs dynamic endpointing vs turn-detector model, preemptive TTS on/off, Deepgram key terms. Five runs per setting, then ten human calls for the top two. | The chosen settings and their numbers are in the voice audit doc. | Blocked (keys) | none |
+| 10.4 | Turn-handling benchmark in the simulator: fixed vs dynamic endpointing vs turn-detector model, preemptive TTS on/off, Deepgram key terms. Five runs per setting, then ten human calls for the top two. | The chosen settings and their numbers are in the voice audit doc. | Partial: settings A to D measured (canned model); D's last runs, key terms (E) and preemptive TTS (F) waiting on Cartesia credits; turn-detector model not testable here; ten human calls need Virat | this PR |
 | 10.5 | Human acceptance: five browser calls (English and Hinglish), scored with the pilot runbook's call-review rubric. | Virat records the decision in the doc. | Not started (needs Virat) | none |
 
 ## Decisions and open questions
@@ -81,12 +81,14 @@ Open questions:
 | 17 Oct | Same run, after (PR #18) | Real model, free Gemini key | 1 turn succeeded (1649 ms), then rate-limited; stopped. No comparison possible. |
 | 17 Oct | PR #18 pricing fix | Mocked usage rows, real Postgres | 1M input tokens with 800k cached cost 84, not 300 (input 300/M, cached 30/M). Spend-limit effect proven only in PR #24 (limit 100 allows, 80 blocks, outbound path) |
 | 17 Oct | PR #18 backend tests | Local Postgres 16 | 357 passed; CI green on backend, dashboard, voice worker |
+| 17 Oct | WP-10.4 turn settings (partial; full table in `docs/02-voice/benchmarks/2026-10-17-wp-10-4-turns.md`) | Canned model, real Deepgram and Cartesia, simulator; ranks settings, **not Gate 10** | Reply p50/p95: default 1656/1720 ms; preemptive off 1992/2815 ms; dynamic 1668/1868 ms; 0.8 s wait (6 calls) 1668/1768 ms |
+| 17 Oct | WP-10.4 names test, no key terms | Same | "Aurevia" and "Meera" never heard correctly in 5 calls ("Mira from Arabia") |
 
 WP-10.3 real before/after, when the paid key arrives: "before" = commit `fb8afdc`, "after" =
 commit `5b17634`.
 
 Not measured yet: Gate 10 timings, WP-10.3's 600 ms target, the 8 scenarios after PR #18,
-WP-10.1, WP-10.4, WP-10.5.
+WP-10.1, the rest of WP-10.4 (key terms, preemptive TTS, D's last runs), WP-10.5.
 
 ## Done checklist
 
