@@ -75,11 +75,15 @@ def run_once(args: argparse.Namespace, scenario: str) -> dict[str, Any]:
             str(out),
         ]
         try:
-            subprocess.run(command, timeout=args.timeout, check=False, capture_output=True)  # noqa: S603
+            done = subprocess.run(  # noqa: S603 - fixed arguments
+                command, timeout=args.timeout, check=False, capture_output=True, text=True
+            )
         except subprocess.TimeoutExpired:
             return {"scenario": scenario, "status": "timeout"}
         if not out.exists():
-            return {"scenario": scenario, "status": "no_result"}
+            # Keep the end of the error output so the reason is known (it never holds keys).
+            reason = (done.stderr or done.stdout or "").strip().splitlines()[-3:]
+            return {"scenario": scenario, "status": "no_result", "reason": reason}
         result: dict[str, Any] = json.loads(out.read_text(encoding="utf-8"))
         return result
 
@@ -88,6 +92,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="aurevia_voice.turn_benchmark")
     parser.add_argument("--label", required=True, help="the worker setting under test")
     parser.add_argument("--runs", type=int, default=5)
+    parser.add_argument("--first-run", type=int, default=1, help="number of the first run")
     parser.add_argument("--scenarios", nargs="+", default=["busy", "skeptical"])
     parser.add_argument("--email", required=True)
     parser.add_argument("--password", required=True)
@@ -98,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
 
     runs: list[dict[str, Any]] = []
     stopped = None
-    for index in range(args.runs):
+    for index in range(args.first_run - 1, args.first_run - 1 + args.runs):
         for scenario in args.scenarios:
             result = run_once(args, scenario)
             runs.append(result)
