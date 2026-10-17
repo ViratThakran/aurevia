@@ -1,4 +1,5 @@
-"""Playbook versions and entries (WP-12.7, 12.A). Tenant-owned, forced row-level security.
+"""Playbook versions, entries and per-turn offers (WP-12.7, 12.A). Tenant-owned, forced
+row-level security.
 
 A playbook belongs to one agent and is versioned. A version starts as a ``draft``; only a draft
 can change. Activating it freezes it (``active``) and retires the agent's previous active
@@ -26,9 +27,11 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    Uuid,
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aurevia.db.base import Base, UUIDPrimaryKey, one_of
@@ -106,6 +109,26 @@ class PlaybookEntry(UUIDPrimaryKey, Base):
         ForeignKey("users.id", ondelete="SET NULL")
     )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PlaybookOffer(UUIDPrimaryKey, Base):
+    """Which approved entries were offered to the model on a turn (WP-12.7 part 2), and how
+    long retrieval took. Insert-only; WP-12.8 evaluation reads it."""
+
+    __tablename__ = "playbook_offers"
+    __table_args__ = (Index("ix_playbook_offers_tenant_call", "tenant_id", "call_id", "turn"),)
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    call_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("calls.id", ondelete="CASCADE"))
+    version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("playbook_versions.id", ondelete="CASCADE")
+    )
+    turn: Mapped[int] = mapped_column(Integer)
+    entry_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid()))
+    retrieval_ms: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
