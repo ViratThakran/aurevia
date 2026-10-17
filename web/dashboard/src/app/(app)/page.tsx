@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import type { Schemas } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
+import { unpricedWarning } from "@/lib/pricing";
 import { useSession } from "@/lib/session";
 import { type AnalyticsSummary, money, percent } from "@/lib/types";
 
@@ -520,8 +521,12 @@ export default function OverviewPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-[15px] font-semibold">Reply time</h2>
               {a?.economics ? (
-                <span className="text-[11px] opacity-60">
+                <span
+                  className="text-[11px] opacity-60"
+                  title={unpricedWarning(a.economics.unpriced_usage) ?? undefined}
+                >
                   Cost {money(a.economics.cost)}
+                  {unpricedWarning(a.economics.unpriced_usage) ? " · incomplete" : ""}
                 </span>
               ) : null}
             </div>
