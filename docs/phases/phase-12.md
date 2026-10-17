@@ -1,6 +1,6 @@
 # Phase 12: Learning from the expert recordings
 
-State: **not started.** Content is from the plan only. Follows
+State: **in progress (built early, off by default, not proven on real calls).** Content is from the plan, plus build status. Follows
 `docs/07-learning/sales-learning-design.md` (design only today) and adds the audio step it
 leaves out.
 
@@ -26,7 +26,7 @@ ratio).
 |---|---|---|---|---|
 | 12.0 | Inventory (Virat): one row per recording: file, caller, caller permission proof, language, industry and product, outcome, length, prospect-consent evidence. Pick the first niche. | Sheet complete and counsel has seen the prospect-consent question. | Not started (Virat) | none |
 | 12.1 | Transcribe with timing: batch STT adapter behind the provider layer, speaker separation, word timestamps, English, Hindi, Hinglish. Audio used only to transcribe, then deleted; encrypted Indian-region storage, per-tenant keys and audited access before any audio is stored. | Three calls checked by a human and word error rate recorded. | Not started | none |
-| 12.2 | Redact names, phone numbers, emails, addresses, ID numbers (patterns plus a model detector through the Model Gateway); placeholders keep structure; delete the original. | Report shows counts only; a test seeded with fake personal data finds none left. | Not started | none |
+| 12.2 | Redact names, phone numbers, emails, addresses, ID numbers (patterns plus a model detector through the Model Gateway); placeholders keep structure; delete the original. | Report shows counts only; a test seeded with fake personal data finds none left. | Built with fakes: patterns plus a detector interface (`GatewayDetector` through the Model Gateway); counts-only report; a seeded test finds none left. Not proven on real transcripts | this PR |
 | 12.3 | New migrations for `learning_sources`, `learning_transcripts`, `learning_labels` (tenant_id, forced RLS); permissions `learning.import`, `learning.review`, `learning.publish`; CSV and JSON import. | Tenant-isolation tests pass for every new table. | Not started | none |
 | 12.4 | Label each call: stage markers, objection category, outcome, qualification facts, next step, talk ratio, question count. Model proposes; a person spot-checks about one in five. | Label accuracy against the human check recorded. | Not started | none |
 | 12.5 | Timing profile per stage: pause before replying (p10, p50, p90), overlap rate, backchannels per minute and placement, speech rate, turn length. Aggregates only, no voice fingerprints. | A profile file exists and Phase 11 reads it for defaults. | Not started | none |
