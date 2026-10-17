@@ -81,3 +81,25 @@ jobs:
       - run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+
+  deploy-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell scripts pass shellcheck
+        run: shellcheck -x -P deploy deploy/*.sh backend/scripts/backup.sh
+      - name: Production compose file validates (sample values, not secrets)
+        run: |
+          cat > "$RUNNER_TEMP/sample.env" <<'EOF'
+          POSTGRES_USER=owner
+          POSTGRES_PASSWORD=sample-password
+          POSTGRES_DB=aurevia
+          AUREVIA_APP_DB_PASSWORD=sample-app-password
+          AUREVIA_JWT_SECRET=sample-sample-sample-sample-sample-sample
+          AUREVIA_GEMINI_API_KEY=sample
+          AUREVIA_DOMAIN=example.com
+          ACME_EMAIL=ops@example.com
+          LIVEKIT_API_KEY=APIsample
+          LIVEKIT_API_SECRET=sample-sample-sample-sample-sample-sample
+          EOF
+          docker compose --env-file "$RUNNER_TEMP/sample.env" -f deploy/docker-compose.prod.yml --profile telephony --profile tools config -q

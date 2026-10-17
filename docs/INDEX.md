@@ -44,6 +44,7 @@ The detailed architecture and build plan, with diagrams, is kept as a shared doc
 - `05-operations/observability-and-operations.md`
 - `05-operations/cloud-setup.md` — cloud development, secrets, hosting requirements
 - `05-operations/hosting-plan.md` — hosting plan (Option A: one server, Compose, HTTPS)
+- `05-operations/hosting-runbook.md` — deploy, update, roll back, back up the hosted stack (`deploy/`)
 - `05-operations/deployment-and-environments.md`
 - `05-operations/disaster-recovery.md`
 

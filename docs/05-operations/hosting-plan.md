@@ -1,6 +1,6 @@
 # Hosting plan (Option A: one server, Docker Compose, HTTPS)
 
-**Status: decided (2026-10-13), nothing built yet.** The user chose Option A. Provider,
+**Status: decided (2026-10-13). Stage 1 (packaging) is written, see `hosting-runbook.md` and `../../deploy/`; it has not run on a real server. Stages 2 onward wait for the user's decisions.** The user chose Option A. Provider,
 domain and budget are still open (section 7). This plan covers staging first and then the
 pilot; it does not cover scale. Related: `cloud-setup.md`, `deployment-and-environments.md`,
 `disaster-recovery.md`, `pilot-runbook.md`, `../02-voice/telephony.md`.
@@ -60,7 +60,7 @@ uses the standard LiveKit protocol, so it is a configuration change plus pricing
 ### Stage 0: decisions (user)
 Provider and account, region, domain, monthly budget. See section 7.
 
-### Stage 1: production packaging (code, one PR; no cloud account needed)
+### Stage 1: production packaging (code, one PR; no cloud account needed) — written, awaiting review
 - `docker-compose.prod.yml`: no `--reload`, no bind mounts, `restart: unless-stopped`, health
   checks, no published Postgres/Redis ports, pinned image tags.
 - LiveKit production config: real keys, `use_external_ip`, TCP 7881 and UDP 7882, webhook key
