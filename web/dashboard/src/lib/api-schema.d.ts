@@ -420,6 +420,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/learning/sources/{source_id}/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Labels on one source (WP-12.4) */
+        get: operations["list_labels_api_v1_learning_sources__source_id__labels_get"];
+        put?: never;
+        /** Add a person's label (stored as checked by them) */
+        post: operations["add_label_api_v1_learning_sources__source_id__labels_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/labels/{label_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject a proposed label */
+        post: operations["review_label_api_v1_learning_labels__label_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/labels/accuracy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How the model's proposed labels fared when checked */
+        get: operations["label_accuracy_api_v1_learning_labels_accuracy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/playbooks": {
         parameters: {
             query?: never;
@@ -2074,6 +2126,74 @@ export interface components {
             created_at: string;
         };
         /**
+         * LabelAccuracyOut
+         * @description How the model's proposed labels fared in a person's check (WP-12.4 done-when).
+         */
+        LabelAccuracyOut: {
+            /** Model Labels */
+            model_labels: number;
+            /** Waiting */
+            waiting: number;
+            /** Approved */
+            approved: number;
+            /** Rejected */
+            rejected: number;
+            /** Accuracy */
+            accuracy: number | null;
+        };
+        /** LabelIn */
+        LabelIn: {
+            kind: components["schemas"]["LabelKind"];
+            /** Line Seq */
+            line_seq?: number | null;
+            /** Value */
+            value: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * LabelKind
+         * @enum {string}
+         */
+        LabelKind: "stage" | "objection" | "outcome" | "qualification" | "next_step" | "talk_ratio" | "question_count";
+        /** LabelOut */
+        LabelOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["LabelKind"];
+            /** Line Seq */
+            line_seq: number | null;
+            /** Value */
+            value: {
+                [key: string]: unknown;
+            };
+            proposed_by: components["schemas"]["LabelSource"];
+            review_status: components["schemas"]["ReviewStatus"];
+            /** Reviewed At */
+            reviewed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** LabelReviewIn */
+        LabelReviewIn: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "approved" | "rejected";
+        };
+        /**
+         * LabelSource
+         * @enum {string}
+         */
+        LabelSource: "model" | "person";
+        /**
          * LatencyResponse
          * @description Prospect stops speaking -> agent's first audio, against the Phase 3 targets.
          */
@@ -2522,6 +2642,11 @@ export interface components {
             /** Refresh Token */
             refresh_token: string;
         };
+        /**
+         * ReviewStatus
+         * @enum {string}
+         */
+        ReviewStatus: "proposed" | "approved" | "rejected";
         /**
          * Role
          * @enum {string}
@@ -3755,6 +3880,127 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_labels_api_v1_learning_sources__source_id__labels_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_label_api_v1_learning_sources__source_id__labels_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_label_api_v1_learning_labels__label_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                label_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabelReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    label_accuracy_api_v1_learning_labels_accuracy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelAccuracyOut"];
                 };
             };
         };

@@ -10,7 +10,14 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from aurevia.learning.models import LineSpeaker, SourceOutcome, SourceType
+from aurevia.learning.models import (
+    LabelKind,
+    LabelSource,
+    LineSpeaker,
+    ReviewStatus,
+    SourceOutcome,
+    SourceType,
+)
 
 MAX_LINES = 5000
 
@@ -104,3 +111,24 @@ class LineOut(BaseModel):
 
 class SourceDetailOut(SourceOut):
     lines: list[LineOut]
+
+
+class LabelOut(BaseModel):
+    id: uuid.UUID
+    kind: LabelKind
+    line_seq: int | None
+    value: dict[str, Any]
+    proposed_by: LabelSource
+    review_status: ReviewStatus
+    reviewed_at: datetime | None
+    created_at: datetime
+
+
+class LabelAccuracyOut(BaseModel):
+    """How the model's proposed labels fared in a person's check (WP-12.4 done-when)."""
+
+    model_labels: int
+    waiting: int
+    approved: int
+    rejected: int
+    accuracy: float | None  # approved / checked; None until something is checked
