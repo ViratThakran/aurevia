@@ -15,6 +15,7 @@ from aurevia.api.v1 import (
     leads,
     learning,
     platform,
+    playbooks,
     team,
     telephony,
     tenant,
@@ -28,6 +29,7 @@ api_v1_router.include_router(tenant.router)
 api_v1_router.include_router(voice.router)
 api_v1_router.include_router(leads.router)
 api_v1_router.include_router(learning.router)
+api_v1_router.include_router(playbooks.router)
 api_v1_router.include_router(telephony.router)
 api_v1_router.include_router(compliance.router)
 api_v1_router.include_router(campaigns.router)

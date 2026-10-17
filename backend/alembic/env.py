@@ -20,6 +20,7 @@ from aurevia.identity import models as _identity_models  # noqa: F401
 from aurevia.learning import models as _learning_models  # noqa: F401
 from aurevia.memory import models as _memory_models  # noqa: F401
 from aurevia.platform import models as _platform_models  # noqa: F401
+from aurevia.playbooks import models as _playbook_models  # noqa: F401
 from aurevia.sales import models as _sales_models  # noqa: F401
 from aurevia.telephony import models as _telephony_models  # noqa: F401
 from aurevia.usage import models as _usage_models  # noqa: F401

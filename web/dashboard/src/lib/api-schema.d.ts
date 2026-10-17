@@ -420,6 +420,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/playbooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Playbook versions, per agent, newest first */
+        get: operations["list_versions_api_v1_playbooks_get"];
+        put?: never;
+        /** Start a draft: empty, from the seed entries, or copied from a version */
+        post: operations["create_version_api_v1_playbooks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/playbooks/{version_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One playbook version with its entries */
+        get: operations["get_version_api_v1_playbooks__version_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/playbooks/{version_id}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add an entry to a draft (as proposed) */
+        post: operations["add_entry_api_v1_playbooks__version_id__entries_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/playbooks/{version_id}/entries/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change an entry in a draft; it goes back to proposed */
+        put: operations["edit_entry_api_v1_playbooks__version_id__entries__entry_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/playbooks/{version_id}/entries/{entry_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve an entry in a draft */
+        post: operations["approve_entry_api_v1_playbooks__version_id__entries__entry_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/playbooks/{version_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze a draft as the agent's active playbook (the previous one retires) */
+        post: operations["activate_api_v1_playbooks__version_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/playbooks/{version_id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire a draft or the active version */
+        post: operations["retire_api_v1_playbooks__version_id__retire_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/calls/outbound": {
         parameters: {
             query?: never;
@@ -1755,6 +1875,49 @@ export interface components {
              */
             created_at: string;
         };
+        /** EntryIn */
+        EntryIn: {
+            stage?: components["schemas"]["SalesState"] | null;
+            /** Situation */
+            situation: string;
+            /** Says */
+            says: string;
+            /** Tone */
+            tone: string;
+            /** Goal */
+            goal: string;
+            /** Source */
+            source: string;
+        };
+        /** EntryOut */
+        EntryOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Position */
+            position: number;
+            stage: components["schemas"]["SalesState"] | null;
+            /** Situation */
+            situation: string;
+            /** Says */
+            says: string;
+            /** Tone */
+            tone: string;
+            /** Goal */
+            goal: string;
+            /** Source */
+            source: string;
+            status: components["schemas"]["EntryStatus"];
+            /** Approved At */
+            approved_at: string | null;
+        };
+        /**
+         * EntryStatus
+         * @enum {string}
+         */
+        EntryStatus: "proposed" | "approved";
         /** ErasureIn */
         ErasureIn: {
             /** Received Via */
@@ -2263,6 +2426,11 @@ export interface components {
             max_concurrent_calls: number;
         };
         /**
+         * PlaybookStatus
+         * @enum {string}
+         */
+        PlaybookStatus: "draft" | "active" | "retired";
+        /**
          * PolicyOverrides
          * @description A tenant's own, stricter settings. ``None`` means "use the policy version's value".
          */
@@ -2359,6 +2527,11 @@ export interface components {
          * @enum {string}
          */
         Role: "owner" | "admin" | "member";
+        /**
+         * SalesState
+         * @enum {string}
+         */
+        SalesState: "new" | "opening" | "discovery" | "qualification" | "pitch" | "objection" | "next_step" | "follow_up" | "meeting_booked" | "human_handoff" | "completed";
         /** SignupRequest */
         SignupRequest: {
             /**
@@ -2621,6 +2794,82 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VersionCreateIn */
+        VersionCreateIn: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Seed
+             * @default false
+             */
+            seed: boolean;
+            /** Copy From Version Id */
+            copy_from_version_id?: string | null;
+        };
+        /** VersionDetailOut */
+        VersionDetailOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Version */
+            version: number;
+            status: components["schemas"]["PlaybookStatus"];
+            /** Notes */
+            notes: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Activated At */
+            activated_at: string | null;
+            /** Retired At */
+            retired_at: string | null;
+            /** Entries */
+            entries: components["schemas"]["EntryOut"][];
+        };
+        /** VersionOut */
+        VersionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Version */
+            version: number;
+            status: components["schemas"]["PlaybookStatus"];
+            /** Notes */
+            notes: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Activated At */
+            activated_at: string | null;
+            /** Retired At */
+            retired_at: string | null;
         };
         /** VoiceOption */
         VoiceOption: {
@@ -3497,6 +3746,266 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SourceDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_versions_api_v1_playbooks_get: {
+        parameters: {
+            query?: {
+                agent_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_version_api_v1_playbooks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_version_api_v1_playbooks__version_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_entry_api_v1_playbooks__version_id__entries_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_entry_api_v1_playbooks__version_id__entries__entry_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_entry_api_v1_playbooks__version_id__entries__entry_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_api_v1_playbooks__version_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retire_api_v1_playbooks__version_id__retire_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionOut"];
                 };
             };
             /** @description Validation Error */

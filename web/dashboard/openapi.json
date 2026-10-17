@@ -1224,6 +1224,437 @@
     }
    }
   },
+  "/api/v1/playbooks": {
+   "get": {
+    "tags": [
+     "playbooks"
+    ],
+    "summary": "Playbook versions, per agent, newest first",
+    "operationId": "list_versions_api_v1_playbooks_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "agent_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "uuid"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Agent Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/VersionOut"
+         },
+         "title": "Response List Versions Api V1 Playbooks Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "playbooks"
+    ],
+    "summary": "Start a draft: empty, from the seed entries, or copied from a version",
+    "operationId": "create_version_api_v1_playbooks_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VersionCreateIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VersionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/playbooks/{version_id}": {
+   "get": {
+    "tags": [
+     "playbooks"
+    ],
+    "summary": "One playbook version with its entries",
+    "operationId": "get_version_api_v1_playbooks__version_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "version_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Version Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VersionDetailOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/playbooks/{version_id}/entries": {
+   "post": {
+    "tags": [
+     "playbooks"
+    ],
+    "summary": "Add an entry to a draft (as proposed)",
+    "operationId": "add_entry_api_v1_playbooks__version_id__entries_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "version_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Version Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EntryIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EntryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/playbooks/{version_id}/entries/{entry_id}": {
+   "put": {
+    "tags": [
+     "playbooks"
+    ],
+    "summary": "Change an entry in a draft; it goes back to proposed",
+    "operationId": "edit_entry_api_v1_playbooks__version_id__entries__entry_id__put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "version_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Version Id"
+      }
+     },
+     {
+      "name": "entry_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Entry Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EntryIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EntryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/playbooks/{version_id}/entries/{entry_id}/approve": {
+   "post": {
+    "tags": [
+     "playbooks"
+    ],
+    "summary": "Approve an entry in a draft",
+    "operationId": "approve_entry_api_v1_playbooks__version_id__entries__entry_id__approve_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "version_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Version Id"
+      }
+     },
+     {
+      "name": "entry_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Entry Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EntryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/playbooks/{version_id}/activate": {
+   "post": {
+    "tags": [
+     "playbooks"
+    ],
+    "summary": "Freeze a draft as the agent's active playbook (the previous one retires)",
+    "operationId": "activate_api_v1_playbooks__version_id__activate_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "version_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Version Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VersionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/playbooks/{version_id}/retire": {
+   "post": {
+    "tags": [
+     "playbooks"
+    ],
+    "summary": "Retire a draft or the active version",
+    "operationId": "retire_api_v1_playbooks__version_id__retire_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "version_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Version Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VersionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/calls/outbound": {
    "post": {
     "tags": [
@@ -5726,6 +6157,140 @@
     ],
     "title": "DoNotCallResponse"
    },
+   "EntryIn": {
+    "properties": {
+     "stage": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SalesState"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "situation": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Situation"
+     },
+     "says": {
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Says"
+     },
+     "tone": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Tone"
+     },
+     "goal": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Goal"
+     },
+     "source": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Source"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "situation",
+     "says",
+     "tone",
+     "goal",
+     "source"
+    ],
+    "title": "EntryIn"
+   },
+   "EntryOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "position": {
+      "type": "integer",
+      "title": "Position"
+     },
+     "stage": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SalesState"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "situation": {
+      "type": "string",
+      "title": "Situation"
+     },
+     "says": {
+      "type": "string",
+      "title": "Says"
+     },
+     "tone": {
+      "type": "string",
+      "title": "Tone"
+     },
+     "goal": {
+      "type": "string",
+      "title": "Goal"
+     },
+     "source": {
+      "type": "string",
+      "title": "Source"
+     },
+     "status": {
+      "$ref": "#/components/schemas/EntryStatus"
+     },
+     "approved_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Approved At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "position",
+     "stage",
+     "situation",
+     "says",
+     "tone",
+     "goal",
+     "source",
+     "status",
+     "approved_at"
+    ],
+    "title": "EntryOut"
+   },
+   "EntryStatus": {
+    "type": "string",
+    "enum": [
+     "proposed",
+     "approved"
+    ],
+    "title": "EntryStatus"
+   },
    "ErasureIn": {
     "properties": {
      "received_via": {
@@ -7046,6 +7611,15 @@
     ],
     "title": "PlanIn"
    },
+   "PlaybookStatus": {
+    "type": "string",
+    "enum": [
+     "draft",
+     "active",
+     "retired"
+    ],
+    "title": "PlaybookStatus"
+   },
    "PolicyOverrides": {
     "properties": {
      "window_start": {
@@ -7362,6 +7936,23 @@
      "member"
     ],
     "title": "Role"
+   },
+   "SalesState": {
+    "type": "string",
+    "enum": [
+     "new",
+     "opening",
+     "discovery",
+     "qualification",
+     "pitch",
+     "objection",
+     "next_step",
+     "follow_up",
+     "meeting_booked",
+     "human_handoff",
+     "completed"
+    ],
+    "title": "SalesState"
    },
    "SignupRequest": {
     "properties": {
@@ -8069,6 +8660,184 @@
      "type"
     ],
     "title": "ValidationError"
+   },
+   "VersionCreateIn": {
+    "properties": {
+     "agent_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Agent Id"
+     },
+     "notes": {
+      "type": "string",
+      "maxLength": 500,
+      "title": "Notes",
+      "default": ""
+     },
+     "seed": {
+      "type": "boolean",
+      "title": "Seed",
+      "default": false
+     },
+     "copy_from_version_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Copy From Version Id"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "agent_id"
+    ],
+    "title": "VersionCreateIn"
+   },
+   "VersionDetailOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "agent_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Agent Id"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "status": {
+      "$ref": "#/components/schemas/PlaybookStatus"
+     },
+     "notes": {
+      "type": "string",
+      "title": "Notes"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "activated_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Activated At"
+     },
+     "retired_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Retired At"
+     },
+     "entries": {
+      "items": {
+       "$ref": "#/components/schemas/EntryOut"
+      },
+      "type": "array",
+      "title": "Entries"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "agent_id",
+     "version",
+     "status",
+     "notes",
+     "created_at",
+     "activated_at",
+     "retired_at",
+     "entries"
+    ],
+    "title": "VersionDetailOut"
+   },
+   "VersionOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "agent_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Agent Id"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "status": {
+      "$ref": "#/components/schemas/PlaybookStatus"
+     },
+     "notes": {
+      "type": "string",
+      "title": "Notes"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "activated_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Activated At"
+     },
+     "retired_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Retired At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "agent_id",
+     "version",
+     "status",
+     "notes",
+     "created_at",
+     "activated_at",
+     "retired_at"
+    ],
+    "title": "VersionOut"
    },
    "VoiceOption": {
     "properties": {
