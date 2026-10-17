@@ -45,8 +45,8 @@ Open questions:
 - Confirm the Gate 10 pass marks and the WP-10.5 pass mark (proposed: average 4 of 5 on
   naturalness and timing, no call with a safety failure).
 - How end-of-speech-to-first-audio is measured on the real stack: **to confirm**.
-- Pricing follow-ups proposed 17 Oct, awaiting Virat's choice: seed prices for the models in
-  use; a spend-limit check that flags unpriced usage; Claude cache-write pricing.
+- Pricing follow-ups chosen 17 Oct and built in PRs #22 (cache writes), #23 (price file,
+  loader, startup check) and #24 (warn on unpriced usage; block before the first pilot).
 
 ## Parts of the system it touches
 
@@ -79,7 +79,7 @@ Open questions:
 | 16 to 17 Oct | PR #18 fresh prompt tokens per request, warm cache | Offline estimate (about 4 characters per token) | Next step ~1,855 → ~185; pitch ~1,860 → ~40 |
 | 17 Oct | Rough paced run, 2 scenarios, before (main) | Real model, free Gemini key | 6 of 6 turns succeeded; first word 1204, 1374, 2008, 2256, 2907, 3475 ms; p50 ≈ 2.1 s, p95 ≈ 3.5 s |
 | 17 Oct | Same run, after (PR #18) | Real model, free Gemini key | 1 turn succeeded (1649 ms), then rate-limited; stopped. No comparison possible. |
-| 17 Oct | PR #18 pricing fix | Mocked usage rows, real Postgres | 1M input tokens with 800k cached cost 84, not 300 (input 300/M, cached 30/M) |
+| 17 Oct | PR #18 pricing fix | Mocked usage rows, real Postgres | 1M input tokens with 800k cached cost 84, not 300 (input 300/M, cached 30/M). Spend-limit effect proven only in PR #24 (limit 100 allows, 80 blocks, outbound path) |
 | 17 Oct | PR #18 backend tests | Local Postgres 16 | 357 passed; CI green on backend, dashboard, voice worker |
 
 WP-10.3 real before/after, when the paid key arrives: "before" = commit `fb8afdc`, "after" =

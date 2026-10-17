@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (third session). **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (fourth session). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -28,6 +28,9 @@ the 8 sales scenarios pass, and Virat signs off the human microphone test.
 - Rough paced run on the free key, before PR #18: 6 of 6 turns, p50 ≈ 2.1 s, p95 ≈ 3.5 s. After:
   1 turn (1649 ms), then rate-limited. Not comparable, not Gate 10.
 - Pricing fix: 1M input tokens with 800k cached now costs 84, not 300 (input 300/M, cached 30/M).
+  Correction: the earlier claim that a cost limit of 100 "no longer blocks the next call" was
+  not tested (the test used a browser session; limits are checked on outbound calls). Fixed
+  and proven in PR #24: limit 100 allows, 80 blocks.
 - Backend tests: 357 passed locally (with database tests); CI green on all three jobs.
 
 **Not measured:** Gate 10 timings, WP-10.3's 600 ms target, the 8 scenarios after PR #18,
@@ -37,8 +40,11 @@ WP-10.1, 10.4, 10.5.
 
 | PR | What | Waiting for |
 |---|---|---|
-| [#17](https://github.com/ViratThakran/aurevia/pull/17) | Hosting stage 1: `deploy/` packaging (relates to WP-14.1) | CI backend tests failed on 16 Oct (likely the weekday slots test fixed by #18; needs a rebase on main and a re-run). Codex P2: `deploy.sh` only warns when speech keys are missing, should fail. A real server and domain to verify. Not deploying until told. |
-| This docs PR | Phase files 10 to 18, this update, CLAUDE.md line | Virat's review and "merge PR N". |
+| [#22](https://github.com/ViratThakran/aurevia/pull/22) | Pricing (c): Claude cache writes priced separately (migration 0011) | CI green. "merge PR 22". Merge first. |
+| [#23](https://github.com/ViratThakran/aurevia/pull/23) | Pricing (a): reviewed price file, add-only loader, startup check | CI green. Stacked on #22: after #22 merges, Claude retargets it to `main`. Then "merge PR 23". Gemini prices stay unverified (not loaded) until checked on Google's page. |
+| [#24](https://github.com/ViratThakran/aurevia/pull/24) | Pricing (b): warn on unpriced usage (usage page, analytics, logs); fixes the #18 limit test | CI result in the session report. Independent. "merge PR 24". |
+| [#17](https://github.com/ViratThakran/aurevia/pull/17) | Hosting stage 1: `deploy/` packaging (relates to WP-14.1) | CI green (main merged in; new step loads prices after migrations). Merge **after #23** (the step needs the loader). Codex P2: `deploy.sh` only warns when speech keys are missing, should fail. A real server and domain to verify. Not deploying until told. |
+| This docs PR | STATUS.md and phase-10.md for the pricing session | "merge PR N". |
 
 ## 3. Decisions Virat has made
 
@@ -51,8 +57,11 @@ WP-10.1, 10.4, 10.5.
 - If a provider hits a quota: stop and report. No retry loops; benchmark runs are paced.
 - A free-key paced run is a rough check only, not the Gate 10 measurement.
 - One PR per piece of work. Merge only on an explicit "merge PR N". No auto-merge, no deploy.
-- Open, waiting for Virat: Gate 10 and WP-10.5 pass marks; the pricing proposals of 17 Oct
-  (price seed, spend limit with unpriced usage, Claude cache-write pricing).
+- Pricing (17 Oct): (a) reviewed price file + add-only loader run by `deploy.sh` + startup
+  check; (b) warn on unpriced usage now, **switch to blocking before the first pilot or paying
+  tenant** (`docs/phases/phase-14.md`); (c) Claude cache writes priced separately. In PRs #22
+  to #24.
+- Open, waiting for Virat: Gate 10 and WP-10.5 pass marks.
 
 ### Prices (cost report and spend limit)
 
@@ -69,7 +78,10 @@ WP-10.1, 10.4, 10.5.
   | `gemini` / `gemini-3.5-flash` (default) | 1.50 | 0.15 | 9.00 | Third-party sites only, **check Google's page first** |
   | `anthropic` / `claude-opus-5-5` | 4.00 | 0.20 | 20.00 | Anthropic pricing page, 17 Oct 2026 |
 
-- Known gap: Anthropic cache *writes* cost 1.25x input but are priced at the normal input rate.
+- Once #22 to #24 merge: cache writes have their own price (`llm_cache_write_input_tokens`), the
+  reviewed prices load on deploy (verified ones only), the API warns at startup about missing
+  prices, and unpriced usage is shown with its amount. Plan limits apply to outbound phone
+  calls, not browser test calls.
 
 ## 4. Blocked
 
