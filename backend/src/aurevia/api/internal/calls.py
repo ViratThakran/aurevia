@@ -32,7 +32,7 @@ from aurevia.conversation.engine import (
     Utterance,
     to_model_messages,
 )
-from aurevia.conversation.prompt import FreeSlot, PromptContext, RememberedFact
+from aurevia.conversation.prompt import FreeSlot, PlaybookHint, PromptContext, RememberedFact
 from aurevia.conversation.turn_taking import classify
 from aurevia.db.session import Database, set_tenant_context
 from aurevia.errors import AureviaError, ConflictError, ServiceUnavailableError
@@ -42,6 +42,8 @@ from aurevia.memory.jobs import safe_remember_call
 from aurevia.memory.models import Lead, Speaker
 from aurevia.memory.schemas import TranscriptIn
 from aurevia.memory.service import Line, MemoryService, TranscriptService
+from aurevia.playbooks.models import PlaybookOffer
+from aurevia.playbooks.retrieval import offer_for_turn
 from aurevia.providers.model import ToolCall
 from aurevia.sales.scheduling import hours_for, spoken
 from aurevia.sales.state import SalesState, after_prospect_turn
@@ -296,6 +298,37 @@ async def take_turn(
     state = after_prospect_turn(SalesState(call.sales_state))
     call.sales_state = state
     call.turn_count += 1
+    if settings.playbooks_enabled:
+        # WP-12.7 (off by default): approved entries of the agent's active playbook, offered
+        # below the honesty rules; what was offered is recorded with the turn.
+        retrieval_started = time.monotonic()
+        offer = await offer_for_turn(
+            session,
+            tenant_id=principal.tenant_id,
+            agent_id=call.agent_id,
+            state=state,
+            prospect_said=next(
+                (u.text for u in reversed(body.history) if u.role == "prospect"), ""
+            ),
+        )
+        if offer is not None:
+            context = replace(
+                context,
+                playbook=tuple(
+                    PlaybookHint(situation=e.situation, says=e.says, tone=e.tone, goal=e.goal)
+                    for e in offer.entries
+                ),
+            )
+            session.add(
+                PlaybookOffer(
+                    tenant_id=principal.tenant_id,
+                    call_id=call_id,
+                    version_id=offer.version_id,
+                    turn=call.turn_count,
+                    entry_ids=[e.id for e in offer.entries],
+                    retrieval_ms=round((time.monotonic() - retrieval_started) * 1000),
+                )
+            )
     profile = profile_of(agent)
     await session.commit()
     prepared_ms = round((time.monotonic() - turn_started) * 1000)

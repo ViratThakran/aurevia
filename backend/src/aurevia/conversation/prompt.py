@@ -49,6 +49,16 @@ class FreeSlot:
 
 
 @dataclass(frozen=True)
+class PlaybookHint:
+    """An approved playbook entry offered this turn (WP-12.7). Guidance, never a fact."""
+
+    situation: str
+    says: str
+    tone: str
+    goal: str
+
+
+@dataclass(frozen=True)
 class PromptContext:
     memories: Sequence[RememberedFact] = field(default_factory=tuple)
     prospect_name: str | None = None
@@ -59,6 +69,8 @@ class PromptContext:
     free_slots: Sequence[FreeSlot] | None = None
     # WP-11.3 (off by default): allow a short, varied reaction at the start of some replies.
     reactions: bool = False
+    # WP-12.7 (off by default): at most three approved playbook entries for this moment.
+    playbook: Sequence[PlaybookHint] = field(default_factory=tuple)
 
 
 _NO_STOCK_OPENERS = """\
@@ -109,6 +121,24 @@ def _free_slots(slots: Sequence[FreeSlot] | None) -> str:
 # Free meeting times (looked up just now)
 Offer only these times, one or two at a time, in words. To book one the prospect accepts, call
 book_meeting with its start value; it is booked only if the tool says ok.
+{lines}"""
+
+
+def _playbook(hints: Sequence[PlaybookHint]) -> str:
+    if not hints:
+        return ""
+    lines = "\n".join(
+        f'- When: {_flat(h.situation, 300)} Something like: "{_flat(h.says, 500)}" '
+        f"Tone: {_flat(h.tone, 100)}. Aim: {_flat(h.goal, 200)}"
+        for h in hints[:3]
+    )
+    return f"""
+
+# Ideas from expert callers (may fit this moment)
+Suggestions only. Everything under "Honesty" and "How to speak" comes first, and "About the
+company" is the only source of facts: never state a price, feature, client or date because an
+idea mentions it. Use at most one idea, in your own words, or none if it does not fit. Words in
+angle brackets stand for details from your own setup; never say them as written.
 {lines}"""
 
 
@@ -230,5 +260,6 @@ times the way a person would say them aloud.
     turn = f"""{now}
 
 # Right now
-{STATE_GOALS[state]}{_free_slots(ctx.free_slots if tools_enabled else None)}"""
+{STATE_GOALS[state]}{_free_slots(ctx.free_slots if tools_enabled else None)}\
+{_playbook(ctx.playbook)}"""
     return SystemPrompt(stable=stable, turn=turn)
