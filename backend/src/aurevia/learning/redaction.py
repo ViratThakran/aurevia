@@ -109,13 +109,13 @@ def _merge(spans: Sequence[Span], length: int) -> list[Span]:
     return chosen
 
 
-async def redact(text: str, detector: Detector | None = None) -> RedactionResult:
-    spans = _pattern_spans(text)
-    if detector is not None:
-        spans.extend(await detector.detect(text))
-    placeholders: dict[tuple[Kind, str], str] = {}
-    per_kind: Counter[Kind] = Counter()
-    counts: Counter[str] = Counter()
+def _substitute(
+    text: str,
+    spans: Sequence[Span],
+    placeholders: dict[tuple[Kind, str], str],
+    per_kind: Counter[Kind],
+    counts: Counter[str],
+) -> str:
     out: list[str] = []
     cursor = 0
     for span in _merge(spans, len(text)):
@@ -129,7 +129,44 @@ async def redact(text: str, detector: Detector | None = None) -> RedactionResult
         counts[span.kind.value] += 1
         cursor = span.end
     out.append(text[cursor:])
-    return RedactionResult(text="".join(out), counts=dict(counts))
+    return "".join(out)
+
+
+async def redact(text: str, detector: Detector | None = None) -> RedactionResult:
+    spans = _pattern_spans(text)
+    if detector is not None:
+        spans.extend(await detector.detect(text))
+    counts: Counter[str] = Counter()
+    redacted = _substitute(text, spans, {}, Counter(), counts)
+    return RedactionResult(text=redacted, counts=dict(counts))
+
+
+async def redact_lines(
+    texts: Sequence[str], detector: Detector | None = None
+) -> tuple[list[str], dict[str, int]]:
+    """Redact a whole transcript: one detector call for all lines, each line redacted on its
+    own (so nothing runs across lines), and one placeholder per value across every line."""
+    lines = [" ".join(t.split()) for t in texts]  # no line breaks inside a line
+    found: list[tuple[Kind, str]] = []
+    if detector is not None:
+        joined = "\n".join(lines)
+        for span in await detector.detect(joined):
+            value = joined[span.start : span.end]
+            if value and "\n" not in value:
+                found.append((span.kind, value))
+    placeholders: dict[tuple[Kind, str], str] = {}
+    per_kind: Counter[Kind] = Counter()
+    counts: Counter[str] = Counter()
+    out = []
+    for line in lines:
+        spans = _pattern_spans(line)
+        for kind, value in found:
+            spans += [
+                Span(kind, m.start(), m.end())
+                for m in re.finditer(re.escape(value), line, re.IGNORECASE)
+            ]
+        out.append(_substitute(line, spans, placeholders, per_kind, counts))
+    return out, dict(counts)
 
 
 DETECTOR_SYSTEM = """You find personal data in a sales-call transcript. Reply with JSON only:

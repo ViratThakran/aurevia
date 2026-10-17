@@ -385,6 +385,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/learning/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Imported learning sources, newest first */
+        get: operations["list_sources_api_v1_learning_sources_get"];
+        put?: never;
+        /** Import a transcript; it is redacted before anything is stored */
+        post: operations["import_source_api_v1_learning_sources_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning/sources/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One source with its redacted transcript */
+        get: operations["get_source_api_v1_learning_sources__source_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/calls/outbound": {
         parameters: {
             query?: never;
@@ -1968,6 +2003,38 @@ export interface components {
             /** Erased At */
             erased_at?: string | null;
         };
+        /** LineIn */
+        LineIn: {
+            speaker: components["schemas"]["LineSpeaker"];
+            /** Text */
+            text: string;
+            /** Start Ms */
+            start_ms?: number | null;
+            /** End Ms */
+            end_ms?: number | null;
+            /** Word Times Ms */
+            word_times_ms?: [
+                number,
+                number
+            ][] | null;
+        };
+        /** LineOut */
+        LineOut: {
+            /** Seq */
+            seq: number;
+            speaker: components["schemas"]["LineSpeaker"];
+            /** Text */
+            text: string;
+            /** Start Ms */
+            start_ms: number | null;
+            /** End Ms */
+            end_ms: number | null;
+        };
+        /**
+         * LineSpeaker
+         * @enum {string}
+         */
+        LineSpeaker: "expert" | "prospect" | "other";
         /** LivenessResponse */
         LivenessResponse: {
             /**
@@ -2120,7 +2187,7 @@ export interface components {
          * Permission
          * @enum {string}
          */
-        Permission: "calls.place" | "leads.manage" | "leads.privacy" | "campaigns.manage" | "agents.manage" | "numbers.manage" | "compliance.manage" | "team.manage" | "audit.read" | "analytics.read";
+        Permission: "calls.place" | "leads.manage" | "leads.privacy" | "campaigns.manage" | "agents.manage" | "numbers.manage" | "compliance.manage" | "team.manage" | "audit.read" | "analytics.read" | "learning.import" | "learning.review" | "learning.publish";
         /** PhoneNumberIn */
         PhoneNumberIn: {
             /** E164 */
@@ -2306,6 +2373,90 @@ export interface components {
             /** Tenant Name */
             tenant_name: string;
         };
+        /** SourceDetailOut */
+        SourceDetailOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            source_type: components["schemas"]["SourceType"];
+            /** Title */
+            title: string;
+            /** Language */
+            language: string;
+            /** Industry */
+            industry: string | null;
+            outcome: components["schemas"]["SourceOutcome"];
+            /** Line Count */
+            line_count: number;
+            /** Redaction Counts */
+            redaction_counts: {
+                [key: string]: number;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Lines */
+            lines: components["schemas"]["LineOut"][];
+        };
+        /** SourceImportIn */
+        SourceImportIn: {
+            source_type: components["schemas"]["SourceType"];
+            /** Title */
+            title: string;
+            /** Language */
+            language: string;
+            /** Industry */
+            industry?: string | null;
+            /** @default unknown */
+            outcome: components["schemas"]["SourceOutcome"];
+            /** Caller Permission Confirmed */
+            caller_permission_confirmed: boolean;
+            /** Lines */
+            lines?: components["schemas"]["LineIn"][] | null;
+            /** Lines Csv */
+            lines_csv?: string | null;
+        };
+        /** SourceOut */
+        SourceOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            source_type: components["schemas"]["SourceType"];
+            /** Title */
+            title: string;
+            /** Language */
+            language: string;
+            /** Industry */
+            industry: string | null;
+            outcome: components["schemas"]["SourceOutcome"];
+            /** Line Count */
+            line_count: number;
+            /** Redaction Counts */
+            redaction_counts: {
+                [key: string]: number;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * SourceOutcome
+         * @enum {string}
+         */
+        SourceOutcome: "booked" | "not_booked" | "unknown";
+        /**
+         * SourceType
+         * @enum {string}
+         */
+        SourceType: "call" | "talk";
         /** TenantResponse */
         TenantResponse: {
             /**
@@ -3252,6 +3403,101 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sources_api_v1_learning_sources_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_source_api_v1_learning_sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_source_api_v1_learning_sources__source_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceDetailOut"];
+                };
             };
             /** @description Validation Error */
             422: {

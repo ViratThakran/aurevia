@@ -1078,6 +1078,152 @@
     }
    }
   },
+  "/api/v1/learning/sources": {
+   "post": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "Import a transcript; it is redacted before anything is stored",
+    "operationId": "import_source_api_v1_learning_sources_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SourceImportIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "Imported learning sources, newest first",
+    "operationId": "list_sources_api_v1_learning_sources_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 500,
+       "minimum": 1,
+       "default": 100,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/SourceOut"
+         },
+         "title": "Response List Sources Api V1 Learning Sources Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/learning/sources/{source_id}": {
+   "get": {
+    "tags": [
+     "learning"
+    ],
+    "summary": "One source with its redacted transcript",
+    "operationId": "get_source_api_v1_learning_sources__source_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "source_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Source Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceDetailOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/calls/outbound": {
    "post": {
     "tags": [
@@ -6235,6 +6381,132 @@
     ],
     "title": "LeadResponse"
    },
+   "LineIn": {
+    "properties": {
+     "speaker": {
+      "$ref": "#/components/schemas/LineSpeaker"
+     },
+     "text": {
+      "type": "string",
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Text"
+     },
+     "start_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 86400000.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start Ms"
+     },
+     "end_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 86400000.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Ms"
+     },
+     "word_times_ms": {
+      "anyOf": [
+       {
+        "items": {
+         "prefixItems": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "integer"
+          }
+         ],
+         "type": "array",
+         "maxItems": 2,
+         "minItems": 2
+        },
+        "type": "array",
+        "maxItems": 4000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Word Times Ms"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "speaker",
+     "text"
+    ],
+    "title": "LineIn"
+   },
+   "LineOut": {
+    "properties": {
+     "seq": {
+      "type": "integer",
+      "title": "Seq"
+     },
+     "speaker": {
+      "$ref": "#/components/schemas/LineSpeaker"
+     },
+     "text": {
+      "type": "string",
+      "title": "Text"
+     },
+     "start_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start Ms"
+     },
+     "end_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Ms"
+     }
+    },
+    "type": "object",
+    "required": [
+     "seq",
+     "speaker",
+     "text",
+     "start_ms",
+     "end_ms"
+    ],
+    "title": "LineOut"
+   },
+   "LineSpeaker": {
+    "type": "string",
+    "enum": [
+     "expert",
+     "prospect",
+     "other"
+    ],
+    "title": "LineSpeaker"
+   },
    "LivenessResponse": {
     "properties": {
      "status": {
@@ -6569,7 +6841,10 @@
      "compliance.manage",
      "team.manage",
      "audit.read",
-     "analytics.read"
+     "analytics.read",
+     "learning.import",
+     "learning.review",
+     "learning.publish"
     ],
     "title": "Permission"
    },
@@ -7128,6 +7403,233 @@
      "tenant_name"
     ],
     "title": "SignupRequest"
+   },
+   "SourceDetailOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "source_type": {
+      "$ref": "#/components/schemas/SourceType"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "language": {
+      "type": "string",
+      "title": "Language"
+     },
+     "industry": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Industry"
+     },
+     "outcome": {
+      "$ref": "#/components/schemas/SourceOutcome"
+     },
+     "line_count": {
+      "type": "integer",
+      "title": "Line Count"
+     },
+     "redaction_counts": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Redaction Counts"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "lines": {
+      "items": {
+       "$ref": "#/components/schemas/LineOut"
+      },
+      "type": "array",
+      "title": "Lines"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "source_type",
+     "title",
+     "language",
+     "industry",
+     "outcome",
+     "line_count",
+     "redaction_counts",
+     "created_at",
+     "lines"
+    ],
+    "title": "SourceDetailOut"
+   },
+   "SourceImportIn": {
+    "properties": {
+     "source_type": {
+      "$ref": "#/components/schemas/SourceType"
+     },
+     "title": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title"
+     },
+     "language": {
+      "type": "string",
+      "maxLength": 10,
+      "minLength": 2,
+      "pattern": "^[a-zA-Z]{2,3}(-[A-Za-z]{2})?$",
+      "title": "Language"
+     },
+     "industry": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 100
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Industry"
+     },
+     "outcome": {
+      "$ref": "#/components/schemas/SourceOutcome",
+      "default": "unknown"
+     },
+     "caller_permission_confirmed": {
+      "type": "boolean",
+      "title": "Caller Permission Confirmed"
+     },
+     "lines": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/LineIn"
+        },
+        "type": "array",
+        "maxItems": 5000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lines"
+     },
+     "lines_csv": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 2000000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lines Csv"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "source_type",
+     "title",
+     "language",
+     "caller_permission_confirmed"
+    ],
+    "title": "SourceImportIn"
+   },
+   "SourceOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "source_type": {
+      "$ref": "#/components/schemas/SourceType"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "language": {
+      "type": "string",
+      "title": "Language"
+     },
+     "industry": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Industry"
+     },
+     "outcome": {
+      "$ref": "#/components/schemas/SourceOutcome"
+     },
+     "line_count": {
+      "type": "integer",
+      "title": "Line Count"
+     },
+     "redaction_counts": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Redaction Counts"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "source_type",
+     "title",
+     "language",
+     "industry",
+     "outcome",
+     "line_count",
+     "redaction_counts",
+     "created_at"
+    ],
+    "title": "SourceOut"
+   },
+   "SourceOutcome": {
+    "type": "string",
+    "enum": [
+     "booked",
+     "not_booked",
+     "unknown"
+    ],
+    "title": "SourceOutcome"
+   },
+   "SourceType": {
+    "type": "string",
+    "enum": [
+     "call",
+     "talk"
+    ],
+    "title": "SourceType"
    },
    "TenantResponse": {
     "properties": {

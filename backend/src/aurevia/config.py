@@ -106,6 +106,10 @@ class Settings(BaseSettings):
     # "sorry, go ahead" after being cut off. A goodbye or driving ends the call.
     turn_taking: bool = False
 
+    # --- Learning from expert recordings (Phase 12, built early; off by default) ---
+    # The learning API (import, review). Off: its endpoints answer 404.
+    learning_enabled: bool = False
+
     # --- Memory (Phase 4) ---
     # Full transcripts are deleted this many days after they are written (DPDP data
     # minimisation); extracted lead facts are kept separately until removed.
