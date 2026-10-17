@@ -57,6 +57,27 @@ scenarios pass, and Virat signs off the human microphone test.
 - One PR per piece of work. Merge only on an explicit "merge PR N". No auto-merge, no deploy.
 - Still open: confirm the Gate 10 and WP-10.5 pass marks (plan, decisions table).
 
+### Prices (cost report and spend limit)
+
+- Prices live in the database, entered in **Platform admin → Prices** in the dashboard (or
+  `POST /api/v1/platform/prices`). They are append-only and versioned by date. No database is
+  hosted yet, so none are entered anywhere.
+- **No cached-token price for a model:** the cost report lists those tokens as *unpriced* and
+  shows "not fully priced". The spend-limit check counts them as **zero**, so spend is
+  understated and the limit can be passed without blocking calls. Same rule as any other
+  unpriced usage: no price is guessed.
+- The spend limit only adds up prices in the plan's own currency. Enter prices in the same
+  currency as the limit (e.g. all USD), or they are left out of the limit.
+- Prices to enter, per 1M tokens (USD). Use the exact model name or `*` for the provider:
+
+  | Provider / model | `llm_input_tokens` | `llm_cached_input_tokens` | `llm_output_tokens` | Source |
+  |---|---|---|---|---|
+  | `gemini` / `gemini-3.5-flash` (default) | 1.50 | 0.15 | 9.00 | Third-party sites only, **check Google's page first** |
+  | `anthropic` / `claude-opus-5-5` | 4.00 | 0.20 | 20.00 | Anthropic pricing page, 17 Oct 2026 |
+
+- Known gap: Anthropic cache *writes* cost 1.25x input ($5 per 1M on Opus 5.5) but are priced
+  at the normal input rate (slightly understated). Gemini cache storage is not tracked.
+
 ## 4. Blocked
 
 | What | On whom |
@@ -66,6 +87,7 @@ scenarios pass, and Virat signs off the human microphone test.
 | Cartesia credits for 10.1. | Virat |
 | The Gemini key pasted into chat on 17 Oct should be rotated. | Virat |
 | Human microphone test (10.5). | Virat |
+| Enter model prices (input, cached input, output) in Platform admin → Prices once a database is hosted; check the Gemini figures on Google's pricing page first. | Virat |
 | Not Phase 10: hosting server and public IP, Exotel trunk, counsel's review of the India policy. | Virat / counsel |
 
 ## 5. Next step
