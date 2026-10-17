@@ -133,6 +133,8 @@ class CallStartResponse(BaseModel):
 class UtteranceIn(_Body):
     role: Literal["prospect", "agent"]
     text: str = Field(max_length=4000)
+    # The prospect cut this agent line off (WP-11.6). Optional; older workers omit it.
+    interrupted: bool = False
 
 
 class TurnRequest(_Body):

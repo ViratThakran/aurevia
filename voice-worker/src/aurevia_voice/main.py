@@ -327,6 +327,20 @@ async def entrypoint(ctx: JobContext) -> None:
     collector = TurnMetricsCollector()
     transcript = TranscriptCollector()
 
+    async def end_after_reply(reason: str) -> None:
+        # WP-11.6: let the fixed goodbye finish playing, then hang up.
+        await asyncio.sleep(0.3)  # the reply's speech starts after the stream event
+        speech = session.current_speech
+        if speech is not None:
+            await speech.wait_for_playout()
+        ctx.shutdown(reason=f"prospect_{reason or 'goodbye'}")
+
+    def on_end_call(reason: str) -> None:
+        tasks.add(task := asyncio.create_task(end_after_reply(reason)))
+        task.add_done_callback(tasks.discard)
+
+    backend.on_end_call = on_end_call
+
     if settings.mood_voice:
         # WP-11.4 (off by default): the next reply uses the voice style for the latest mood.
         collector.voice_style = DEFAULT_STYLE.label
