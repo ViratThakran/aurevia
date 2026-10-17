@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (fifth session: #29 merged; Phase 11 in progress). **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (sixth session: Phases 11 and 12 built early as far as agreed, then stopped; see section 1). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -8,6 +8,21 @@ has the gate, every work package, decisions and all measured numbers. Index of p
 18: [`docs/phases/README.md`](phases/README.md).
 
 ## 1. Where we are
+
+**Build-early work stopped after Phase 12, as agreed (17 Oct).** Everything in Phases 11 and 12
+that the section 6 table allowed is merged, each piece off by default, tested with fakes, and
+**not proven on real calls**. Phase 13 and later are not started. What is still open in 11 and
+12, and on whom:
+
+- WP-11.2 backchannel engine: waits for Virat's approval of the design, PR #30.
+- WP-12.0 recordings inventory, caller permissions and counsel's view on prospect consent:
+  Virat (and counsel). Nothing real can be imported, transcribed or labelled before this.
+- Gate 12 seed: Virat reviews the 20 seed playbook entries and approves at least 10. Two differ
+  from the plan on purpose: no "I completely understand" (a banned stock opener) and no
+  "confirm it shows on their calendar" (no real calendar).
+- Real model work (labelling, technique extraction, the A/B result): needs the paid model key.
+- Real transcription adapter and audio storage rules: wait on 12.0 and counsel.
+
 
 **Phase 10 (speed and voice acceptance).** WP-10.3 is merged (PR #18); its real-model numbers
 are not taken yet. Gate 10: median end of speech to first audio under 1.0 s, p95 under 1.8 s,
@@ -38,7 +53,7 @@ WP-10.1, 10.4, 10.5.
 
 ## 2. Open pull requests
 
-Open: [#30](https://github.com/ViratThakran/aurevia/pull/30) WP-11.1 backchannel design, **waiting for Virat's approval** (WP-11.2 starts only after it).
+Open: [#30](https://github.com/ViratThakran/aurevia/pull/30) WP-11.1 backchannel design, **waiting for Virat's approval** (WP-11.2 starts only after it). [#33](https://github.com/ViratThakran/aurevia/pull/33) is Virat's own fix for the test stall; not touched.
 
 Merged on 17 Oct, each with CI green:
 
@@ -64,13 +79,17 @@ Merged on 17 Oct, each with CI green:
 | [#41](https://github.com/ViratThakran/aurevia/pull/41) | WP-12.7 part 1 and 12.A: playbook versions and entries (migration 0014), 20 seed entries as proposed; off by default (`AUREVIA_PLAYBOOKS_ENABLED`) |
 | [#42](https://github.com/ViratThakran/aurevia/pull/42) | WP-12.7 part 2: playbook retrieval in turns (at most three approved entries, below the honesty rules, offers recorded; migration 0015); off by default |
 | [#43](https://github.com/ViratThakran/aurevia/pull/43) | WP-12.1, partial: batch transcription contract, fake transcriber, delete-after rule (library only) |
+| [#44](https://github.com/ViratThakran/aurevia/pull/44) | WP-12.4, partial: label shapes, labels API, label accuracy, Learning screen. Backend CI stalled once; cancelled and re-run, then green. |
+| [#45](https://github.com/ViratThakran/aurevia/pull/45) | WP-12.6, partial: technique review queue with an automatic policy check (migration 0016); off by default |
+| [#46](https://github.com/ViratThakran/aurevia/pull/46) | WP-12.8, partial: simulator A/B harness for playbooks (fakes only) |
 
 Follow-ups, not started:
 - Codex P2 from #17: `deploy.sh` only warns when speech keys are missing; it should fail.
 - PR #17's "not verified" list (real DNS and certificates, media ports, real audio, SIP, a real
   bucket, cron) waits for a server (WP-14.1).
-- CI stalled twice on backend `pytest` (PRs #18 and #24), and a re-run passed both times. The
-  cause is unknown; a per-test time limit would make a stall fail fast instead of hanging.
+- CI stalled on backend `pytest` on PRs #18, #24, #31, #38 and #44; one re-run passed each
+  time. Locally the full suite also hangs now and then, mostly on the first run in a fresh
+  worktree (seen twice this session; the second run passed). Virat's PR #33 addresses it.
 
 ## 3. Decisions Virat has made
 
@@ -139,6 +158,14 @@ Follow-ups, not started:
 | Not Phase 10: hosting server and public IP, Exotel trunk, counsel's review of the India policy. | Virat / counsel |
 
 ## 5. Next step
+
+**Phases 11 and 12 (build early): stopped after Phase 12 as agreed.** Do not start Phase 13 or
+later until Virat says so. Waiting on Virat: approve or change PR #30 (WP-11.1); review the seed
+playbook entries; say when Cartesia is topped up (10.1, rest of 10.4) and when the paid Gemini
+key is in.
+
+The Phase 10 steps below still apply.
+
 
 Keys and allowed domains are in place (checked 17 Oct, fifth session). Virat: review the table
 in section 6, then either start Phase 10 measurements with the message below, or approve the
@@ -245,8 +272,9 @@ with fake providers.
 | 12.1 partial: batch transcription contract (speaker-separated segments with word timings), a fake transcriber, and transcribe-then-delete (audio deleted on success or failure; refuses files outside its working folder); output feeds the redacted import | [#43](https://github.com/ViratThakran/aurevia/pull/43) | Library only; nothing calls it | A real adapter (for example Deepgram pre-recorded), and three calls checked by a person with word error rate: waits on your recordings, counsel's view on prospect consent and the audio storage rules |
 | 12.2 redaction (`aurevia.learning.redaction`): patterns for email, phone, PAN, Aadhaar, GSTIN, labelled PIN codes; a detector interface for names and addresses (model through the Model Gateway); consistent placeholders; counts-only report; refuses to pass text on if the detector fails | [#38](https://github.com/ViratThakran/aurevia/pull/38) | Library only; used by the learning import (WP-12.3, off by default) | The model detector against real transcripts (needs a model key and real recordings) |
 | 12.3 learning tables (`learning_sources` with source type call or talk, `learning_transcripts`, `learning_labels`; migration 0013, forced RLS, no deletes), permissions `learning.import`, `learning.review`, `learning.publish`, JSON and CSV import through redaction | [#39](https://github.com/ViratThakran/aurevia/pull/39) | `AUREVIA_LEARNING_ENABLED` (false; the API answers 404) | Importing real recordings (needs Virat's inventory, caller permissions and counsel's view on prospect consent); the model detector on real transcripts |
-| 12.4 partial: label value shapes per kind (stage, objection, outcome, qualification, next step, talk ratio, question count), labels API (a person's label is stored as checked by them; model proposals are approved or rejected), label accuracy (approved share of checked model labels), and a Learning screen in the dashboard (transcript with labels, Right/Wrong buttons, add a label) | this PR | `AUREVIA_LEARNING_ENABLED` (false) | The labelling model (needs the real model and real calls); label accuracy against your spot checks |
+| 12.4 partial: label value shapes per kind (stage, objection, outcome, qualification, next step, talk ratio, question count), labels API (a person's label is stored as checked by them; model proposals are approved or rejected), label accuracy (approved share of checked model labels), and a Learning screen in the dashboard (transcript with labels, Right/Wrong buttons, add a label) | [#44](https://github.com/ViratThakran/aurevia/pull/44) | `AUREVIA_LEARNING_ENABLED` (false) | The labelling model (needs the real model and real calls); label accuracy against your spot checks |
 | 12.5 timing profile (`aurevia.learning.timing`): per stage and overall, pause before replying p10/p50/p90, overlap rate, backchannels per minute and where they fall, speech rate, turn length; call sources only, numbers only, no text; a CLI writes the profile file | [#40](https://github.com/ViratThakran/aurevia/pull/40) | Nothing runs it automatically; run by hand with the CLI | A profile from real recordings (needs the WP-12.0 inventory and WP-12.1 transcription); WP-11.2 reading it for defaults (waits on PR 30) |
+| 12.6 partial: technique candidates (migration 0016, forced RLS, no deletes), automatic policy check before review (claims to be human, guarantees, pressure, redaction placeholders, personal data; a flagged candidate cannot be approved), review queue in the Learning screen (approve, edit, reject), copy an approved technique into a draft playbook as a proposed entry; every step audited | [#45](https://github.com/ViratThakran/aurevia/pull/45) | `AUREVIA_LEARNING_ENABLED` (false) | Extraction by the model from real transcripts, with frequency in booked vs unbooked calls (needs recordings and the model) |
 | 12.7 part 1 and 12.A playbooks (`aurevia.playbooks`, migration 0014): versions per agent (draft, active, retired; one active; frozen once active, backed by database triggers), entries in the fixed format (situation, what the agent says, tone, goal, source, proposed or approved), 20 seed entries from the plan loaded as proposed; approve, activate and retire need `learning.publish` | [#41](https://github.com/ViratThakran/aurevia/pull/41) | `AUREVIA_PLAYBOOKS_ENABLED` (false; the API answers 404) | Virat's review of the seed entries (at least 10 approved for Gate 12); a test call following the goal ladder. Two seed points differ from the plan on purpose: no "I completely understand" (a banned stock opener) and no "confirm it shows on their calendar" (no real calendar) |
 | 12.7 part 2 retrieval (`aurevia.playbooks.retrieval`, migration 0015): each turn, at most three approved entries of the agent's active version (current stage first, any-stage next, other stages never), placed in the per-turn prompt below the honesty rules and framed as suggestions; what was offered and how long retrieval took is recorded per turn (`playbook_offers`) | [#42](https://github.com/ViratThakran/aurevia/pull/42) | `AUREVIA_PLAYBOOKS_ENABLED` (false), and an active version with approved entries | Whether the ideas make calls better (WP-12.8 A/B with a real model); retrieval time on real hosting (the in-memory part is tested under 50 ms; the per-turn total is stored) |
-| 12.8 partial: simulator A/B harness (`python -m aurevia.evaluation.ab --candidate seed`): baseline then candidate playbook in one throwaway workspace, repeats, and the rule "only an improvement with no regression can become active" (scenario pass rates and style measures) | this PR | Nothing runs it automatically; run by hand | A real A/B result (needs the paid model key and several repeats); scenarios built from the recordings' objections; the live A/B on 50% of pilot calls |
+| 12.8 partial: simulator A/B harness (`python -m aurevia.evaluation.ab --candidate seed`): baseline then candidate playbook in one throwaway workspace, repeats, and the rule "only an improvement with no regression can become active" (scenario pass rates and style measures) | [#46](https://github.com/ViratThakran/aurevia/pull/46) | Nothing runs it automatically; run by hand | A real A/B result (needs the paid model key and several repeats); scenarios built from the recordings' objections; the live A/B on 50% of pilot calls |

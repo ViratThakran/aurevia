@@ -6,9 +6,9 @@ import csv
 import io
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from aurevia.learning.models import (
     LabelKind,
@@ -17,7 +17,9 @@ from aurevia.learning.models import (
     ReviewStatus,
     SourceOutcome,
     SourceType,
+    TechniqueStatus,
 )
+from aurevia.sales.state import SalesState
 
 MAX_LINES = 5000
 
@@ -132,3 +134,61 @@ class LabelAccuracyOut(BaseModel):
     approved: int
     rejected: int
     accuracy: float | None  # approved / checked; None until something is checked
+
+
+class TechniqueIn(_Body):
+    """A technique candidate. People add them now; the extraction model (later) will too."""
+
+    stage: SalesState | None = None
+    situation: str = Field(min_length=1, max_length=300)
+    says: str = Field(min_length=1, max_length=500)
+    tone: str = Field(min_length=1, max_length=100)
+    goal: str = Field(min_length=1, max_length=200)
+    conditions: str = Field(default="", max_length=300)
+    excerpt: str = Field(default="", max_length=1000)
+    source_ids: list[uuid.UUID] = Field(default_factory=list, max_length=100)
+
+
+class TechniqueEditIn(_Body):
+    stage: SalesState | None = None
+    situation: str = Field(min_length=1, max_length=300)
+    says: str = Field(min_length=1, max_length=500)
+    tone: str = Field(min_length=1, max_length=100)
+    goal: str = Field(min_length=1, max_length=200)
+    conditions: str = Field(default="", max_length=300)
+
+
+class TechniqueReviewIn(_Body):
+    status: Literal[TechniqueStatus.APPROVED, TechniqueStatus.REJECTED]
+
+
+class TechniqueToPlaybookIn(_Body):
+    version_id: uuid.UUID
+
+
+class TechniqueOut(BaseModel):
+    id: uuid.UUID
+    stage: SalesState | None
+    situation: str
+    says: str
+    tone: str
+    goal: str
+    conditions: str
+    excerpt: str
+    source_ids: list[uuid.UUID]
+    booked_count: int
+    unbooked_count: int
+    proposed_by: LabelSource
+    policy_flags: list[str]
+    status: TechniqueStatus
+    reviewed_at: datetime | None
+    playbook_entry_id: uuid.UUID | None
+    created_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def policy_reasons(self) -> list[str]:
+        """What the automatic policy check found, in words."""
+        from aurevia.learning.policy import FLAG_TEXT
+
+        return [FLAG_TEXT.get(flag, flag) for flag in self.policy_flags]

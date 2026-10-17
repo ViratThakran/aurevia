@@ -9,8 +9,8 @@ plan is the source of truth; these files track progress against it. Current stat
 | Phase | Name | Gate | State |
 |---|---|---|---|
 | [10](phase-10.md) | Speed and voice acceptance | G10 | In progress |
-| [11](phase-11.md) | Human feel | G11 | Not started |
-| [12](phase-12.md) | Learning from the expert recordings | G12 | Not started |
+| [11](phase-11.md) | Human feel | G11 | Built early, off by default (11.2 waits on PR #30) |
+| [12](phase-12.md) | Learning from the expert recordings | G12 | Built early as far as agreed, off by default |
 | [13](phase-13.md) | Make it cheap | G13 | Not started |
 | [14](phase-14.md) | Phone go-live | G14 | Not started |
 | [15](phase-15.md) | Integrations that replace the sales workflow | G15 | Not started |

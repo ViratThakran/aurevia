@@ -16,7 +16,13 @@ from aurevia.identity.dependencies import (
     SettingsDep,
 )
 from aurevia.learning.labels import LabelIn, LabelReviewIn
-from aurevia.learning.models import LearningLabel, LearningSource, ReviewStatus
+from aurevia.learning.models import (
+    LearningLabel,
+    LearningSource,
+    LearningTechnique,
+    ReviewStatus,
+    TechniqueStatus,
+)
 from aurevia.learning.redaction import GatewayDetector, RedactionError
 from aurevia.learning.schemas import (
     LabelAccuracyOut,
@@ -25,8 +31,14 @@ from aurevia.learning.schemas import (
     SourceDetailOut,
     SourceImportIn,
     SourceOut,
+    TechniqueEditIn,
+    TechniqueIn,
+    TechniqueOut,
+    TechniqueReviewIn,
+    TechniqueToPlaybookIn,
 )
 from aurevia.learning.service import LearningService
+from aurevia.learning.techniques import TechniqueService
 
 
 async def _enabled(settings: SettingsDep) -> None:
@@ -125,3 +137,79 @@ async def review_label(
 @router.get("/labels/accuracy", summary="How the model's proposed labels fared when checked")
 async def label_accuracy(principal: LearningReviewDep, session: SessionDep) -> LabelAccuracyOut:
     return await LearningService(session, principal.tenant_id).label_accuracy()
+
+
+def _technique(technique: LearningTechnique) -> TechniqueOut:
+    return TechniqueOut.model_validate(technique, from_attributes=True)
+
+
+@router.get("/techniques", summary="The technique review queue (WP-12.6), newest first")
+async def list_techniques(
+    principal: LearningReviewDep,
+    session: SessionDep,
+    status: TechniqueStatus | None = TechniqueStatus.PROPOSED,
+) -> list[TechniqueOut]:
+    rows = await TechniqueService(session, principal.tenant_id).queue(status)
+    return [_technique(t) for t in rows]
+
+
+@router.post(
+    "/techniques",
+    status_code=201,
+    summary="Add a technique candidate; the policy check runs first",
+)
+async def propose_technique(
+    body: TechniqueIn, principal: LearningReviewDep, session: SessionDep
+) -> TechniqueOut:
+    technique = await TechniqueService(session, principal.tenant_id).propose(
+        body, actor_user_id=principal.user_id
+    )
+    return _technique(technique)
+
+
+@router.put(
+    "/techniques/{technique_id}",
+    summary="Edit a candidate; it is checked again and goes back to the queue",
+)
+async def edit_technique(
+    technique_id: uuid.UUID,
+    body: TechniqueEditIn,
+    principal: LearningReviewDep,
+    session: SessionDep,
+) -> TechniqueOut:
+    technique = await TechniqueService(session, principal.tenant_id).edit(
+        technique_id, body, actor_user_id=principal.user_id
+    )
+    return _technique(technique)
+
+
+@router.post(
+    "/techniques/{technique_id}/review",
+    summary="Approve or reject a candidate (a flagged one cannot be approved)",
+)
+async def review_technique(
+    technique_id: uuid.UUID,
+    body: TechniqueReviewIn,
+    principal: LearningReviewDep,
+    session: SessionDep,
+) -> TechniqueOut:
+    technique = await TechniqueService(session, principal.tenant_id).review(
+        technique_id, TechniqueStatus(body.status), actor_user_id=principal.user_id
+    )
+    return _technique(technique)
+
+
+@router.post(
+    "/techniques/{technique_id}/to-playbook",
+    summary="Copy an approved technique into a draft playbook as a proposed entry",
+)
+async def technique_to_playbook(
+    technique_id: uuid.UUID,
+    body: TechniqueToPlaybookIn,
+    principal: LearningReviewDep,
+    session: SessionDep,
+) -> TechniqueOut:
+    technique = await TechniqueService(session, principal.tenant_id).copy_to_playbook(
+        technique_id, body.version_id, actor_user_id=principal.user_id
+    )
+    return _technique(technique)
