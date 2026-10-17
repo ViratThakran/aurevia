@@ -138,13 +138,18 @@ def system_blocks(system: str, cache_prefix: int) -> str | list[BetaTextBlockPar
 
 
 def usage_of(usage: BetaUsage, *, output: bool = True) -> ModelUsage:
-    """Anthropic reports uncached, cache-written and cache-read input separately: sum them."""
+    """Anthropic reports uncached, cache-written and cache-read input separately: sum them.
+
+    Reads and writes are kept apart too, because they are priced differently (reads far below
+    the input rate, writes above it).
+    """
     read = usage.cache_read_input_tokens or 0
     written = usage.cache_creation_input_tokens or 0
     return ModelUsage(
         input_tokens=usage.input_tokens + read + written,
         output_tokens=usage.output_tokens if output else 0,
         cached_input_tokens=read,
+        cache_write_input_tokens=written,
     )
 
 

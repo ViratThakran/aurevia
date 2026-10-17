@@ -316,3 +316,17 @@ def test_stable_prompt_part_is_marked_cacheable_and_cached_tokens_are_counted() 
     )
     # input_tokens stays "all input", so cost accounting never undercounts.
     assert (usage.input_tokens, usage.cached_input_tokens, usage.output_tokens) == (1540, 1500, 9)
+    assert usage.cache_write_input_tokens == 0
+
+
+def test_cache_writes_are_counted_apart_from_cache_reads() -> None:
+    usage = usage_of(
+        BetaUsage(
+            input_tokens=40,
+            output_tokens=9,
+            cache_read_input_tokens=200,
+            cache_creation_input_tokens=1500,
+        )
+    )
+    assert usage.input_tokens == 1740  # still all input
+    assert (usage.cached_input_tokens, usage.cache_write_input_tokens) == (200, 1500)
