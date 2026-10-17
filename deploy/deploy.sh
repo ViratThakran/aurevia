@@ -63,6 +63,10 @@ cmd_deploy() {
   compose up -d --wait --wait-timeout 120 postgres redis
   log "running database migrations (once)"
   compose run --rm migrate
+  # Add the reviewed model prices not yet in the database (adds rows only; unverified
+  # entries are skipped). Needs the price loader from the pricing work (PR #23).
+  log "loading model prices (adds new rows only)"
+  compose run --rm migrate python -m aurevia.platform.prices load
 
   log "starting the stack"
   if ! compose up -d --remove-orphans --wait --wait-timeout 240; then
