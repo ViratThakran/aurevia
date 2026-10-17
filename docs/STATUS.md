@@ -225,3 +225,4 @@ with fake providers.
 | 10.4 tooling: canned model (`AUREVIA_AI_PROVIDER=canned`) | [#29](https://github.com/ViratThakran/aurevia/pull/29) | Only when chosen; refused in staging and production | Benchmark tool only, never a sales model |
 | 10.4: Deepgram key terms | [#29](https://github.com/ViratThakran/aurevia/pull/29) | `AUREVIA_STT_KEYTERMS` (empty) | Whether they fix "Aurevia" and "Meera" (run E, waiting on Cartesia credits) |
 | 10.4: preemptive text to speech | [#29](https://github.com/ViratThakran/aurevia/pull/29) | `AUREVIA_PREEMPTIVE_TTS` (false) | Any measurement (run F, waiting on Cartesia credits) |
+| 11.3 agent-side reactions (prompt variant `voice-2026-10-17.reactions1`, style metrics `reaction_rate`, `repeated_reaction_rate`) | [#32](https://github.com/ViratThakran/aurevia/pull/32) | `AUREVIA_AGENT_REACTIONS` (false) | The 8 sales scenarios and word counts with a real model (paid Gemini key); how it sounds |

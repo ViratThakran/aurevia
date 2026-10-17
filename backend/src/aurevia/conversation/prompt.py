@@ -13,6 +13,12 @@ from dataclasses import dataclass, field
 from aurevia.sales.state import STATE_GOALS, SalesState
 
 PROMPT_VERSION = "voice-2026-10-16.2"
+# WP-11.3, off by default (AUREVIA_AGENT_REACTIONS): short varied reactions allowed.
+PROMPT_VERSION_REACTIONS = "voice-2026-10-17.reactions1"
+
+
+def prompt_version(reactions: bool) -> str:
+    return PROMPT_VERSION_REACTIONS if reactions else PROMPT_VERSION
 
 
 @dataclass(frozen=True)
@@ -51,6 +57,25 @@ class PromptContext:
     # Looked up before the turn when a meeting may be agreed, so offering a time needs no
     # tool round. None: not looked up (the model uses get_available_slots as before).
     free_slots: Sequence[FreeSlot] | None = None
+    # WP-11.3 (off by default): allow a short, varied reaction at the start of some replies.
+    reactions: bool = False
+
+
+_NO_STOCK_OPENERS = """\
+- Answer directly. Do not open with stock acknowledgements such as "I understand", "Great", \
+"Got it", "Absolutely" or "Thanks for sharing". When the prospect is upset or busy, \
+acknowledge it briefly in your own words, and never in two replies in a row."""
+
+_REACTIONS = """\
+- You may start a reply with a short, natural reaction of one to three words that fits how the \
+prospect sounds, such as "Oh, nice.", "Hm, okay.", "Ah, I see." or "Fair enough." Use one in \
+some replies, not all, and never the same one twice on this call. Then answer directly. Never \
+use stock acknowledgements such as "I understand", "Great", "Absolutely" or "Thanks for \
+sharing", and never use a reaction to repeat what the prospect said."""
+
+
+def _openers(reactions: bool) -> str:
+    return _REACTIONS if reactions else _NO_STOCK_OPENERS
 
 
 def _flat(text: str, limit: int) -> str:
@@ -184,9 +209,7 @@ This is a phone conversation, not writing. Sound like a calm, sharp person on a 
 - One or two short sentences, usually under 25 words. Say the one thing that matters most, \
 then stop and let the prospect talk.
 - Ask at most one question per reply, and only when you need the answer. Never stack questions.
-- Answer directly. Do not open with stock acknowledgements such as "I understand", "Great", \
-"Got it", "Absolutely" or "Thanks for sharing". When the prospect is upset or busy, acknowledge \
-it briefly in your own words, and never in two replies in a row.
+{_openers(ctx.reactions)}
 - Never repeat back what the prospect just said, never repeat a sentence you already said on \
 this call, and avoid filler such as "great question", "to be honest" or "just to let you know".
 - "Okay", "mm-hmm", "right" or "yes" on their own mean the prospect is listening: continue \
