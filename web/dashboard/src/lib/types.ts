@@ -1,3 +1,5 @@
+import type { UnpricedUsage } from "./pricing";
+
 /**
  * Shapes of the API responses that the OpenAPI schema leaves untyped (they are returned as
  * free-form JSON objects). Kept in one place and matched to the backend code that builds them:
@@ -39,6 +41,7 @@ export interface AnalyticsSummary {
   economics: {
     cost: Record<string, string>;
     fully_priced: boolean;
+    unpriced_usage: UnpricedUsage[];
     cost_per_call: Record<string, string> | null;
     cost_per_meeting: Record<string, string> | null;
   };
@@ -60,6 +63,8 @@ export interface UsageReport {
   resources: { resource: string; quantity: string; unpriced_quantity: string; cost: Record<string, string> }[];
   cost: Record<string, string>;
   fully_priced: boolean;
+  unpriced_usage: UnpricedUsage[];
+  spend_limit_understated: boolean;
 }
 
 export interface PlatformTenant {

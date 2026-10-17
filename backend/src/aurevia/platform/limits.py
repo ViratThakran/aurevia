@@ -7,8 +7,9 @@ call whose worker died cannot block a tenant for ever).
 
 from __future__ import annotations
 
+import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -22,6 +23,8 @@ from aurevia.usage.costs import cost_summary
 from aurevia.voice.models import Call, CallStatus
 
 STALE_CALL_AFTER = timedelta(hours=2)
+
+logger = logging.getLogger(__name__)
 
 
 class PlanLimitError(AureviaError):
@@ -45,6 +48,8 @@ class PlanUsage:
     minutes: float
     concurrent_calls: int
     cost: Decimal | None  # in the plan's cost currency, if it has a cost limit
+    # With a cost limit: usage that has no price, so it counts as zero in ``cost``.
+    unpriced_usage: list[dict[str, str]] = field(default_factory=list)
 
 
 def default_limits(settings: Settings) -> PlanLimits:
@@ -109,14 +114,17 @@ async def usage_this_month(
         )
     )
     cost = None
+    unpriced: list[dict[str, str]] = []
     if limits.monthly_cost_limit is not None and limits.cost_currency:
         summary = await cost_summary(session, tenant_id, start=start, end=now)
         cost = summary.totals.get(limits.cost_currency, Decimal(0))
+        unpriced = summary.unpriced_usage()
     return PlanUsage(
         calls=int(calls or 0),
         minutes=float(seconds or 0) / 60,
         concurrent_calls=int(concurrent or 0),
         cost=cost,
+        unpriced_usage=unpriced,
     )
 
 
@@ -137,6 +145,20 @@ async def check_can_start_call(
         and usage.cost >= limits.monthly_cost_limit
     ):
         exceeded.append("monthly_cost")
+    if limits.monthly_cost_limit is not None and usage.unpriced_usage:
+        # Warn, do not block (for now): unpriced usage counts as zero, so the spend limit
+        # may be passed. Must switch to blocking before the first pilot (phase-14.md).
+        logger.warning(
+            "Spend limit checked with unpriced usage counted as zero",
+            extra={
+                "fields": {
+                    "tenant_id": str(tenant_id),
+                    "unpriced": {
+                        u["resource"]: u["unpriced_quantity"] for u in usage.unpriced_usage
+                    },
+                }
+            },
+        )
     if usage.concurrent_calls >= limits.max_concurrent_calls:
         exceeded.append("concurrent_calls")
     if exceeded:

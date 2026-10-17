@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import { api, type Schemas } from "@/lib/api";
 import { useAction, useApi } from "@/lib/hooks";
+import { unpricedWarning } from "@/lib/pricing";
 import { useSession } from "@/lib/session";
 import { type AnalyticsSummary, money, percent } from "@/lib/types";
 
@@ -196,6 +197,11 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
           <Stat label="Meetings" value={stats.data.sales.meetings_booked} />
           <Stat label="Interested" value={stats.data.sales.interested} hint={`${stats.data.sales.not_interested} not interested`} />
           <Stat label="Cost" value={money(stats.data.economics.cost)} hint={`per meeting ${money(stats.data.economics.cost_per_meeting)}`} />
+        </div>
+      ) : null}
+      {stats.data && unpricedWarning(stats.data.economics.unpriced_usage) ? (
+        <div className="mb-6">
+          <Alert tone="warn">{unpricedWarning(stats.data.economics.unpriced_usage)}</Alert>
         </div>
       ) : null}
 

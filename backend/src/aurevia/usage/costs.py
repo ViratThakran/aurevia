@@ -70,6 +70,14 @@ class CostSummary:
     totals: dict[str, Decimal]  # currency -> amount, priced usage only
     fully_priced: bool
 
+    def unpriced_usage(self) -> list[dict[str, str]]:
+        """Usage with no price: it is missing from ``totals`` and counts as zero toward limits."""
+        return [
+            {"resource": r.resource.value, "unpriced_quantity": str(r.unpriced_quantity)}
+            for r in self.resources
+            if r.unpriced_quantity > 0
+        ]
+
 
 async def cost_summary(
     session: AsyncSession,

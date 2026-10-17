@@ -2,6 +2,7 @@
 
 import { Alert, Card, Loading, PageHeader, Stat, Table, formatDate } from "@/components/ui";
 import { useApi } from "@/lib/hooks";
+import { unpricedWarning } from "@/lib/pricing";
 import { type UsageReport, money } from "@/lib/types";
 
 const RESOURCES: Record<string, string> = {
@@ -22,6 +23,7 @@ export default function UsagePage() {
   const usage = useApi<UsageReport>("/usage");
   if (!usage.data) return usage.error ? <Alert>{usage.error}</Alert> : <Loading />;
   const u = usage.data;
+  const warning = unpricedWarning(u.unpriced_usage, { spendLimit: u.spend_limit_understated, labels: RESOURCES });
   return (
     <>
       <PageHeader
@@ -38,9 +40,9 @@ export default function UsagePage() {
           hint={u.plan.monthly_cost_limit ? `limit ${u.plan.cost_currency} ${u.plan.monthly_cost_limit}` : "no spend limit"}
         />
       </div>
-      {!u.fully_priced ? (
+      {warning ? (
         <div className="mb-6">
-          <Alert tone="warn">Some usage has no price set yet, so the cost shown is incomplete.</Alert>
+          <Alert tone="warn">{warning}</Alert>
         </div>
       ) : null}
       <Card title="By resource">

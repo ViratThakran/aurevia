@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Iterator
 from datetime import timedelta
 from typing import Any
@@ -288,12 +289,14 @@ def test_cached_input_tokens_are_priced_separately(env: Env, db: PgEnv) -> None:
     _make_platform_admin(db)
     tenant_id = me(env.client, env.owner)["tenant"]["id"]
     # One Claude request: 1M input tokens, of which 800k were read from the prompt cache.
+    # Dated before the test clock, which the plan-limit check uses.
     admin_execute(
         db,
         "INSERT INTO usage_events (id, tenant_id, kind, provider, model, input_tokens, "
-        "cached_input_tokens, output_tokens, audio_seconds, characters, interrupted) VALUES "
+        "cached_input_tokens, output_tokens, audio_seconds, characters, interrupted, "
+        "created_at) VALUES "
         f"(gen_random_uuid(), '{tenant_id}', 'llm', 'anthropic', 'claude-haiku', 1000000, "
-        "800000, 0, 0, 0, false)",
+        f"800000, 0, 0, 0, false, '{(NOON_IST - timedelta(hours=1)).isoformat()}')",
     )
 
     def add_price(resource: str, amount: str) -> None:
@@ -348,8 +351,82 @@ def test_cached_input_tokens_are_priced_separately(env: Env, db: PgEnv) -> None:
         ).status_code
         == 200
     )
-    started = env.client.post("/api/v1/voice/sessions", json={}, headers=bearer(env.owner))
-    assert started.status_code == 201, started.text
+    # Plan limits are checked on outbound phone calls (test mode, own number).
+    _setup_lines(env)
+    started = _post(env, "/calls/outbound", {"lead_id": _lead(env)})
+    assert started.status_code == 202, started.text
+    # The check does run: a limit below the correct cost of 84 blocks the next call.
+    plan["monthly_cost_limit"] = "80"
+    env.client.put(
+        f"/api/v1/platform/tenants/{tenant_id}/plan", json=plan, headers=bearer(env.owner)
+    )
+    blocked = _post(env, "/calls/outbound", {"lead_id": _lead(env)})
+    assert blocked.status_code == 429
+    assert blocked.json()["error"]["details"]["limits"] == ["monthly_cost"]
+
+
+def test_unpriced_usage_is_shown_and_logged_but_does_not_block_calls(
+    env: Env, db: PgEnv, caplog: pytest.LogCaptureFixture
+) -> None:
+    """For now unpriced usage warns (usage page, analytics, logs); it does not block calls."""
+    _make_platform_admin(db)
+    tenant_id = me(env.client, env.owner)["tenant"]["id"]
+    admin_execute(
+        db,
+        "INSERT INTO usage_events (id, tenant_id, kind, provider, model, input_tokens, "
+        "output_tokens, audio_seconds, characters, interrupted, created_at) VALUES "
+        f"(gen_random_uuid(), '{tenant_id}', 'llm', 'gemini', 'gemini-3.5-flash', 1000000, "
+        f"500000, 0, 0, false, '{(NOON_IST - timedelta(hours=1)).isoformat()}')",
+    )
+    price = {
+        "provider": "gemini",
+        "resource": "llm_input_tokens",
+        "currency": "INR",
+        "amount": "10",
+        "per_quantity": 1_000_000,
+        "effective_from": (NOON_IST - timedelta(days=60)).isoformat(),
+    }
+    assert (
+        env.client.post(
+            "/api/v1/platform/prices", json=price, headers=bearer(env.owner)
+        ).status_code
+        == 201
+    )
+    expected = [{"resource": "llm_output_tokens", "unpriced_quantity": "500000"}]
+
+    # No spend limit yet: the usage is shown as unpriced, but no limit is understated.
+    usage = env.client.get("/api/v1/usage", headers=bearer(env.owner)).json()
+    assert usage["unpriced_usage"] == expected and usage["spend_limit_understated"] is False
+
+    plan = {
+        "plan_name": "capped",
+        "monthly_cost_limit": "100",
+        "cost_currency": "INR",
+        "max_concurrent_calls": 5,
+    }
+    assert (
+        env.client.put(
+            f"/api/v1/platform/tenants/{tenant_id}/plan", json=plan, headers=bearer(env.owner)
+        ).status_code
+        == 200
+    )
+    usage = env.client.get("/api/v1/usage", headers=bearer(env.owner)).json()
+    assert usage["unpriced_usage"] == expected and usage["spend_limit_understated"] is True
+    assert usage["used"]["unpriced_usage"] == expected
+    assert usage["cost"] == {"INR": "10.000000"}  # the unpriced output counts as zero
+
+    summary = env.client.get("/api/v1/analytics/summary?days=7", headers=bearer(env.owner))
+    assert summary.json()["economics"]["unpriced_usage"] == expected
+
+    caplog.set_level(logging.WARNING, logger="aurevia.platform.limits")
+    _setup_lines(env)  # plan limits are checked on outbound phone calls
+    started = _post(env, "/calls/outbound", {"lead_id": _lead(env)})
+    assert started.status_code == 202, started.text  # warn, do not block
+    warning = next(r for r in caplog.records if r.name == "aurevia.platform.limits")
+    assert warning.__dict__["fields"] == {
+        "tenant_id": tenant_id,
+        "unpriced": {"llm_output_tokens": "500000"},
+    }
 
 
 def test_phone_minutes_are_recorded_as_telephony_usage(env: Env, db: PgEnv) -> None:
