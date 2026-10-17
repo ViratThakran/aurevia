@@ -7513,6 +7513,11 @@
       "type": "string",
       "maxLength": 4000,
       "title": "Text"
+     },
+     "interrupted": {
+      "type": "boolean",
+      "title": "Interrupted",
+      "default": false
      }
     },
     "additionalProperties": false,

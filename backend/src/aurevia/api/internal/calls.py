@@ -4,7 +4,9 @@ The reply to a turn streams as NDJSON lines: ``{"type": "delta", "text": ...}`` 
 model writes, then exactly one ``{"type": "done", "sales_state": ...}`` or
 ``{"type": "error", "code": ...}``. With ``AUREVIA_PROSPECT_MOOD`` on (WP-11.4, off by
 default) the stream starts with ``{"type": "mood", "mood": ...}`` when a mood was recorded;
-older workers ignore it. When the worker cancels a reply (the prospect interrupted)
+older workers ignore it. With ``AUREVIA_TURN_TAKING`` on (WP-11.6, off by default) a few clear
+moments get a fixed reply without the model, and a goodbye adds ``{"type": "end_call"}``.
+When the worker cancels a reply (the prospect interrupted)
 it simply closes the stream; generation stops and the usage is still recorded.
 """
 
@@ -31,6 +33,7 @@ from aurevia.conversation.engine import (
     to_model_messages,
 )
 from aurevia.conversation.prompt import FreeSlot, PromptContext, RememberedFact
+from aurevia.conversation.turn_taking import classify
 from aurevia.db.session import Database, set_tenant_context
 from aurevia.errors import AureviaError, ConflictError, ServiceUnavailableError
 from aurevia.gateway import GatewayError, ModelGateway
@@ -249,6 +252,26 @@ async def take_turn(
         messages = to_model_messages([Utterance(role=u.role, text=u.text) for u in body.history])
     except InvalidHistoryError as exc:
         raise AureviaError(str(exc), status_code=422, code="invalid_history") from exc
+
+    # WP-11.6 (off by default): a fixed, instant reply for a few clear moments. No model call,
+    # so no tool runs and nothing is claimed; the sales stage does not move.
+    fixed = classify(body.history) if settings.turn_taking else None
+    if fixed is not None:
+        call.turn_count += 1
+        state_now = call.sales_state
+        await session.commit()
+        logger.info(
+            "Turn answered without the model",
+            extra={"fields": {"call_id": str(call_id), "move": fixed.move.value}},
+        )
+
+        async def fixed_stream() -> AsyncIterator[bytes]:
+            yield _line({"type": "delta", "text": fixed.text})
+            if fixed.end_call:
+                yield _line({"type": "end_call", "reason": fixed.move.value})
+            yield _line({"type": "done", "sales_state": state_now})
+
+        return StreamingResponse(fixed_stream(), media_type="application/x-ndjson")
 
     lead = await session.get(Lead, call.lead_id) if call.lead_id else None
     memories: list[RememberedFact] = []
