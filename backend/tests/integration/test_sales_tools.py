@@ -664,3 +664,28 @@ def test_turn_metrics_store_the_voice_style(env: Env, db: PgEnv) -> None:
         f"/internal/v1/calls/{call_id}/turn-metrics", json=bad, headers=headers
     )
     assert rejected.status_code == 422
+
+
+def test_turn_taking_answers_clear_moments_without_the_model(env: Env, db: PgEnv) -> None:
+    """WP-11.6: off by default (the model answers); on, a fixed reply with no model call."""
+    call_id, token = _call(env, _lead(env))
+    env.model.replies += ["Of course."]
+    _turn(env, call_id, token, said="Hold on.")
+    assert len(env.model.requests) == 1  # off: the model answered
+
+    app: Any = env.client.app
+    app.state.settings = app.state.settings.model_copy(update={"turn_taking": True})
+    before = len(env.model.requests)
+    lines = _turn(env, call_id, token, said="Hold on.")
+    assert len(env.model.requests) == before  # no model call
+    assert [line["type"] for line in lines] == ["delta", "done"]
+    assert lines[0]["text"] == "Sure, take your time."
+
+    lines = _turn(env, call_id, token, said="Okay, bye.")
+    assert [line["type"] for line in lines] == ["delta", "end_call", "done"]
+    assert not admin_fetch(db, "SELECT 1 FROM tool_executions")  # nothing was claimed
+
+    # A do-not-call request still reaches the model, which uses the audited tool.
+    env.model.replies += ["Understood, I will not call again."]
+    _turn(env, call_id, token, said="Please don't call this number again, bye.")
+    assert len(env.model.requests) == before + 1

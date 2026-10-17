@@ -36,7 +36,9 @@ def history_from(chat_ctx: llm.ChatContext) -> list[Utterance]:
         if message.role == "user":
             history.append(Utterance(role="prospect", text=text))
         elif message.role == "assistant":
-            history.append(Utterance(role="agent", text=text))
+            history.append(
+                Utterance(role="agent", text=text, interrupted=bool(message.interrupted))
+            )
     return history
 
 
