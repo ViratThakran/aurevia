@@ -1,0 +1,84 @@
+# Aurevia status
+
+Last updated: 17 Oct 2026. **Update this file at the end of every work session.**
+No key values in this file, ever. Name the variable, not its value.
+
+## 1. Where we are
+
+**Phase 10 (speed and voice acceptance), WP-10.3 (cut model time).** Plan: `docs/plan/`.
+Gate 10: median end of speech to first audio under 1.0 s, p95 under 1.8 s, the 8 sales
+scenarios pass, and Virat signs off the human microphone test.
+
+| WP | State |
+|---|---|
+| 10.1 Restore real audio (Cartesia) | Not started. Needs keys and Cartesia credits. |
+| 10.2 Model bake-off | Not started. On hold until Virat says go. Needs the paid key. |
+| 10.3 Cut model time | Built in PR #18. Real numbers not taken yet. |
+| 10.4 Turn-handling benchmark (Deepgram) | Not started. Needs keys. |
+| 10.5 Human acceptance | Not started. Needs Virat at a microphone. |
+
+**Measured**
+- Before Phase 10: text-path first word about 2.6 to 3 s (free Gemini key).
+- PR #18 offline counts (no model called):
+  - Model requests before the first word: next step "when could we talk?" 2 → 1; "book Tuesday
+    at 11" 3 → 2; pitch 2 → 2.
+  - Fresh prompt tokens per request with a warm cache (estimated): next step ~1,855 → ~185;
+    pitch ~1,860 → ~40.
+- PR #18 backend tests: 356 passed (including database tests, local Postgres 16).
+- Rough paced run, 17 Oct, free Gemini key, 2 scenarios (a sanity check, **not** Gate 10):
+  - Before (main): 6 of 6 turns succeeded. First word 1204, 1374, 2008, 2256, 2907, 3475 ms;
+    p50 ≈ 2.1 s, p95 ≈ 3.5 s.
+  - After (PR #18): 1 turn succeeded (1649 ms), then rate-limited; run stopped. No comparison
+    possible.
+
+**Not measured**
+- Gate 10 end-of-speech-to-first-audio p50 and p95 on the real stack.
+- WP-10.3 done-when: model first token under 600 ms at the median.
+- The 8 sales scenarios after PR #18.
+- Real audio retry (10.1), turn handling (10.4), human microphone test (10.5).
+
+## 2. Open pull requests
+
+| PR | What | Waiting for |
+|---|---|---|
+| [#18](https://github.com/ViratThakran/aurevia/pull/18) | WP-10.3: next-step meeting-time lookup, prompt caching | Real before/after numbers (needs keys). Codex finding P1: cached Claude tokens are billed at the full input price (overcharge; could trip the monthly cost limit), needs a fix. Codex P2 on an older commit (replayed slot lookups) looks covered by the 5-minute window, confirm. CI green. Then "merge PR 18". |
+| [#17](https://github.com/ViratThakran/aurevia/pull/17) | Hosting stage 1: `deploy/` packaging | CI backend tests failed (run on Friday evening, likely the weekday slots test that #18 fixes; not confirmed). Codex P2: `deploy.sh` only warns when speech keys are missing, should fail. A real server and domain to verify. Not deploying until told. |
+
+## 3. Decisions Virat has made
+
+- Free meeting times are looked up before the turn **at the next-step stage only**, not during the
+  pitch. Listed times are at most 5 minutes old; `book_meeting` still re-checks the slot.
+- Phase 10 one WP at a time. **Do not start 10.2 or any later phase until Virat replies.**
+- Test text only. Never send real prospect data or call recordings through the free tier.
+- If a provider hits a quota: stop and report. No retry loops; benchmark runs are paced.
+- A free-key paced run is a rough check only, not the Gate 10 measurement.
+- One PR per piece of work. Merge only on an explicit "merge PR N". No auto-merge, no deploy.
+- Still open: confirm the Gate 10 and WP-10.5 pass marks (plan, decisions table).
+
+## 4. Blocked
+
+| What | On whom |
+|---|---|
+| Cloud environment: `AUREVIA_GEMINI_API_KEY`, `DEEPGRAM_API_KEY`, `CARTESIA_API_KEY` were not set in the last two sessions, and `api.deepgram.com` and `api.cartesia.ai` were refused by the network policy. Settings only reach a **new** session. | Virat |
+| Paid Gemini key (expected about 19 Oct). Needed for 10.2 and a fair Gate 10 run. | Virat |
+| Cartesia credits for 10.1. | Virat |
+| The Gemini key pasted into chat on 17 Oct should be rotated. | Virat |
+| Human microphone test (10.5). | Virat |
+| Not Phase 10: hosting server and public IP, Exotel trunk, counsel's review of the India policy. | Virat / counsel |
+
+## 5. Next step
+
+Virat: in the cloud environment settings, set the three variables above, add `api.deepgram.com`
+and `api.cartesia.ai` to Allowed domains, save, start a new session, and paste:
+
+```text
+Read docs/STATUS.md first. Check that AUREVIA_GEMINI_API_KEY, DEEPGRAM_API_KEY and
+CARTESIA_API_KEY are set and that api.deepgram.com and api.cartesia.ai are reachable.
+Don't print the keys. If anything is missing, stop and tell me exactly what. If all is there:
+1. Run the WP-10.3 before/after, paced with no retries ("before" = main, "after" =
+   phase-10-wp-3-tool-rounds), then the 8 sales scenarios. Report p50, p95, and turns
+   succeeded and failed.
+2. Run 10.1 (Cartesia audio) and 10.4 (Deepgram turn handling) and report measured numbers.
+3. Update docs/STATUS.md.
+Test text only. If a provider hits a quota, stop and report. Don't start 10.2 until I reply.
+```
