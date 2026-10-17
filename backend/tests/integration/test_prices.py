@@ -107,3 +107,27 @@ def test_a_star_price_covers_any_model_of_the_provider(db: PgEnv) -> None:
         )
     now = datetime.now(UTC)
     assert _session(db.app_url, lambda s: missing_prices(s, "gemini", ["any"], now=now)) == []
+
+
+def test_the_command_runs_on_its_own_as_deploy_sh_runs_it(db: PgEnv, tmp_path: Any) -> None:
+    """A fresh process (no test imports) must load the price file: deploy.sh depends on it."""
+    import os
+    import subprocess
+    import sys
+
+    env = {k: v for k, v in os.environ.items() if not k.startswith("AUREVIA_")}
+    env["AUREVIA_MIGRATION_DATABASE_URL"] = db.owner_url
+    for command in (["load"], ["check"]):
+        done = subprocess.run(  # noqa: S603 - fixed arguments, test only
+            [sys.executable, "-m", "aurevia.platform.prices", *command],
+            cwd=tmp_path,  # no .env here
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        assert "Traceback" not in done.stderr, done.stderr
+        if command == ["load"]:
+            assert done.returncode == 0 and "added" in done.stdout, done.stdout
+    assert {r["provider"] for r in _rows(db)} == {"anthropic"}

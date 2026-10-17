@@ -30,6 +30,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from aurevia.config import Settings
+from aurevia.identity import models as _identity_models  # noqa: F401 - prices refer to users
 from aurevia.platform.models import Price, PriceResource
 
 logger = logging.getLogger(__name__)
