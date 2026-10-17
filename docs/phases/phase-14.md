@@ -1,7 +1,7 @@
 # Phase 14: Phone go-live
 
-State: **not started.** Content is from the plan only. PR #17 (hosting stage 1 packaging) is
-open and relates to WP-14.1, but is not merged and nothing is deployed.
+State: **not started.** Content is from the plan only. PR #17 (hosting stage 1 packaging,
+relates to WP-14.1) is merged; nothing is deployed and no server exists.
 
 ## Goal
 
@@ -23,7 +23,7 @@ code left intact.
 
 | WP | What | Done when | Status | PR |
 |---|---|---|---|---|
-| 14.1 | Choose and build staging per the hosting plan: Caddy HTTPS, private Postgres and Redis, real LiveKit keys, firewall rules, root-only secrets file, dashboard built with the public API address. | Health endpoint ready on the public address; a browser Test Call works from outside the home network. | Not started (Virat picks provider, domain, budget). Packaging in review. | [#17](https://github.com/ViratThakran/aurevia/pull/17) (packaging only) |
+| 14.1 | Choose and build staging per the hosting plan: Caddy HTTPS, private Postgres and Redis, real LiveKit keys, firewall rules, root-only secrets file, dashboard built with the public API address. | Health endpoint ready on the public address; a browser Test Call works from outside the home network. | Not started (Virat picks provider, domain, budget). Packaging merged 17 Oct; nothing deployed. | [#17](https://github.com/ViratThakran/aurevia/pull/17) (packaging only) |
 | 14.2 | Measure region and media options from the India server and one region nearer the AI providers; price LiveKit Cloud (Option C) if delay or UDP/NAT work is painful. | Decision and numbers in the hosting plan. | Not started | none |
 | 14.3 | Phone trunk: LiveKit SIP to the carrier from WP-13.6, SIP ports open to the carrier only, caller ID numbers registered. | In test mode the system calls Virat's own phone and an inbound call reaches the right tenant. | Not started | none |
 | 14.4 | Phone-audio quality: best speech-model setting for narrow-band audio; word error rate on real phone calls (English, Hinglish); barge-in and echo on a real network. Synthetic audio does not count. | Numbers in the voice audit doc. | Not started | none |

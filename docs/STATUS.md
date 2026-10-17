@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (third session). **Update this file at the end of every work session.**
+Last updated: 17 Oct 2026 (fourth session, after merging #22, #23, #17, #24). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -28,17 +28,31 @@ the 8 sales scenarios pass, and Virat signs off the human microphone test.
 - Rough paced run on the free key, before PR #18: 6 of 6 turns, p50 ≈ 2.1 s, p95 ≈ 3.5 s. After:
   1 turn (1649 ms), then rate-limited. Not comparable, not Gate 10.
 - Pricing fix: 1M input tokens with 800k cached now costs 84, not 300 (input 300/M, cached 30/M).
-- Backend tests: 357 passed locally (with database tests); CI green on all three jobs.
+  Correction: the earlier claim that a cost limit of 100 "no longer blocks the next call" was
+  not tested (the test used a browser session; limits are checked on outbound calls). Fixed
+  and proven in PR #24: limit 100 allows, 80 blocks.
+- Backend tests on main after the pricing PRs: 371 passed locally (with database tests); CI green.
 
 **Not measured:** Gate 10 timings, WP-10.3's 600 ms target, the 8 scenarios after PR #18,
 WP-10.1, 10.4, 10.5.
 
 ## 2. Open pull requests
 
-| PR | What | Waiting for |
-|---|---|---|
-| [#17](https://github.com/ViratThakran/aurevia/pull/17) | Hosting stage 1: `deploy/` packaging (relates to WP-14.1) | CI backend tests failed on 16 Oct (likely the weekday slots test fixed by #18; needs a rebase on main and a re-run). Codex P2: `deploy.sh` only warns when speech keys are missing, should fail. A real server and domain to verify. Not deploying until told. |
-| This docs PR | Phase files 10 to 18, this update, CLAUDE.md line | Virat's review and "merge PR N". |
+None open (17 Oct, after this docs PR). Merged on 17 Oct, each with CI green:
+
+| PR | What |
+|---|---|
+| [#22](https://github.com/ViratThakran/aurevia/pull/22) | Pricing (c): Claude cache writes priced separately (migration 0011) |
+| [#23](https://github.com/ViratThakran/aurevia/pull/23) | Pricing (a): reviewed price file, add-only loader, startup check |
+| [#17](https://github.com/ViratThakran/aurevia/pull/17) | Hosting stage 1: `deploy/` packaging, now loading prices after migrations. Nothing deployed: no server exists. |
+| [#24](https://github.com/ViratThakran/aurevia/pull/24) | Pricing (b): warn on unpriced usage (usage page, analytics, logs); fixes the #18 limit test |
+
+Follow-ups, not started:
+- Codex P2 from #17: `deploy.sh` only warns when speech keys are missing; it should fail.
+- PR #17's "not verified" list (real DNS and certificates, media ports, real audio, SIP, a real
+  bucket, cron) waits for a server (WP-14.1).
+- CI stalled twice on backend `pytest` (PRs #18 and #24), and a re-run passed both times. The
+  cause is unknown; a per-test time limit would make a stall fail fast instead of hanging.
 
 ## 3. Decisions Virat has made
 
@@ -51,25 +65,33 @@ WP-10.1, 10.4, 10.5.
 - If a provider hits a quota: stop and report. No retry loops; benchmark runs are paced.
 - A free-key paced run is a rough check only, not the Gate 10 measurement.
 - One PR per piece of work. Merge only on an explicit "merge PR N". No auto-merge, no deploy.
-- Open, waiting for Virat: Gate 10 and WP-10.5 pass marks; the pricing proposals of 17 Oct
-  (price seed, spend limit with unpriced usage, Claude cache-write pricing).
+- Pricing (17 Oct): (a) reviewed price file + add-only loader run by `deploy.sh` + startup
+  check; (b) warn on unpriced usage now, **switch to blocking before the first pilot or paying
+  tenant** (`docs/phases/phase-14.md`); (c) Claude cache writes priced separately. In PRs #22
+  to #24.
+- Open, waiting for Virat: Gate 10 and WP-10.5 pass marks.
 
 ### Prices (cost report and spend limit)
 
-- Prices live in the database, entered in **Platform admin → Prices** (or
-  `POST /api/v1/platform/prices`). Append-only, versioned by date. No database is hosted yet,
-  so none are entered anywhere.
-- **No cached-token price for a model:** the cost report shows those tokens as *unpriced* and
-  "not fully priced". The spend-limit check counts them as **zero**, so spend is understated.
-- The spend limit only adds prices in the plan's own currency. Enter prices in that currency.
-- Prices to enter, per 1M tokens (USD), exact model name or `*`:
+- Model prices live in the reviewed file `backend/src/aurevia/platform/prices.toml` (changed by
+  PR only). `deploy.sh` loads them after migrations; loading only adds rows, and entries marked
+  `verified = false` are skipped. Other prices are entered in **Platform admin → Prices**. No
+  database is hosted yet, so no prices are loaded anywhere.
+- In the file (USD per 1M tokens):
 
-  | Provider / model | `llm_input_tokens` | `llm_cached_input_tokens` | `llm_output_tokens` | Source |
-  |---|---|---|---|---|
-  | `gemini` / `gemini-3.5-flash` (default) | 1.50 | 0.15 | 9.00 | Third-party sites only, **check Google's page first** |
-  | `anthropic` / `claude-opus-5-5` | 4.00 | 0.20 | 20.00 | Anthropic pricing page, 17 Oct 2026 |
+  | Model | Input | Cached input | Cache write | Output | Verified |
+  |---|---|---|---|---|---|
+  | `gemini-3.5-flash` (default) | 1.50 | 0.15 | none (no charge) | 9.00 | **No**, third-party sites; not loaded |
+  | `claude-opus-5-5` | 4.00 | 0.20 | 5.00 | 20.00 | Yes, Anthropic's page, 17 Oct |
 
-- Known gap: Anthropic cache *writes* cost 1.25x input but are priced at the normal input rate.
+- The API logs a warning at startup for each price missing for the configured models.
+- **Unpriced usage** (no price for that model and resource) is left out of the cost and counts
+  as **zero toward the spend limit**. It is shown with its amount on the usage, home and campaign
+  pages and in analytics, and logged when a call is checked against a spend limit. Calls are
+  not blocked by it; this must switch to blocking before the first pilot or paying tenant
+  (`docs/phases/phase-14.md`).
+- The spend limit only adds prices in the plan's own currency (the file uses USD).
+- Plan limits, including the spend limit, apply to outbound phone calls, not browser test calls.
 
 ## 4. Blocked
 
@@ -80,7 +102,7 @@ WP-10.1, 10.4, 10.5.
 | Cartesia credits for 10.1. | Virat |
 | The Gemini key pasted into chat on 17 Oct should be rotated. | Virat |
 | Human microphone test (10.5). | Virat |
-| Enter model prices once a database is hosted; check the Gemini figures first. | Virat |
+| Check the Gemini prices on https://ai.google.dev/gemini-api/docs/pricing; if they match, a PR sets `verified = true` in `prices.toml` (and `tests/test_prices_file.py`). Until then Gemini usage is unpriced. | Virat |
 | Not Phase 10: hosting server and public IP, Exotel trunk, counsel's review of the India policy. | Virat / counsel |
 
 ## 5. Next step
