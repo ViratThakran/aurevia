@@ -2,6 +2,7 @@
 
 ## Start here
 - `STATUS.md` — current state, open PRs, blockers, next step (read first every session)
+- `RUN-LOCAL.md` — run Aurevia on your own Windows PC and test by voice with a microphone
 - `phases/README.md` — phases 10 to 18, one file each, from the master plan in `plan/`
 
 ## 00 Foundation

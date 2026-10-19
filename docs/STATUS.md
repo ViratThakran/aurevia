@@ -1,6 +1,6 @@
 # Aurevia status
 
-Last updated: 17 Oct 2026 (sixth session: Phases 11 and 12 built early as far as agreed, then stopped; see section 1). **Update this file at the end of every work session.**
+Last updated: 19 Oct 2026 (sixth session: Phases 11 and 12 built early as far as agreed, then stopped; see section 1. Added `docs/RUN-LOCAL.md` for running on Windows and the microphone test). **Update this file at the end of every work session.**
 No key values in this file, ever. Name the variable, not its value.
 
 **Read next: the current phase file, [`docs/phases/phase-10.md`](phases/phase-10.md).** It
@@ -153,7 +153,7 @@ Follow-ups, not started:
 | Paid Gemini key (expected about 19 Oct). Needed for 10.2 and a fair Gate 10 run. | Virat |
 | **Cartesia credits ran out** during WP-10.4 (17 Oct, 10:51 UTC). Needed for 10.1 and the rest of 10.4. Until Virat says it is topped up, no Cartesia or other paid provider is used. | Virat |
 | The Gemini key pasted into chat on 17 Oct should be rotated. | Virat |
-| Human microphone test (10.5). | Virat |
+| Human microphone test (10.5). Steps for your Windows PC: [`docs/RUN-LOCAL.md`](RUN-LOCAL.md). Needs Cartesia credits. | Virat |
 | Check the Gemini prices on https://ai.google.dev/gemini-api/docs/pricing; if they match, a PR sets `verified = true` in `prices.toml` (and `tests/test_prices_file.py`). Until then Gemini usage is unpriced. | Virat |
 | Not Phase 10: hosting server and public IP, Exotel trunk, counsel's review of the India policy. | Virat / counsel |
 
